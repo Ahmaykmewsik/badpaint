@@ -89,6 +89,9 @@ struct GameMemory
 {
     MemoryArena permanentArena;
     MemoryArena temporaryArena;
+
+    MemoryArena twoFrameArenaModIndex0;
+    MemoryArena twoFrameArenaModIndex1;
 };
 
 #define ZeroArray(array) ZeroSize(sizeof(array), array)
@@ -247,6 +250,24 @@ inline int GetFrameModIndexLastFrame()
 
     if (G_CURRENT_FRAME)
         result = (G_CURRENT_FRAME - 1) % 2;
+
+    return result;
+}
+
+inline MemoryArena *GetTwoFrameArenaThisFrame(GameMemory *gameMemory)
+{
+    MemoryArena *result = (GetFrameModIndexThisFrame())
+                              ? &gameMemory->twoFrameArenaModIndex0
+                              : &gameMemory->twoFrameArenaModIndex1;
+
+    return result;
+}
+
+inline MemoryArena *GetTwoFrameArenaLastFrame(GameMemory *gameMemory)
+{
+    MemoryArena *result = (GetFrameModIndexLastFrame())
+                              ? &gameMemory->twoFrameArenaModIndex1
+                              : &gameMemory->twoFrameArenaModIndex0;
 
     return result;
 }
