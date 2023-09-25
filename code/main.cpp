@@ -4,11 +4,61 @@
 #define MAX_FILEPATH_RECORDED 4096
 #define MAX_FILEPATH_SIZE 2048
 
+Image LoadDataIntoRawImage(char *filePath)
+{
+    Image result = {};
+
+    unsigned int fileSize = {};
+    unsigned char *fileData = LoadFileData(filePath, &fileSize);
+    const char *getFileExtension = GetFileExtension(filePath);
+
+    if (fileData != NULL)
+    {
+        // NOTE: Using stb_image to load images (Supports multiple image formats)
+
+        if (fileData != NULL)
+        {
+            int comp = 0;
+            result.data = stbi_load_from_memory(fileData, fileSize, &result.width, &result.height, &comp, 0);
+
+            if (result.data != NULL)
+            {
+                result.mipmaps = 1;
+
+                if (comp == 1)
+                    result.format = PIXELFORMAT_UNCOMPRESSED_GRAYSCALE;
+                else if (comp == 2)
+                    result.format = PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA;
+                else if (comp == 3)
+                    result.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8;
+                else if (comp == 4)
+                    result.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+            }
+            else
+            {
+                // result.data = stbi__load
+            }
+        }
+    }
+    else
+    {
+        //TODO: Logging
+    }
+
+    return result;
+}
+
 int main(void)
 {
     V2 windowDim = V2{1000, 1000};
 
     InitWindow(windowDim.x, windowDim.y, "badpaint");
+
+    V2 screenDim = V2{(float)GetMonitorWidth(0), (float)GetMonitorHeight(0)};
+
+    V2 windowPosMiddle = (screenDim * 0.5f) - (windowDim * 0.5f);
+
+    SetWindowPosition(windowPosMiddle.x, windowPosMiddle.y);
 
     GameMemory gameMemory = {};
 
@@ -17,54 +67,34 @@ int main(void)
 
     G_STRING_TEMP_MEM_ARENA = &gameMemory.temporaryArena;
 
-    int filePathCounter = 0;
-    String filePaths[MAX_FILEPATH_RECORDED] = {};
-
     SetTargetFPS(60);
+
+    Image loadedImage = {};
+    Texture loadedTexture = {};
 
     while (!WindowShouldClose())
     {
         if (IsFileDropped())
         {
             FilePathList droppedFiles = LoadDroppedFiles();
+            char *fileName = droppedFiles.paths[0];
 
-            for (int i = 0, offset = filePathCounter;
-                 i < droppedFiles.count;
-                 i++)
-            {
-                if (filePathCounter < (MAX_FILEPATH_RECORDED - 1))
-                {
-                    filePaths[offset + i] = CreateString(droppedFiles.paths[i]);
-                    filePathCounter++;
-                }
-            }
-
-            UnloadDroppedFiles(droppedFiles); 
+            loadedImage = LoadDataIntoRawImage(fileName);
+            loadedTexture = LoadTextureFromImage(loadedImage);
+            UnloadDroppedFiles(droppedFiles);
         }
 
         //----------------------------------------------------------------------------------
 
         BeginDrawing();
 
-        ClearBackground(RAYWHITE);
+        ClearBackground(WHITE);
 
-        if (filePathCounter == 0)
-            DrawText("Drop your files to this window!", 100, 40, 20, DARKGRAY);
+        if (!loadedImage.data)
+            DrawText("Drop any file into this window for editing.", 100, 40, 20, DARKGRAY);
         else
         {
-            DrawText("Dropped files:", 100, 40, 20, DARKGRAY);
-
-            for (unsigned int i = 0; i < filePathCounter; i++)
-            {
-                if (i % 2 == 0)
-                    DrawRectangle(0, 85 + 40 * i, windowDim.x, 40, Fade(LIGHTGRAY, 0.5f));
-                else
-                    DrawRectangle(0, 85 + 40 * i, windowDim.y, 40, Fade(LIGHTGRAY, 0.3f));
-
-                DrawText(filePaths[i].chars, 120, 100 + 40 * i, 10, GRAY);
-            }
-
-            DrawText("Drop new files...", 100, 110 + 40 * filePathCounter, 20, DARKGRAY);
+            DrawTextureEx(loadedTexture, {0, 0}, 0, 1, WHITE);
         }
 
         EndDrawing();
@@ -72,7 +102,7 @@ int main(void)
         ResetMemoryArena(&gameMemory.temporaryArena);
     }
 
-    RayCloseWindow(); 
+    RayCloseWindow();
 
     return 0;
 }
