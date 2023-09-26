@@ -4,56 +4,14 @@
 #define MAX_FILEPATH_RECORDED 4096
 #define MAX_FILEPATH_SIZE 2048
 
-Image LoadDataIntoRawImage(char *filePath)
-{
-    Image result = {};
-
-    unsigned int fileSize = {};
-    unsigned char *fileData = LoadFileData(filePath, &fileSize);
-    const char *getFileExtension = GetFileExtension(filePath);
-
-    if (fileData != NULL)
-    {
-        // NOTE: Using stb_image to load images (Supports multiple image formats)
-
-        if (fileData != NULL)
-        {
-            int comp = 0;
-            result.data = stbi_load_from_memory(fileData, fileSize, &result.width, &result.height, &comp, 0);
-
-            if (result.data != NULL)
-            {
-                result.mipmaps = 1;
-
-                if (comp == 1)
-                    result.format = PIXELFORMAT_UNCOMPRESSED_GRAYSCALE;
-                else if (comp == 2)
-                    result.format = PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA;
-                else if (comp == 3)
-                    result.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8;
-                else if (comp == 4)
-                    result.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
-            }
-            else
-            {
-                //TODO: load invalid data anyway
-            }
-        }
-    }
-    else
-    {
-        //TODO: Logging
-    }
-
-    return result;
-}
-
 int main(void)
 {
     GameMemory gameMemory = {};
 
     InitializeArena(&gameMemory.permanentArena, Megabytes(100));
     InitializeArena(&gameMemory.temporaryArena, Megabytes(1000));
+    InitializeArena(&gameMemory.rootImageArena, Megabytes(50));
+
     InitializeArena(&gameMemory.twoFrameArenaModIndex0, Megabytes(100));
     InitializeArena(&gameMemory.twoFrameArenaModIndex1, Megabytes(100));
 
@@ -78,8 +36,14 @@ int main(void)
 
     SetWindowPosition(windowPosMiddle.x, windowPosMiddle.y);
 
-    Image loadedImage = {};
+    BpImage loadedBpImage = {};
     Texture loadedTexture = {};
+
+    //NOTE: DEVELOPER HACK
+    {
+        // loadedImage = LoadDataIntoRawImage("./assets/handmadelogo.png");
+        // loadedTexture = LoadTextureFromImage(loadedImage);
+    }
 
     while (!WindowShouldClose())
     {
@@ -107,20 +71,6 @@ int main(void)
                     uiBox->pressed = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
                     uiBox->down = IsMouseButtonDown(MOUSE_LEFT_BUTTON);
                 }
-
-#if 0
-                if (uiBox->uiInputs.inputCommand)
-                {
-                    //TODO: we don't need to store these like this. Why not just access commandState directly when needed?
-                    CommandState *commandState = &inputState->commandStates[uiBox->uiInputs.inputCommand];
-
-                    uiBox->down |= commandState->down;
-                    uiBox->pressed |= commandState->pressed;
-
-                    commandState->down |= uiBox->down;
-                    commandState->pressed |= uiBox->pressed;
-                }
-#endif
             }
         }
 
@@ -133,9 +83,35 @@ int main(void)
             FilePathList droppedFiles = LoadDroppedFiles();
             char *fileName = droppedFiles.paths[0];
 
-            loadedImage = LoadDataIntoRawImage(fileName);
-            loadedTexture = LoadTextureFromImage(loadedImage);
+            loadedBpImage = LoadDataIntoRawImage(fileName, &gameMemory);
+            UploadAndReplaceTexture(&loadedBpImage, &loadedTexture);
             UnloadDroppedFiles(droppedFiles);
+        }
+
+        if (loadedBpImage.data)
+        {
+            if (IsKeyDown(KEY_F))
+            {
+                // Assert(loadedImage.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+
+                for (int i = 0;
+                     i < 100;
+                     i++)
+                {
+                    unsigned int startChunk = RandomInRangeInt(0, loadedBpImage.dataSize);
+                    unsigned int randomSize = RandomInRangeInt(1, 1000);
+                    unsigned int endChunk = startChunk + Clamp(0, randomSize, loadedBpImage.dataSize - startChunk);
+
+                    for (int j = startChunk;
+                         j < endChunk;
+                         j++)
+                    {
+                        ((unsigned char *)loadedBpImage.data)[j] = ((unsigned char *)loadedBpImage.data)[j + 21];
+                    }
+                }
+
+                UploadAndReplaceTexture(&loadedBpImage, &loadedTexture);
+            }
         }
 
         //----------------------------------------------------
@@ -159,25 +135,40 @@ int main(void)
         CreateUiBox();
         UiParent()
         {
+            float titleBarHeight = 20;
+
             uiSettings->backColor = Color{100, 100, 100, 230};
             uiSettings->frontColor = BLACK;
             uiSettings->backColor = Color{100, 100, 100, 230};
-            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, 30});
+            uiSettings->borderColor = DARKBLUE;
+            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, titleBarHeight});
             CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT, CreateString("Menu up here eventually"));
 
-            SetUiAxis({UI_SIZE_KIND_PIXELS, gameState->windowDim.x}, {UI_SIZE_KIND_PIXELS, 50});
-            CreateUiBox();
+            SetUiAxis({UI_SIZE_KIND_PIXELS, gameState->windowDim.x}, {UI_SIZE_KIND_PIXELS, gameState->windowDim.y - titleBarHeight});
+            CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
+            UiParent()
+            {
+                SetUiAxis({UI_SIZE_KIND_PIXELS, 80}, {UI_SIZE_KIND_PIXELS, 600});
+                uiSettings->backColor = Color{200, 200, 200, 230};
+                CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_ALIGN_TEXTURE_CENTERED | UI_FLAG_DRAW_TEXT, CreateString(("maybe\nsome\ntools\nhere\nidk")));
 
-            if (loadedTexture.id)
-            {
-                G_UI_INPUTS->texture = loadedTexture;
-                CreateUiBox(UI_FLAG_DRAW_TEXTURE);
-            }
-            else
-            {
-                G_UI_INPUTS->texture = loadedTexture;
-                String string = CreateString("Drop any file into this window for editing.");
-                CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED, string);
+                SetUiAxis({UI_SIZE_KIND_PIXELS, gameState->windowDim.x - 20}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
+                CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
+                UiParent()
+                {
+                    if (loadedTexture.id)
+                    {
+                        G_UI_INPUTS->texture = loadedTexture;
+                        SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
+                        CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_ALIGN_TEXTURE_CENTERED);
+                    }
+                    else
+                    {
+                        G_UI_INPUTS->texture = loadedTexture;
+                        String string = CreateString("Drop any file into this window for editing.");
+                        CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED, string);
+                    }
+                }
             }
         }
 
@@ -198,6 +189,12 @@ int main(void)
                     UiSize uiSize = uiBox->uiSettings.uiSizes[j];
                     switch (uiSize.kind)
                     {
+                    case UI_SIZE_KIND_TEXTURE:
+                    {
+                        V2 dim = GetTextureDim(uiBox->uiInputs.texture);
+                        uiBox->rect.dim.elements[j] = dim.elements[j];
+                        break;
+                    }
                     case UI_SIZE_KIND_PIXELS:
                     {
                         uiBox->rect.dim.elements[j] = uiSize.value;

@@ -6,6 +6,8 @@
 #pragma clang diagnostic warning "-Wshadow" 
 #endif
 
+#define _CRT_SECURE_NO_DEPRECATE
+
 #include <stdint.h>
 #include <cstdlib> //for malloc
 #include <cstring> //for memcpy
@@ -89,6 +91,7 @@ struct GameMemory
 {
     MemoryArena permanentArena;
     MemoryArena temporaryArena;
+    MemoryArena rootImageArena;
 
     MemoryArena twoFrameArenaModIndex0;
     MemoryArena twoFrameArenaModIndex1;

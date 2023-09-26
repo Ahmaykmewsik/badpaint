@@ -60,3 +60,9 @@ inline bool operator!=(Color a, Color b)
     bool result = !(a == b);
     return result;
 }
+
+inline V2 GetTextureDim(Texture texture)
+{
+    V2 result = V2{(float) texture.width, (float) texture.height};
+    return result;
+}

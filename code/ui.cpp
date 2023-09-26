@@ -65,7 +65,6 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
         uiBox->textDim = RayVectorToV2(textDim);
     }
 
-
     uiBox->uiInputs = *G_UI_INPUTS;
     *G_UI_INPUTS = {};
 
@@ -209,6 +208,7 @@ void CalculateUiUpwardsDependentSizes(UiBox *uiBox)
             case UI_SIZE_KIND_CHILDREN_OF_SUM:
             case UI_SIZE_KIND_PIXELS:
             case UI_SIZE_KIND_TEXT_NO_WRAPPING:
+            case UI_SIZE_KIND_TEXTURE:
                 break;
                 InvalidDefaultCase
             }
@@ -258,6 +258,7 @@ void CalculateUiDownwardsDependentSizes(UiBox *uiBox)
             case UI_SIZE_KIND_PERCENT_OF_PARENT:
             case UI_SIZE_KIND_PIXELS:
             case UI_SIZE_KIND_TEXT_NO_WRAPPING:
+            case UI_SIZE_KIND_TEXTURE:
                 break;
                 InvalidDefaultCase
             }
@@ -417,6 +418,14 @@ UiBox *GetUiBoxLastFrameOfStringKey(String stringKey)
     return result;
 }
 
+V2 GetCeneteredPosInRect(Rect rect, V2 dim)
+{
+    dim.x = Clamp(0, dim.x, rect.dim.x);
+    dim.y = Clamp(0, dim.y, rect.dim.y);
+    V2 result = (rect.dim * 0.5f) - (dim * 0.5f);
+    return result;
+}
+
 void RenderUiEntries(GameState *gameState, UiBox *uiBox, int uiDepth = 0)
 {
     if (uiBox)
@@ -435,15 +444,26 @@ void RenderUiEntries(GameState *gameState, UiBox *uiBox, int uiDepth = 0)
 
         if (IsFlag(uiBox, UI_FLAG_DRAW_TEXT))
         {
-            Vector2 pos = V2ToRayVector(uiBox->rect.pos);
-            DrawTextPro(uiBox->uiSettings.font, uiBox->string.chars, pos, {}, 0, uiBox->uiSettings.fontSize, 1, uiBox->uiSettings.frontColor);
+            V2 pos = uiBox->rect.pos;
+
+            if (IsFlag(uiBox, UI_FLAG_ALIGN_TEXT_CENTERED))
+                pos += GetCeneteredPosInRect(uiBox->rect, uiBox->textDim);
+
+            DrawTextPro(uiBox->uiSettings.font, uiBox->string.chars, V2ToRayVector(pos), {}, 0, uiBox->uiSettings.fontSize, 1, uiBox->uiSettings.frontColor);
         }
 
         if (IsFlag(uiBox, UI_FLAG_DRAW_TEXTURE))
         {
             Assert(uiBox->uiInputs.texture.id);
-            Vector2 pos = V2ToRayVector(uiBox->rect.pos);
-            DrawTextureEx(uiBox->uiInputs.texture, pos, 0, 1, WHITE);
+
+            V2 pos = uiBox->rect.pos;
+            if (IsFlag(uiBox, UI_FLAG_ALIGN_TEXTURE_CENTERED))
+            {
+                V2 dim = GetTextureDim(uiBox->uiInputs.texture);
+                pos += GetCeneteredPosInRect(uiBox->rect, dim);
+            }
+
+            DrawTextureEx(uiBox->uiInputs.texture, V2ToRayVector(pos), 0, 1, WHITE);
         }
 
         if (IsFlag(uiBox, UI_FLAG_DRAW_BORDER))

@@ -7,3 +7,4 @@
 #include "../includes/raylib/src/external/stb_image.h"
 
 #include "../includes/raylib/src/raylib.h"      
+#include "../includes/raylib/src/rlgl.h"      

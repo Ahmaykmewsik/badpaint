@@ -3,7 +3,9 @@
 #include "stdint.h"
 #include "vn_intrinsics.h"
 #include <stdint.h>
+#include "stdlib.h"
 #include <xmmintrin.h>
+#include <time.h>
 
 #define PI 3.14159265358979323846f
 
@@ -1361,6 +1363,29 @@ inline uint32_t Murmur3String(const char *key, uint32_t seed)
     hash ^= (hash >> 16);
 
     return hash;
+}
+
+// NOTE: LCG parameters 
+static uint32_t G_VN_RANDOM_SEED = time(NULL); 
+static const uint32_t G_VN_RAND_A = 1664525;
+static const uint32_t G_VN_RAND_C = 1013904223;
+static const uint32_t G_CN_RAND_M = UINT32_MAX;  // 2^32 - 1
+
+inline uint32_t vn_rand() {
+    G_VN_RANDOM_SEED = (G_VN_RAND_A * G_VN_RANDOM_SEED + G_VN_RAND_C) % G_CN_RAND_M;
+    return G_VN_RANDOM_SEED;
+}
+
+inline unsigned int RandomInRangeInt(int min, int max)
+{
+    if (min > max)
+    {
+        int tmp = max;
+        max = min;
+        min = tmp;
+    }
+
+    return (vn_rand()%(abs(max - min) + 1) + min);
 }
 
 //-------------------------------------------------------------
