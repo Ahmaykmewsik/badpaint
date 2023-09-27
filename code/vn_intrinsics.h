@@ -93,6 +93,8 @@ struct GameMemory
     MemoryArena temporaryArena;
     MemoryArena rootImageArena;
 
+    MemoryArena circularScratchBuffer;
+
     MemoryArena twoFrameArenaModIndex0;
     MemoryArena twoFrameArenaModIndex1;
 };

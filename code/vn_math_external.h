@@ -61,8 +61,14 @@ inline bool operator!=(Color a, Color b)
     return result;
 }
 
+inline V2 WidthHeightToV2(int width, int height)
+{
+    V2 result = V2{(float)width, (float)height};
+    return result;
+}
+
 inline V2 GetTextureDim(Texture texture)
 {
-    V2 result = V2{(float) texture.width, (float) texture.height};
+    V2 result = WidthHeightToV2(texture.width, texture.height) ;
     return result;
 }

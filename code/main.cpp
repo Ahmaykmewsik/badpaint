@@ -11,6 +11,7 @@ int main(void)
     InitializeArena(&gameMemory.permanentArena, Megabytes(100));
     InitializeArena(&gameMemory.temporaryArena, Megabytes(1000));
     InitializeArena(&gameMemory.rootImageArena, Megabytes(50));
+    InitializeArena(&gameMemory.circularScratchBuffer, Megabytes(1000), true);
 
     InitializeArena(&gameMemory.twoFrameArenaModIndex0, Megabytes(100));
     InitializeArena(&gameMemory.twoFrameArenaModIndex1, Megabytes(100));
@@ -36,13 +37,16 @@ int main(void)
 
     SetWindowPosition(windowPosMiddle.x, windowPosMiddle.y);
 
-    BpImage loadedBpImage = {};
+    BpImage rootBpImage = {};
     Texture loadedTexture = {};
+
+    // BpImage savedImage = {};
 
     //NOTE: DEVELOPER HACK
     {
-        // loadedImage = LoadDataIntoRawImage("./assets/handmadelogo.png");
-        // loadedTexture = LoadTextureFromImage(loadedImage);
+        rootBpImage = LoadDataIntoRawImage("./assets/handmadelogo.png", &gameMemory);
+        UploadAndReplaceTexture(&rootBpImage, &loadedTexture, &gameMemory.temporaryArena);
+        // savedImage = ConvertNewBpImage(&rootBpImage, IMAGE_FORMAT_RAW_RGBA32, &gameMemory.circularScratchBuffer);
     }
 
     while (!WindowShouldClose())
@@ -83,34 +87,44 @@ int main(void)
             FilePathList droppedFiles = LoadDroppedFiles();
             char *fileName = droppedFiles.paths[0];
 
-            loadedBpImage = LoadDataIntoRawImage(fileName, &gameMemory);
-            UploadAndReplaceTexture(&loadedBpImage, &loadedTexture);
+            rootBpImage = LoadDataIntoRawImage(fileName, &gameMemory);
+
+            if (rootBpImage.data)
+            {
+                UploadAndReplaceTexture(&rootBpImage, &loadedTexture, &gameMemory.temporaryArena);
+                // savedImage = ConvertNewBpImage(&rootBpImage, IMAGE_FORMAT_RAW_RGBA32, &gameMemory.temporaryArena);
+            }
+
             UnloadDroppedFiles(droppedFiles);
         }
 
-        if (loadedBpImage.data)
+        if (rootBpImage.data)
         {
             if (IsKeyDown(KEY_F))
             {
-                // Assert(loadedImage.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+                BpImage tempImage = ConvertNewBpImage(&rootBpImage, IMAGE_FORMAT_PNG_FINAL, &gameMemory.temporaryArena);
 
-                for (int i = 0;
-                     i < 100;
-                     i++)
+#if 1
+                unsigned int startChunk = RandomInRangeInt(0, tempImage.dataSize);
+                // unsigned int startChunk = RandomInRangeInt(0, 100);
+                // unsigned int randomSize = 1; 
+                unsigned int randomSize = RandomInRangeInt(1, 10); 
+                unsigned int endChunk = startChunk + Clamp(0, randomSize, tempImage.dataSize - startChunk);
+                Print(CreateString("Corrupting at: ") + startChunk);
+
+                for (int j = startChunk;
+                     j < endChunk;
+                     j++)
                 {
-                    unsigned int startChunk = RandomInRangeInt(0, loadedBpImage.dataSize);
-                    unsigned int randomSize = RandomInRangeInt(1, 1000);
-                    unsigned int endChunk = startChunk + Clamp(0, randomSize, loadedBpImage.dataSize - startChunk);
-
-                    for (int j = startChunk;
-                         j < endChunk;
-                         j++)
-                    {
-                        ((unsigned char *)loadedBpImage.data)[j] = ((unsigned char *)loadedBpImage.data)[j + 21];
-                    }
+                    ((unsigned char *)tempImage.data)[j] = ((unsigned char *)tempImage.data)[j + 1]; 
                 }
+#endif
 
-                UploadAndReplaceTexture(&loadedBpImage, &loadedTexture);
+                UploadAndReplaceTexture(&tempImage, &loadedTexture, &gameMemory.temporaryArena);
+            }
+            else
+            {
+                // UploadAndReplaceTexture(&rootBpImage, &loadedTexture, &gameMemory.temporaryArena);
             }
         }
 
@@ -126,7 +140,7 @@ int main(void)
 
         BeginDrawing();
 
-        ClearBackground(WHITE);
+        ClearBackground(GRAY);
 
         uiSettings->font = defaultFont;
         uiSettings->fontSize = defaultFont.baseSize;
@@ -230,6 +244,8 @@ int main(void)
                 }
             }
         }
+
+        DrawFPS(0, 800);
 
 #if 0
         if (!loadedImage.data)

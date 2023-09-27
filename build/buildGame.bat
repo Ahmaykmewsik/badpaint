@@ -31,7 +31,7 @@ set LIBRARIES= .\libraries\builtLibraries.lib user32.lib shell32.lib gdi32.lib w
 @REM Uncomment when you want to update the application icon
 @REM rc resources.rc
 
-set COMMAND= cl -Zi -Od %CODEPATHS% %INCLUDES% %LIBRARIES% /Fe"%DIRECTORY_NAME%\badpaint.exe"
+set COMMAND= cl -EHsc -Zi -Od %CODEPATHS% %INCLUDES% %LIBRARIES% /Fe"%DIRECTORY_NAME%\badpaint.exe"
 
 @REM%COMMAND% 
 

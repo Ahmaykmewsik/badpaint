@@ -1,6 +1,7 @@
 #pragma once
 
 #include "headers.h"
+#include <vcruntime_string.h>
 
 unsigned char *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, MemoryArena *temporaryArena)
 {
@@ -41,6 +42,18 @@ unsigned char *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, M
     return data;
 }
 
+unsigned int GetSizeOfRawRGBA32(V2 dim)
+{
+    unsigned int result = dim.x * dim.y * 4 * sizeof(unsigned char);
+    return result;
+}
+
+unsigned int GetSizeOfRawRGBA32(unsigned int width, unsigned int height)
+{
+    unsigned int result = width * height * 4 * sizeof(unsigned char);
+    return result;
+}
+
 BpImage LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory)
 {
     BpImage result = {};
@@ -62,11 +75,11 @@ BpImage LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory)
 
             if (outputData != NULL)
             {
-                result.imageFormat = IMAGE_FORMAT_R8G8B8A8;
+                result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
                 result.dim.x = width;
                 result.dim.y = height;
-                result.dataSize = width * height * 4 * sizeof(unsigned char);
-                result.data = PushSize(&gameMemory->rootImageArena, result.dataSize); 
+                result.dataSize = GetSizeOfRawRGBA32(result.dim);
+                result.data = PushSize(&gameMemory->rootImageArena, result.dataSize);
 
                 if (comp != 4)
                 {
@@ -124,6 +137,8 @@ BpImage LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory)
                 {
                     memcpy(result.data, outputData, result.dataSize);
                 }
+
+                stbi_image_free(outputData);
             }
             else
             {
@@ -139,18 +154,126 @@ BpImage LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory)
     return result;
 }
 
-void UploadAndReplaceTexture(BpImage *bpImage, Texture *texture)
+void WriteDataToBpImage(BpImage *bpImage, unsigned char *outData, unsigned int dataSize, IMAGE_FORMAT imageFormat, unsigned int width, unsigned int height, MemoryArena *arena)
+{
+    *bpImage = {};
+    if (outData)
+    {
+        bpImage->dim = WidthHeightToV2(width, height);
+        bpImage->dataSize = dataSize;
+        bpImage->imageFormat = imageFormat;
+        bpImage->data = PushSize(arena, bpImage->dataSize);
+        memcpy(bpImage->data, outData, bpImage->dataSize);
+    }
+}
+
+BpImage ConvertNewBpImage(BpImage *bpImage, IMAGE_FORMAT imageFormat, MemoryArena *arena)
+{
+    BpImage result = {};
+
+    unsigned char *outData = {};
+    unsigned int width = bpImage->dim.x;
+    unsigned int height = bpImage->dim.y;
+    int dataSize = {};
+
+    switch (imageFormat)
+    {
+    case IMAGE_FORMAT_RAW_RGBA32:
+    {
+        dataSize = GetSizeOfRawRGBA32(bpImage->dim);
+        switch (bpImage->imageFormat)
+        {
+        case IMAGE_FORMAT_RAW_RGBA32:
+            WriteDataToBpImage(&result, (unsigned char *)bpImage->data, bpImage->dataSize, imageFormat, bpImage->dim.x, bpImage->dim.y, arena);
+            break;
+        case IMAGE_FORMAT_PNG_FINAL:
+        {
+            LodePNGColorType colorType = LCT_RGBA;
+            unsigned int bitdepth = 8;
+
+            LodePNGState state;
+            lodepng_state_init(&state);
+            state.info_raw.colortype = colorType;
+            state.info_raw.bitdepth = bitdepth;
+            state.info_png.color.colortype = colorType;
+            state.info_png.color.bitdepth = bitdepth;
+            state.decoder.ignore_crc = true;
+            state.decoder.zlibsettings.ignore_adler32 = true;
+            state.decoder.zlibsettings.ignore_nlen= true;
+            
+            lodepng_decode(&outData, &width, &height, &state, (const unsigned char *)bpImage->data, (size_t)dataSize);
+
+            if (!state.error)
+            {
+                WriteDataToBpImage(&result, outData, dataSize, imageFormat, width, height, arena);
+            }
+            else
+            {
+                Print(lodepng_error_text(state.error));
+            }
+
+            lodepng_state_cleanup(&state);
+
+            break;
+        }
+            InvalidDefaultCase
+        }
+
+        break;
+    }
+    case IMAGE_FORMAT_PNG_FINAL:
+    {
+        switch (bpImage->imageFormat)
+        {
+        case IMAGE_FORMAT_RAW_RGBA32:
+        {
+            int strideBytes = bpImage->dim.x * 4;
+            outData = stbi_write_png_to_mem((unsigned char *)bpImage->data, strideBytes, bpImage->dim.x, bpImage->dim.y, 4, &dataSize);
+            WriteDataToBpImage(&result, outData, dataSize, imageFormat, width, height, arena);
+            stbi_image_free(outData);
+            break;
+        }
+        case IMAGE_FORMAT_PNG_FINAL:
+            WriteDataToBpImage(&result, (unsigned char *)bpImage->data, bpImage->dataSize, imageFormat, bpImage->dim.x, bpImage->dim.y, arena);
+            break;
+            InvalidDefaultCase
+        }
+
+        break;
+    }
+        InvalidDefaultCase
+    }
+
+    return result;
+}
+
+void UploadAndReplaceTexture(BpImage *bpImage, Texture *texture, MemoryArena *temporaryArena)
 {
     Assert(!IsZero(bpImage->dim));
-    Assert(bpImage->imageFormat == IMAGE_FORMAT_R8G8B8A8);
 
-    if (texture->id)
-        rlUnloadTexture(texture->id);
+    BpImage bpImageToUpload = *bpImage;
+    if (bpImage->imageFormat != IMAGE_FORMAT_RAW_RGBA32)
+        bpImageToUpload = ConvertNewBpImage(bpImage, IMAGE_FORMAT_RAW_RGBA32, temporaryArena);
 
-    texture->id = rlLoadTexture(bpImage->data, bpImage->dim.x, bpImage->dim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
+    if (bpImageToUpload.data)
+    {
+        if (texture->id)
+            rlUnloadTexture(texture->id);
 
-    texture->width = bpImage->dim.x;
-    texture->height = bpImage->dim.y;
-    texture->mipmaps = 1;
-    texture->format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+        *texture = {};
+
+        if (bpImage->data)
+        {
+            texture->id = rlLoadTexture(bpImageToUpload.data, bpImageToUpload.dim.x, bpImageToUpload.dim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
+            texture->width = bpImageToUpload.dim.x;
+            texture->height = bpImageToUpload.dim.y;
+            texture->mipmaps = 1;
+            texture->format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+        }
+    }
+    else
+    {
+        //TODO: Log error
+        // Print("Empty bpImage passed into texture uploader!");
+    }
 }
