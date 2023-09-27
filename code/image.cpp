@@ -415,6 +415,7 @@ void UploadAndReplaceTexture(BpImage *bpImage, Texture *texture, MemoryArena *te
             texture->height = bpImage->dim.y;
             texture->mipmaps = 1;
             texture->format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+            // GenTextureMipmaps(texture);
         }
     }
     else
@@ -440,6 +441,7 @@ void UpdateTexture(Image *image, Texture *texture)
             texture->mipmaps = 1;
             texture->format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
         }
+        // GenTextureMipmaps(texture);
     }
     else
     {

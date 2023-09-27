@@ -65,6 +65,8 @@ int main(void)
 
         gameState->windowDim = WidthHeightToV2(GetScreenWidth(), GetScreenHeight());
 
+        V2 mousePixelPos = V2{(float)GetMouseX(), (float)GetMouseY()};
+
         for (int i = 0;
              i < G_UI_STATE->uiBoxCount;
              i++)
@@ -72,7 +74,6 @@ int main(void)
             UiBox *uiBox = &G_UI_STATE->uiBoxes[uiBoxArrayIndex][i];
             if (IsFlag(uiBox, UI_FLAG_INTERACTABLE))
             {
-                V2 mousePixelPos = V2{(float)GetMouseX(), (float)GetMouseY()};
                 uiBox->cursorRelativePixelPos = mousePixelPos - uiBox->rect.pos;
 
                 if (IsInRect2D(mousePixelPos, uiBox->rect))
@@ -82,6 +83,20 @@ int main(void)
                     uiBox->down = IsMouseButtonDown(MOUSE_LEFT_BUTTON);
                 }
             }
+        }
+
+        String canvasStringKey = CreateString(G_CANVAS_STRING_TAG_CHARS);
+        UiBox *canvasUiBox = GetUiBoxLastFrameOfStringKey(canvasStringKey);
+        if (canvasUiBox && canvasUiBox->down)
+        {
+            float scale = Max(1, canvasImage.width / canvasUiBox->rect.dim.x);
+            Print(scale);
+
+            V2 startPos = scale * (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos);
+            V2 endPos = scale * (mousePixelPos - canvasUiBox->rect.pos);
+
+            ImageDrawLine(&canvasImage, startPos.x, startPos.y, endPos.x, endPos.y, BLACK);
+            UpdateTexture(&canvasImage, &canvasTexture);
         }
 
         if (IsFileDropped())
@@ -212,7 +227,7 @@ int main(void)
                         {
                             G_UI_INPUTS->texture = canvasTexture;
                             SetUiAxis({UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT}, {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT});
-                            CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE, CreateString(G_CANVAS_STRING_TAG_CHARS));
+                            CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE, G_UI_HASH_TAG_STRING + G_CANVAS_STRING_TAG_CHARS);
                         }
                     }
                 }
