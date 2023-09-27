@@ -21,3 +21,5 @@ struct BpImage
 };
 
 static const char *G_PNG_FILTER_NAMES[] = {"", "Sub", "Up", "Average", "Paeth", "Optimal"};
+
+static const char *G_CANVAS_STRING_TAG_CHARS = "canvas";

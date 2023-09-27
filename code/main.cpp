@@ -33,7 +33,7 @@ int main(void)
     gameState->windowDim = screenDim * 0.8f;
     V2 windowDim = gameState->windowDim;
 
-    V2 windowPosMiddle = (screenDim * 0.5f) - (windowDim * 0.5f);
+    V2 windowPosMiddle = PositionInCenter(screenDim, windowDim);
     SetWindowPosition(windowPosMiddle.x, windowPosMiddle.y);
     SetWindowSize(windowDim.x, windowDim.y);
 
@@ -52,20 +52,13 @@ int main(void)
 
     //NOTE: DEVELOPER HACK
     {
-        rootBpImage = LoadDataIntoRawImage("./assets/handmadelogo.png", &gameMemory);
-        UploadAndReplaceTexture(&rootBpImage, &loadedTexture, &gameMemory.temporaryArena);
-
-        canvasImage = GenImageColor((int) rootBpImage.dim.x, (int) rootBpImage.dim.y, WHITE);
-        UpdateTexture(&canvasImage, &canvasTexture, &gameMemory.temporaryArena);
-        // savedImage = ConvertNewBpImage(&rootBpImage, IMAGE_FORMAT_RAW_RGBA32, &gameMemory.circularScratchBuffer);
+        // rootBpImage = LoadDataIntoRawImage("./assets/handmadelogo.png", &gameMemory);
+        // UploadAndReplaceTexture(&rootBpImage, &loadedTexture, &gameMemory.temporaryArena);
+        // InitializeCanvas(&canvasImage, &canvasTexture, &rootBpImage, &gameMemory.temporaryArena);
     }
 
     while (!WindowShouldClose())
     {
-        //----------------------------------------------------
-        //---------------------INPUT--------------------------
-        //----------------------------------------------------
-
         G_UI_STATE->twoFrameArenaLastFrame = GetTwoFrameArenaLastFrame(&gameMemory);
         G_UI_STATE->twoFrameArenaThisFrame = GetTwoFrameArenaThisFrame(&gameMemory);
         int uiBoxArrayIndex = GetFrameModIndexLastFrame();
@@ -91,21 +84,16 @@ int main(void)
             }
         }
 
-        //----------------------------------------------------
-        //----------------------GAME--------------------------
-        //----------------------------------------------------
-
         if (IsFileDropped())
         {
             FilePathList droppedFiles = LoadDroppedFiles();
             char *fileName = droppedFiles.paths[0];
 
             rootBpImage = LoadDataIntoRawImage(fileName, &gameMemory);
-
             if (rootBpImage.data)
             {
                 UploadAndReplaceTexture(&rootBpImage, &loadedTexture, &gameMemory.temporaryArena);
-                // savedImage = ConvertNewBpImage(&rootBpImage, IMAGE_FORMAT_RAW_RGBA32, &gameMemory.temporaryArena);
+                InitializeCanvas(&canvasImage, &canvasTexture, &rootBpImage);
             }
 
             UnloadDroppedFiles(droppedFiles);
@@ -183,7 +171,7 @@ int main(void)
             CreateUiBox(UI_FLAG_DRAW_BACKGROUND, CreateString("Menu up here eventually"));
             UiParent()
             {
-                SetUiAxis({UI_SIZE_KIND_TEXT_NO_WRAPPING}, {UI_SIZE_KIND_TEXT_NO_WRAPPING});
+                SetUiAxis({UI_SIZE_KIND_TEXT}, {UI_SIZE_KIND_TEXT});
                 String fps = CreateString("FPS: ") + GetFPS();
                 CreateUiBox(UI_FLAG_DRAW_TEXT, fps);
             }
@@ -206,13 +194,14 @@ int main(void)
                         if (loadedTexture.id)
                         {
                             G_UI_INPUTS->texture = loadedTexture;
-                            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
-                            CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_ALIGN_TEXTURE_CENTERED);
+                            SetUiAxis({UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT}, {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT});
+                            CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT);
                         }
                         else
                         {
                             String string = CreateString("Drop any file into this window for editing.");
-                            CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED, string);
+                            SetUiAxis({UI_SIZE_KIND_TEXT, 1}, {UI_SIZE_KIND_TEXT, 1});
+                            CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_CENTER_IN_PARENT, string);
                         }
                     }
                     SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
@@ -222,8 +211,8 @@ int main(void)
                         if (canvasTexture.id)
                         {
                             G_UI_INPUTS->texture = canvasTexture;
-                            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
-                            CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_ALIGN_TEXTURE_CENTERED);
+                            SetUiAxis({UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT}, {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT});
+                            CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE, CreateString(G_CANVAS_STRING_TAG_CHARS));
                         }
                     }
                 }
@@ -232,7 +221,7 @@ int main(void)
 
         uiSettings->frontColor = GREEN;
         uiSettings->font = bigFont;
-        SetUiAxis({UI_SIZE_KIND_TEXT_NO_WRAPPING}, {UI_SIZE_KIND_TEXT_NO_WRAPPING});
+        SetUiAxis({UI_SIZE_KIND_TEXT}, {UI_SIZE_KIND_TEXT});
         G_UI_INPUTS->pixelPosition = V2{0, 900};
         String label = CreateString("PNG Filter: ") + G_PNG_FILTER_NAMES[stbi_write_force_png_filter];
         CreateUiBox(UI_FLAG_DRAW_TEXT, label);
@@ -265,13 +254,13 @@ int main(void)
                         uiBox->rect.dim.elements[j] = uiSize.value;
                         break;
                     }
-                    case UI_SIZE_KIND_TEXT_NO_WRAPPING:
+                    case UI_SIZE_KIND_TEXT:
                     {
                         uiBox->rect.dim.elements[j] = uiBox->textDim.elements[j];
                     }
                     case UI_SIZE_KIND_PERCENT_OF_PARENT:
-                    case UI_SIZE_KIND_TEXT_WRAP_TO_PARENT:
                     case UI_SIZE_KIND_CHILDREN_OF_SUM:
+                    case UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT:
                         break;
 
                         InvalidDefaultCase

@@ -1288,6 +1288,12 @@ inline float FontPointsToPixels(float points, float dpi)
     return result;
 }
 
+inline V2 PositionInCenter(V2 parentDim, V2 childDim)
+{
+    V2 result = (parentDim * 0.5f) - (childDim * 0.5f);
+    return result;
+}
+
 #define MURMUR_C1 0xcc9e2d51
 #define MURMUR_C2 0x1b873593
 #define MURMUR_R1 15

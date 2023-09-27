@@ -179,38 +179,48 @@ void CalculateUiUpwardsDependentSizes(UiBox *uiBox)
 {
     if (uiBox)
     {
-        for (int j = 0;
-             j < ArrayCount(uiBox->uiSettings.uiSizes);
-             j++)
+        if (uiBox->uiSettings.uiSizes[0].kind == UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT ||
+            uiBox->uiSettings.uiSizes[1].kind == UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT)
         {
-            UiSize uiSize = uiBox->uiSettings.uiSizes[j];
-            switch (uiSize.kind)
-            {
-            case UI_SIZE_KIND_PERCENT_OF_PARENT:
-            {
-                if (uiBox->parent && uiBox->parent->rect.dim.elements[j])
-                {
-                    uiBox->rect.dim.elements[j] = (uiBox->parent->rect.dim.elements[j] * uiSize.value);
-                }
-                break;
-            }
-            case UI_SIZE_KIND_TEXT_WRAP_TO_PARENT:
-            {
-                if (uiBox->parent)
-                {
-                    //TODO: Uhhhhhh??? Finish this?
-                    // MemoryArena *arena = GetTwoFrameArenaThisFrame(gameState->gameMemory);
-                    // uiBox->textTokenArray = TokenizeText(gameState, uiBox->string, uiBox->uiSettings.fontInstance, uiBox->parent->rect.dim.x, arena);
-                }
+            Assert(uiBox->parent);
+            Assert(uiBox->uiInputs.texture.width && uiBox->uiInputs.texture.height);
+            V2 textureDim = GetTextureDim(uiBox->uiInputs.texture);
 
-                break;
-            }
-            case UI_SIZE_KIND_CHILDREN_OF_SUM:
-            case UI_SIZE_KIND_PIXELS:
-            case UI_SIZE_KIND_TEXT_NO_WRAPPING:
-            case UI_SIZE_KIND_TEXTURE:
-                break;
-                InvalidDefaultCase
+            float scaleX = 1;
+            float scaleY = 1;
+            if (uiBox->parent->rect.dim.x)
+                scaleX = uiBox->parent->rect.dim.x / textureDim.x;
+            if (uiBox->parent->rect.dim.y)
+                scaleY = uiBox->parent->rect.dim.y / textureDim.y;
+
+            float scale = Min(1, Min(scaleX, scaleY));
+
+            uiBox->rect.dim = textureDim * scale;
+        }
+        else
+        {
+            for (int j = 0;
+                 j < ArrayCount(uiBox->uiSettings.uiSizes);
+                 j++)
+            {
+                UiSize uiSize = uiBox->uiSettings.uiSizes[j];
+                switch (uiSize.kind)
+                {
+                case UI_SIZE_KIND_PERCENT_OF_PARENT:
+                {
+                    if (uiBox->parent && uiBox->parent->rect.dim.elements[j])
+                    {
+                        uiBox->rect.dim.elements[j] = (uiBox->parent->rect.dim.elements[j] * uiSize.value);
+                    }
+                    break;
+                }
+                case UI_SIZE_KIND_CHILDREN_OF_SUM:
+                case UI_SIZE_KIND_PIXELS:
+                case UI_SIZE_KIND_TEXT:
+                case UI_SIZE_KIND_TEXTURE:
+                    break;
+                    InvalidDefaultCase
+                }
             }
         }
 
@@ -257,8 +267,9 @@ void CalculateUiDownwardsDependentSizes(UiBox *uiBox)
             }
             case UI_SIZE_KIND_PERCENT_OF_PARENT:
             case UI_SIZE_KIND_PIXELS:
-            case UI_SIZE_KIND_TEXT_NO_WRAPPING:
+            case UI_SIZE_KIND_TEXT:
             case UI_SIZE_KIND_TEXTURE:
+            case UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT:
                 break;
                 InvalidDefaultCase
             }
@@ -273,6 +284,10 @@ void CalculateUiRelativePositions(UiBox *uiBox)
         if (!uiBox->parent || IsFlag(uiBox->parent, UI_FLAG_CHILDREN_MANUAL_LAYOUT))
         {
             uiBox->computedRelativePixelPos = uiBox->uiInputs.pixelPosition;
+        }
+        else if (uiBox->parent && IsFlag(uiBox, UI_FLAG_CENTER_IN_PARENT))
+        {
+            uiBox->computedRelativePixelPos = PositionInCenter(uiBox->parent->rect.dim, uiBox->rect.dim);
         }
         else if (uiBox->prev)
         {
@@ -463,7 +478,9 @@ void RenderUiEntries(GameState *gameState, UiBox *uiBox, int uiDepth = 0)
                 pos += GetCeneteredPosInRect(uiBox->rect, dim);
             }
 
-            DrawTextureEx(uiBox->uiInputs.texture, V2ToRayVector(pos), 0, 1, WHITE);
+            float scale = uiBox->rect.dim.x / uiBox->uiInputs.texture.width;
+
+            DrawTextureEx(uiBox->uiInputs.texture, V2ToRayVector(pos), 0, scale, WHITE);
         }
 
         if (IsFlag(uiBox, UI_FLAG_DRAW_BORDER))

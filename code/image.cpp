@@ -424,7 +424,7 @@ void UploadAndReplaceTexture(BpImage *bpImage, Texture *texture, MemoryArena *te
     }
 }
 
-void UpdateTexture(Image *image, Texture *texture, MemoryArena *temporaryArena)
+void UpdateTexture(Image *image, Texture *texture)
 {
     if (image->data)
     {
@@ -446,4 +446,19 @@ void UpdateTexture(Image *image, Texture *texture, MemoryArena *temporaryArena)
         //TODO: Log error
         Print("Empty image passed into texture uploader!");
     }
+}
+
+void InitializeCanvas(Image *canvasImage, Texture *canvasTexture, BpImage *rootBpImage)
+{
+    if (canvasImage->data)
+        UnloadImage(*canvasImage);
+
+    *canvasImage = GenImageColor(rootBpImage->dim.x, rootBpImage->dim.y, WHITE);
+    if (canvasTexture->id)
+    {
+        rlUnloadTexture(canvasTexture->id);
+        *canvasTexture = {};
+    }
+
+    UpdateTexture(canvasImage, canvasTexture);
 }
