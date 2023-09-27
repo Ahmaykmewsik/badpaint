@@ -1,9 +1,10 @@
 #pragma once
 
+#include <vcruntime_string.h>
 #if __clang__
 #pragma clang diagnostic ignored "-Wnull-dereference"
 #pragma clang diagnostic ignored "-Wstring-plus-int"
-#pragma clang diagnostic warning "-Wshadow" 
+#pragma clang diagnostic warning "-Wshadow"
 #endif
 
 #define _CRT_SECURE_NO_DEPRECATE
@@ -17,7 +18,7 @@
 #define ArrayCount(Array) (int)(sizeof(Array) / sizeof((Array)[0]))
 
 #define Assert(expression) \
-    if (!(expression))    \
+    if (!(expression))     \
     {                      \
         *(int *)0 = 0;     \
     }
@@ -79,19 +80,20 @@
 #define CONSOLE_CYAN "\033[0;36m"
 #define CONSOLE_WHITE "\033[0;37m"
 
-        struct MemoryArena
-    {
-        unsigned int size;
-        unsigned int *base;
-        unsigned int used;
-        bool circular;
-    };
+struct MemoryArena
+{
+    unsigned int size;
+    unsigned int *base;
+    unsigned int used;
+    bool circular;
+};
 
 struct GameMemory
 {
     MemoryArena permanentArena;
     MemoryArena temporaryArena;
     MemoryArena rootImageArena;
+    MemoryArena canvasArena;
 
     MemoryArena circularScratchBuffer;
 
@@ -115,7 +117,7 @@ inline void InitializeArena(MemoryArena *Arena, unsigned int size, bool circular
     if (!buffer)
         InvalidCodePath
 
-    Arena->size = size;
+            Arena->size = size;
     Arena->base = buffer;
     Arena->used = 0;
     Arena->circular = circular;
@@ -168,8 +170,8 @@ inline void *PushSize_(MemoryArena *arena, unsigned int size)
     {
         if (!arena->circular)
             InvalidCodePath
-        // TODO: proper DEBUG logging for when a circular buffer wraps around
-        arena->used = 0;
+                // TODO: proper DEBUG logging for when a circular buffer wraps around
+                arena->used = 0;
     }
 
     // NOTE: Assumes that the base value is already aligned
@@ -184,7 +186,7 @@ inline void *PushSize_(MemoryArena *arena, unsigned int size)
 }
 
 #define CopyArray(dest, source, destLastIndex, sourceCount, destCountSize, Type) \
-    Assert(sourceCount < destCountSize);                                        \
+    Assert(sourceCount < destCountSize);                                         \
     destLastIndex = sourceCount - 1;                                             \
     memcpy(dest, source, TypeSize(sourceCount, Type));
 
@@ -226,7 +228,6 @@ inline void *PushSize_(MemoryArena *arena, unsigned int size)
 
 typedef uint64_t Flags;
 typedef uint64_t Key;
-
 
 inline int FlagToBit(Flags flag)
 {
@@ -275,4 +276,36 @@ inline MemoryArena *GetTwoFrameArenaLastFrame(GameMemory *gameMemory)
                               : &gameMemory->twoFrameArenaModIndex0;
 
     return result;
+}
+
+static MemoryArena *_G_TEMPORARY_ARENA_DONT_FUCKING_USE_THIS_EXCEPT_IN_A_MACRO = {};
+
+inline void *_TempALLOC(int size)
+{
+    Assert(_G_TEMPORARY_ARENA_DONT_FUCKING_USE_THIS_EXCEPT_IN_A_MACRO);
+    void *result = PushSize(_G_TEMPORARY_ARENA_DONT_FUCKING_USE_THIS_EXCEPT_IN_A_MACRO, size);
+    return result;
+}
+
+inline void *_TempREALLOC(void *p, int oldSize, int newSize)
+{
+    void *result = NULL;
+    if (newSize != 0)
+    {
+        result = _TempALLOC(newSize);
+
+        if (p != NULL)
+        {
+            if (oldSize <= newSize)
+                memcpy(result, p, oldSize);
+            else
+                memcpy(result, p, newSize);
+        }
+    }
+    return result;
+}
+
+inline void _TempFREE(void *p)
+{
+
 }

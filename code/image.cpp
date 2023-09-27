@@ -450,17 +450,33 @@ void UpdateTexture(Image *image, Texture *texture)
     }
 }
 
-void InitializeCanvas(Image *canvasImage, Texture *canvasTexture, BpImage *rootBpImage)
+void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, GameMemory *gameMemory)
 {
-    if (canvasImage->data)
-        UnloadImage(*canvasImage);
+    if (canvas->texture.id)
+        UnloadTexture(canvas->texture);
 
-    *canvasImage = GenImageColor(rootBpImage->dim.x, rootBpImage->dim.y, WHITE);
-    if (canvasTexture->id)
+    //TODO: pass this information in instead of encoding png right here
+    BpImage tempImage = MakeBpImageCopy(rootBpImage, &gameMemory->temporaryArena);
+    ConvertNewBpImage(&tempImage, IMAGE_FORMAT_PNG_FILTERED, &gameMemory->temporaryArena);
+
+    float closestSquare = Round(SqrtFloat(tempImage.dataSize));
+    float pixelCount = closestSquare * closestSquare;
+
+    ResetMemoryArena(&gameMemory->canvasArena);
+    Color *pixels = PushArray(&gameMemory->canvasArena, pixelCount, Color);
+
+    for (int i = 0;
+         i < pixelCount;
+         i++)
     {
-        rlUnloadTexture(canvasTexture->id);
-        *canvasTexture = {};
+        pixels[i] = WHITE;
     }
 
-    UpdateTexture(canvasImage, canvasTexture);
+    canvas->image.data = pixels,
+    canvas->image.width = (int)closestSquare,
+    canvas->image.height = (int)closestSquare,
+    canvas->image.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8,
+    canvas->image.mipmaps = 1;
+
+    canvas->texture = LoadTextureFromImage(canvas->image);
 }

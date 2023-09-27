@@ -26,7 +26,7 @@ if not exist "%LIB_DIR%" (
 )
 cd %LIB_DIR%
 
-set FLAGS=-Zi -c -EHsc -Od
+set FLAGS=-Zi -c -EHsc -O2
 
 printf "\n-------Building raylib-------\n\n"
 
