@@ -60,8 +60,8 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
             InvalidCodePath
         }
 
-        Assert(uiBox->uiSettings.fontSize);
-        Vector2 textDim = MeasureTextEx(uiBox->uiSettings.font, uiBox->string.chars, uiBox->uiSettings.fontSize, 1);
+        Assert(uiBox->uiSettings.font.baseSize);
+        Vector2 textDim = MeasureTextEx(uiBox->uiSettings.font, uiBox->string.chars, uiBox->uiSettings.font.baseSize, 1);
         uiBox->textDim = RayVectorToV2(textDim);
     }
 
@@ -449,7 +449,7 @@ void RenderUiEntries(GameState *gameState, UiBox *uiBox, int uiDepth = 0)
             if (IsFlag(uiBox, UI_FLAG_ALIGN_TEXT_CENTERED))
                 pos += GetCeneteredPosInRect(uiBox->rect, uiBox->textDim);
 
-            DrawTextPro(uiBox->uiSettings.font, uiBox->string.chars, V2ToRayVector(pos), {}, 0, uiBox->uiSettings.fontSize, 1, uiBox->uiSettings.frontColor);
+            DrawTextPro(uiBox->uiSettings.font, uiBox->string.chars, V2ToRayVector(pos), {}, 0, uiBox->uiSettings.font.baseSize, 1, uiBox->uiSettings.frontColor);
         }
 
         if (IsFlag(uiBox, UI_FLAG_DRAW_TEXTURE))

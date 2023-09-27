@@ -58,7 +58,6 @@ struct UiSettings
     Color detailColor;
     Color borderColor;
     Font font;
-    float fontSize;
 };
 
 struct UiInputs

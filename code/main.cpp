@@ -24,21 +24,29 @@ int main(void)
 
     SetTargetFPS(60);
 
-    gameState->windowDim = V2{1000, 1000};
-    V2 windowDim = gameState->windowDim;
+    InitWindow(200, 200, "badpaint");
 
-    InitWindow(windowDim.x, windowDim.y, "badpaint");
+    SetWindowState(FLAG_WINDOW_RESIZABLE);
 
     V2 screenDim = V2{(float)GetMonitorWidth(0), (float)GetMonitorHeight(0)};
 
+    gameState->windowDim = screenDim * 0.8f;
+    V2 windowDim = gameState->windowDim;
+
     V2 windowPosMiddle = (screenDim * 0.5f) - (windowDim * 0.5f);
-
-    Font defaultFont = LoadFontEx("./assets/verdana.ttf", 18, 0, 0);
-
     SetWindowPosition(windowPosMiddle.x, windowPosMiddle.y);
+    SetWindowSize(windowDim.x, windowDim.y);
+
+    Font defaultFont = LoadFontEx("./assets/W95FA.otf", 18, 0, 0);
+    Font bigFont = LoadFontEx("./assets/W95FA.otf", 48, 0, 0);
+
+    Image canvasImage = {};
+    Texture canvasTexture = {};
 
     BpImage rootBpImage = {};
     Texture loadedTexture = {};
+
+    stbi_write_force_png_filter = 5;
 
     // BpImage savedImage = {};
 
@@ -46,6 +54,9 @@ int main(void)
     {
         rootBpImage = LoadDataIntoRawImage("./assets/handmadelogo.png", &gameMemory);
         UploadAndReplaceTexture(&rootBpImage, &loadedTexture, &gameMemory.temporaryArena);
+
+        canvasImage = GenImageColor((int) rootBpImage.dim.x, (int) rootBpImage.dim.y, WHITE);
+        UpdateTexture(&canvasImage, &canvasTexture, &gameMemory.temporaryArena);
         // savedImage = ConvertNewBpImage(&rootBpImage, IMAGE_FORMAT_RAW_RGBA32, &gameMemory.circularScratchBuffer);
     }
 
@@ -58,6 +69,8 @@ int main(void)
         G_UI_STATE->twoFrameArenaLastFrame = GetTwoFrameArenaLastFrame(&gameMemory);
         G_UI_STATE->twoFrameArenaThisFrame = GetTwoFrameArenaThisFrame(&gameMemory);
         int uiBoxArrayIndex = GetFrameModIndexLastFrame();
+
+        gameState->windowDim = WidthHeightToV2(GetScreenWidth(), GetScreenHeight());
 
         for (int i = 0;
              i < G_UI_STATE->uiBoxCount;
@@ -98,25 +111,38 @@ int main(void)
             UnloadDroppedFiles(droppedFiles);
         }
 
+        if (IsKeyPressed(KEY_ONE))
+            stbi_write_force_png_filter = 1;
+        if (IsKeyPressed(KEY_TWO))
+            stbi_write_force_png_filter = 2;
+        if (IsKeyPressed(KEY_THREE))
+            stbi_write_force_png_filter = 3;
+        if (IsKeyPressed(KEY_FOUR))
+            stbi_write_force_png_filter = 4;
+        if (IsKeyPressed(KEY_FIVE))
+            stbi_write_force_png_filter = 5;
+
         if (rootBpImage.data)
         {
             if (IsKeyDown(KEY_F))
             {
-                BpImage tempImage = ConvertNewBpImage(&rootBpImage, IMAGE_FORMAT_PNG_FINAL, &gameMemory.temporaryArena);
+                BpImage tempImage = MakeBpImageCopy(&rootBpImage, &gameMemory.temporaryArena);
 
 #if 1
-                unsigned int startChunk = RandomInRangeInt(0, tempImage.dataSize);
+                ConvertNewBpImage(&tempImage, IMAGE_FORMAT_PNG_FILTERED, &gameMemory.temporaryArena);
+                // unsigned int startChunk = RandomInRangeInt(0, tempImage.dataSize);
                 // unsigned int startChunk = RandomInRangeInt(0, 100);
-                // unsigned int randomSize = 1; 
-                unsigned int randomSize = RandomInRangeInt(1, 10); 
-                unsigned int endChunk = startChunk + Clamp(0, randomSize, tempImage.dataSize - startChunk);
-                Print(CreateString("Corrupting at: ") + startChunk);
+                // unsigned int randomSize = 1;
+                // unsigned int randomSize = RandomInRangeInt(1, 1);
+                // unsigned int endChunk = startChunk + Clamp(0, randomSize, tempImage.dataSize - startChunk);
+                // Print(CreateString("Corrupting at: ") + startChunk);
 
-                for (int j = startChunk;
-                     j < endChunk;
-                     j++)
+                for (int i = 0;
+                     i < 100;
+                     i++)
                 {
-                    ((unsigned char *)tempImage.data)[j] = ((unsigned char *)tempImage.data)[j + 1]; 
+                    unsigned int pos = RandomInRangeInt(0, tempImage.dataSize);
+                    ((unsigned char *)tempImage.data)[pos] += RandomInRangeInt(0, 100000);
                 }
 #endif
 
@@ -140,10 +166,9 @@ int main(void)
 
         BeginDrawing();
 
-        ClearBackground(GRAY);
+        ClearBackground(Color{127, 127, 127, 255});
 
         uiSettings->font = defaultFont;
-        uiSettings->fontSize = defaultFont.baseSize;
 
         SetUiAxis({UI_SIZE_KIND_PIXELS, gameState->windowDim.x}, {UI_SIZE_KIND_PIXELS, gameState->windowDim.y});
         CreateUiBox();
@@ -151,40 +176,66 @@ int main(void)
         {
             float titleBarHeight = 20;
 
-            uiSettings->backColor = Color{100, 100, 100, 230};
             uiSettings->frontColor = BLACK;
-            uiSettings->backColor = Color{100, 100, 100, 230};
-            uiSettings->borderColor = DARKBLUE;
+            uiSettings->backColor = Color{191, 191, 191, 255};
+            uiSettings->borderColor = DARKGRAY;
             SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, titleBarHeight});
-            CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT, CreateString("Menu up here eventually"));
+            CreateUiBox(UI_FLAG_DRAW_BACKGROUND, CreateString("Menu up here eventually"));
+            UiParent()
+            {
+                SetUiAxis({UI_SIZE_KIND_TEXT_NO_WRAPPING}, {UI_SIZE_KIND_TEXT_NO_WRAPPING});
+                String fps = CreateString("FPS: ") + GetFPS();
+                CreateUiBox(UI_FLAG_DRAW_TEXT, fps);
+            }
 
             SetUiAxis({UI_SIZE_KIND_PIXELS, gameState->windowDim.x}, {UI_SIZE_KIND_PIXELS, gameState->windowDim.y - titleBarHeight});
             CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
             UiParent()
             {
                 SetUiAxis({UI_SIZE_KIND_PIXELS, 80}, {UI_SIZE_KIND_PIXELS, 600});
-                uiSettings->backColor = Color{200, 200, 200, 230};
-                CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_ALIGN_TEXTURE_CENTERED | UI_FLAG_DRAW_TEXT, CreateString(("maybe\nsome\ntools\nhere\nidk")));
+                CreateUiBox(UI_FLAG_DRAW_BACKGROUND);
 
                 SetUiAxis({UI_SIZE_KIND_PIXELS, gameState->windowDim.x - 20}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
                 CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
                 UiParent()
                 {
-                    if (loadedTexture.id)
+                    SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
+                    CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER);
+                    UiParent()
                     {
-                        G_UI_INPUTS->texture = loadedTexture;
-                        SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
-                        CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_ALIGN_TEXTURE_CENTERED);
+                        if (loadedTexture.id)
+                        {
+                            G_UI_INPUTS->texture = loadedTexture;
+                            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
+                            CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_ALIGN_TEXTURE_CENTERED);
+                        }
+                        else
+                        {
+                            String string = CreateString("Drop any file into this window for editing.");
+                            CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED, string);
+                        }
                     }
-                    else
+                    SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
+                    CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER);
+                    UiParent()
                     {
-                        G_UI_INPUTS->texture = loadedTexture;
-                        String string = CreateString("Drop any file into this window for editing.");
-                        CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED, string);
+                        if (canvasTexture.id)
+                        {
+                            G_UI_INPUTS->texture = canvasTexture;
+                            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
+                            CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_ALIGN_TEXTURE_CENTERED);
+                        }
                     }
                 }
             }
         }
+
+        uiSettings->frontColor = GREEN;
+        uiSettings->font = bigFont;
+        SetUiAxis({UI_SIZE_KIND_TEXT_NO_WRAPPING}, {UI_SIZE_KIND_TEXT_NO_WRAPPING});
+        G_UI_INPUTS->pixelPosition = V2{0, 900};
+        String label = CreateString("PNG Filter: ") + G_PNG_FILTER_NAMES[stbi_write_force_png_filter];
+        CreateUiBox(UI_FLAG_DRAW_TEXT, label);
 
         int uiBoxArrayIndexThisFrame = GetFrameModIndexThisFrame();
 
@@ -244,9 +295,6 @@ int main(void)
                 }
             }
         }
-
-        DrawFPS(0, 800);
-
 #if 0
         if (!loadedImage.data)
         {
