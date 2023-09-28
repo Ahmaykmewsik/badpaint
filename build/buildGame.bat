@@ -24,7 +24,7 @@ IF NOT EXIST "%DIRECTORY_NAME%" (
     mkdir "%DIRECTORY_NAME%"
 )
 
-set CODEPATHS= ..\code\main.cpp 
+set CODEPATHS= ..\code\main.cpp ..\code\platform_win32.cpp
 set INCLUDES= -I ..\includes\ 
 set LIBRARIES= .\libraries\builtLibraries.lib user32.lib shell32.lib gdi32.lib winmm.lib kernel32.lib 
 

@@ -19,3 +19,5 @@
 
 #include "../includes/lodepng.h"
 #include "../includes/lodepng.c"
+
+#include "platform_win32.h"

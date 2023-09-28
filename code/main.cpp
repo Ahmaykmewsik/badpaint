@@ -1,10 +1,7 @@
 
 #include "headers.h"
 
-#define MAX_FILEPATH_RECORDED 4096
-#define MAX_FILEPATH_SIZE 2048
-
-int WinMain(void)
+int main(void)
 {
     GameMemory gameMemory = {};
 
@@ -23,6 +20,8 @@ int WinMain(void)
     G_UI_INPUTS = PushStruct(&gameMemory.permanentArena, UiInputs);
     G_UI_STATE = PushStruct(&gameMemory.permanentArena, UiState);
     G_UI_HASH_TAG_STRING = CreateStringOnArena("##", &gameMemory.permanentArena);
+
+    SetupThreads(&gameMemory);
 
     SetTargetFPS(60);
 
@@ -239,7 +238,7 @@ int WinMain(void)
                         }
                         else
                         {
-                            String string = CreateString("Drop any file into this window for editing.");
+                            String string = CreateString("Drop any file into the window for editing.");
                             SetUiAxis({UI_SIZE_KIND_TEXT, 1}, {UI_SIZE_KIND_TEXT, 1});
                             CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_CENTER_IN_PARENT, string);
                         }
