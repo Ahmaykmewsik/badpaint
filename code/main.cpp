@@ -1,5 +1,6 @@
 
 #include "headers.h"
+#include <gl/gl.h>
 
 PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread)
 {
@@ -67,7 +68,9 @@ int main(void)
     Font defaultFont = LoadFontEx("./assets/W95FA.otf", 18, 0, 0);
     Font bigFont = LoadFontEx("./assets/W95FA.otf", 48, 0, 0);
 
-    Color brushColor = BLACK;
+    Color deleteColor = RED;
+
+    Color brushColor = deleteColor;
     float brushSize = 1;
 
     Texture loadedTexture = {};
@@ -76,7 +79,7 @@ int main(void)
 
     //NOTE: DEVELOPER HACK
     {
-        InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootBpImage, canvas, &loadedTexture);
+        InitializeNewImage("./assets/grinning-face.png", &gameMemory, rootBpImage, canvas, &loadedTexture);
     }
 
     while (!WindowShouldClose())
@@ -109,12 +112,12 @@ int main(void)
 
         if (IsKeyPressed(KEY_E))
         {
-            brushColor = WHITE;
+            brushColor = BLANK;
             brushSize = 20;
         }
         if (IsKeyPressed(KEY_D))
         {
-            brushColor = BLACK;
+            brushColor = deleteColor;
             brushSize = 5;
         }
 
@@ -122,7 +125,7 @@ int main(void)
         UiBox *canvasUiBox = GetUiBoxLastFrameOfStringKey(canvasStringKey);
         if (canvasUiBox && canvasUiBox->down)
         {
-            float scale = Max(1, canvas->image.width / canvasUiBox->rect.dim.x);
+            float scale = Max(1, canvas->rootImageData.width / canvasUiBox->rect.dim.x);
             // Print(scale);
 #if 0
             V2 startPos = scale * (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos);
@@ -142,7 +145,7 @@ int main(void)
                  i++)
             {
                 V2 pos = Lerp(startPos, endPos, i / distance);
-                ImageDrawCircle(&canvas->image, pos.x, pos.y, brushSize, brushColor);
+                ImageDrawCircle(&canvas->drawnImageData, pos.x, pos.y, brushSize, brushColor);
             }
             canvas->drawing = false;
 #endif
@@ -173,7 +176,7 @@ int main(void)
                 //TODO: what to do when no arenas avaliable?
             }
 
-            UpdateTexture(&canvas->image, &canvas->texture);
+            BlendCanvasAndUploadTexture(canvas, &gameMemory.temporaryArena);
         }
 
         if (IsFileDropped())
@@ -249,12 +252,27 @@ int main(void)
             uiSettings->backColor = Color{191, 191, 191, 255};
             uiSettings->borderColor = DARKGRAY;
             SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, titleBarHeight});
-            CreateUiBox(UI_FLAG_DRAW_BACKGROUND, CreateString("Menu up here eventually"));
+            CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
             UiParent()
             {
-                SetUiAxis({UI_SIZE_KIND_TEXT}, {UI_SIZE_KIND_TEXT});
-                String fps = CreateString("FPS: ") + GetFPS();
-                CreateUiBox(UI_FLAG_DRAW_TEXT, fps);
+                SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
+                CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
+                UiParent()
+                {
+                    SetUiAxis({UI_SIZE_KIND_TEXT}, {UI_SIZE_KIND_TEXT});
+                    String fps = CreateString("FPS: ") + GetFPS();
+                    CreateUiBox(UI_FLAG_DRAW_TEXT, fps);
+                }
+
+                SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
+                CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
+                UiParent()
+                {
+                    SetUiAxis({UI_SIZE_KIND_TEXT}, {UI_SIZE_KIND_TEXT});
+                    uiSettings->frontColor = GREEN;
+                    String label = CreateString("PNG Filter: ") + G_PNG_FILTER_NAMES[stbi_write_force_png_filter];
+                    CreateUiBox(UI_FLAG_DRAW_TEXT, label);
+                }
             }
 
             SetUiAxis({UI_SIZE_KIND_PIXELS, gameState->windowDim.x}, {UI_SIZE_KIND_PIXELS, gameState->windowDim.y - titleBarHeight});
@@ -265,10 +283,10 @@ int main(void)
                 CreateUiBox(UI_FLAG_DRAW_BACKGROUND);
 
                 SetUiAxis({UI_SIZE_KIND_PIXELS, gameState->windowDim.x - 20}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
-                CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
+                CreateUiBox();
                 UiParent()
                 {
-                    SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
+                    SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5});
                     CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER);
                     UiParent()
                     {
@@ -285,11 +303,11 @@ int main(void)
                             CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_CENTER_IN_PARENT, string);
                         }
                     }
-                    SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
-                    CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER);
+                    SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5});
+                    CreateUiBox(UI_FLAG_DRAW_BORDER);
                     UiParent()
                     {
-                        if (canvas->image.data)
+                        if (canvas->texture.id)
                         {
                             G_UI_INPUTS->texture = canvas->texture;
                             SetUiAxis({UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT}, {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT});
@@ -299,13 +317,6 @@ int main(void)
                 }
             }
         }
-
-        uiSettings->frontColor = GREEN;
-        uiSettings->font = bigFont;
-        SetUiAxis({UI_SIZE_KIND_TEXT}, {UI_SIZE_KIND_TEXT});
-        G_UI_INPUTS->pixelPosition = V2{0, 900};
-        String label = CreateString("PNG Filter: ") + G_PNG_FILTER_NAMES[stbi_write_force_png_filter];
-        CreateUiBox(UI_FLAG_DRAW_TEXT, label);
 
         int uiBoxArrayIndexThisFrame = GetFrameModIndexThisFrame();
 

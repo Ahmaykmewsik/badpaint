@@ -43,9 +43,9 @@ enum UI_FLAGS
     UI_FLAG_ALIGN_TEXT_CENTERED = (1 << 13),
     UI_FLAG_ALIGN_TEXT_RIGHT = (1 << 14),
     UI_FLAG_ALIGN_TEXTURE_CENTERED = (1 << 15),
-    UI_FLAG_INTERACTABLE = (1 << 16),
-    UI_FLAG_POSITION_IS_CENTER = (1 << 17),
-    UI_FLAG_CENTER_IN_PARENT = (1 << 18),
+    UI_FLAG_INTERACTABLE = (1 << 17),
+    UI_FLAG_POSITION_IS_CENTER = (1 << 18),
+    UI_FLAG_CENTER_IN_PARENT = (1 << 19),
 };
 
 struct UiSettings
@@ -66,6 +66,7 @@ struct UiInputs
     float value;
     V2 pixelPosition;
     Texture texture;
+    V2 manualDim;
 };
 
 static UiInputs *G_UI_INPUTS = {};

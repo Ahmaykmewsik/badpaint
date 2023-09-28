@@ -471,16 +471,20 @@ void RenderUiEntries(GameState *gameState, UiBox *uiBox, int uiDepth = 0)
         {
             Assert(uiBox->uiInputs.texture.id);
 
-            V2 pos = uiBox->rect.pos;
+            float scale = uiBox->rect.dim.x / uiBox->uiInputs.texture.width;
+            Texture texture = uiBox->uiInputs.texture;
+            Rectangle source = {0.0f, 0.0f, (float)texture.width, (float)texture.height};
+            Rectangle dest = {uiBox->rect.pos.x, uiBox->rect.pos.y, (float)texture.width * scale, (float)texture.height * scale};
+
             if (IsFlag(uiBox, UI_FLAG_ALIGN_TEXTURE_CENTERED))
             {
-                V2 dim = GetTextureDim(uiBox->uiInputs.texture);
-                pos += GetCeneteredPosInRect(uiBox->rect, dim);
+                V2 dim = WidthHeightToV2(dest.width, dest.height);
+                V2 relativePos = GetCeneteredPosInRect(uiBox->rect, dim);
+                dest.x += relativePos.x;
+                dest.y += relativePos.y;
             }
 
-            float scale = uiBox->rect.dim.x / uiBox->uiInputs.texture.width;
-
-            DrawTextureEx(uiBox->uiInputs.texture, V2ToRayVector(pos), 0, scale, WHITE);
+            DrawTexturePro(uiBox->uiInputs.texture, source, dest, Vector2{0, 0}, 0, WHITE);
         }
 
         if (IsFlag(uiBox, UI_FLAG_DRAW_BORDER))

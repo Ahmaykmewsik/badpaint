@@ -408,8 +408,8 @@ void UploadAndReplaceTexture(BpImage *bpImage, Texture *texture)
 
     if (texture->id)
         rlUnloadTexture(texture->id);
-
     *texture = {};
+
     texture->id = rlLoadTexture(bpImage->data, bpImage->dim.x, bpImage->dim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
     texture->width = bpImage->dim.x;
     texture->height = bpImage->dim.y;
@@ -418,23 +418,23 @@ void UploadAndReplaceTexture(BpImage *bpImage, Texture *texture)
     // GenTextureMipmaps(texture);
 }
 
-void UpdateTexture(Image *image, Texture *texture)
+void UploadTexture(Texture *texture, void *data, int width, int height)
 {
-    if (image->data)
+    if (data)
     {
         if (texture->id)
         {
-            rlUpdateTexture(texture->id, 0, 0, image->width, image->height, image->format, image->data);
+            rlUpdateTexture(texture->id, 0, 0, width, height, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, data);
         }
         else
         {
-            texture->id = rlLoadTexture(image->data, image->width, image->height, image->format, 1);
-            texture->width = image->width;
-            texture->height = image->height;
+            texture->id = rlLoadTexture(data, width, height, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
+            texture->width = width;
+            texture->height = height;
             texture->mipmaps = 1;
             texture->format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
         }
-        // GenTextureMipmaps(texture);
+        GenTextureMipmaps(texture);
     }
     else
     {
@@ -443,38 +443,83 @@ void UpdateTexture(Image *image, Texture *texture)
     }
 }
 
+void BlendCanvasAndUploadTexture(Canvas *canvas, MemoryArena *temporaryArena)
+{
+    Image outputImage = {};
+    unsigned int pixelCount = canvas->rootImageData.width * canvas->rootImageData.height;
+    Color *pixels = PushArray(temporaryArena, pixelCount, Color);
+
+    for (int i = 0;
+         i < pixelCount;
+         i++)
+    {
+        Color rootPixel = ((Color *)canvas->rootImageData.data)[i];
+        Color drawnPixel = ((Color *)canvas->drawnImageData.data)[i];
+        if (drawnPixel.r || drawnPixel.g || drawnPixel.b || drawnPixel.a)
+            *(pixels + i) = drawnPixel;
+        else
+            *(pixels + i) = rootPixel;
+    }
+
+    UploadTexture(&canvas->texture, pixels, canvas->rootImageData.width, canvas->rootImageData.height);
+}
+
 void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, GameMemory *gameMemory)
 {
     if (canvas->texture.id)
         UnloadTexture(canvas->texture);
 
     float closestSquare = {};
-    {
-        //TODO: pass this information in instead of encoding png right here
-        BpImage tempImage = MakeBpImageCopy(rootBpImage, &gameMemory->temporaryArena);
-        ConvertNewBpImage(&tempImage, IMAGE_FORMAT_PNG_FILTERED, &gameMemory->temporaryArena);
-        closestSquare = Round(SqrtFloat(tempImage.dataSize));
-    }
 
-    float pixelCount = closestSquare * closestSquare;
+    V2 canvsDim = {};
+
+    BpImage tempImage = MakeBpImageCopy(rootBpImage, &gameMemory->temporaryArena);
+    ConvertNewBpImage(&tempImage, IMAGE_FORMAT_PNG_FILTERED, &gameMemory->temporaryArena);
+    // closestSquare = Round(SqrtFloat(tempImage.dataSize));
+    // closestSquare = Round(SqrtFloat(tempImage.dataSize));
+
+    // float dataRatio = (float)tempImage.dataSize / (float)rootBpImage->dataSize;
+
+    // V2 canvasDim = rootBpImage->dim * dataRatio; 
+    V2 canvasDim = V2{rootBpImage->dim.x * 4, rootBpImage->dim.y} + 1;
+    // V2 canvasDim = V2{tempImage.dim.x, tempImage.dim.y};
+
+    // float pixelCount = tempImage.dataSize;
+    float pixelCount = rootBpImage->dataSize;
 
     ResetMemoryArena(&gameMemory->canvasArena);
-    Color *pixels = PushArray(&gameMemory->canvasArena, pixelCount, Color);
+    Color *pixelsRootImage = PushArray(&gameMemory->canvasArena, pixelCount, Color);
+    Color *pixelsDrawn = PushArray(&gameMemory->canvasArena, pixelCount, Color);
 
     for (int i = 0;
          i < pixelCount;
          i++)
     {
-        pixels[i] = WHITE;
+        // unsigned char value = ((unsigned char *)rootBpImage->data)[i];
+        unsigned char value = ((unsigned char *)tempImage.data)[i];
+        // value = 255 - value;
+        pixelsRootImage[i] = Color{value, value, value, 255};
     }
 
-    canvas->image.data = pixels,
-    canvas->image.width = (int)closestSquare,
-    canvas->image.height = (int)closestSquare,
-    canvas->image.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8,
-    canvas->image.mipmaps = 1;
+    ZeroArrayType(pixelsDrawn, pixelCount, Color);
 
-    canvas->texture = LoadTextureFromImage(canvas->image);
+    canvas->rootImageData.data = pixelsRootImage;
+    canvas->rootImageData.width = canvasDim.x;
+    canvas->rootImageData.height = canvasDim.y;
+    canvas->rootImageData.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+    canvas->rootImageData.mipmaps = 1;
+
+    canvas->drawnImageData.data = pixelsDrawn;
+    canvas->drawnImageData.width = canvasDim.x;
+    canvas->drawnImageData.height = canvasDim.y;
+    canvas->drawnImageData.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+    canvas->drawnImageData.mipmaps = 1;
+
+    if (canvas->texture.id)
+        rlUnloadTexture(canvas->texture.id);
+    canvas->texture = {};
+
+    BlendCanvasAndUploadTexture(canvas, &gameMemory->temporaryArena);
 }
 
 void InitializeNewImage(const char *fileName, GameMemory *gameMemory, BpImage *rootBpImage, Canvas *canvas, Texture *loadedTexture)
@@ -496,20 +541,26 @@ void UpdateBpImage(ProcessedImage *processedImage)
 
     Canvas *canvas = processedImage->canvas;
 
-    Assert(processedImage->canvas->image.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+    Assert(processedImage->canvas->rootImageData.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+    Assert(processedImage->canvas->drawnImageData.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
 
+#if 1
     for (int i = 0;
          i < tempImage.dataSize;
-         i++)
+         i += 1)
     {
-        Assert(i < canvas->image.height * canvas->image.width * 4);
-        Color canvasPixel = ((Color *)canvas->image.data)[i];
+        // Assert(i < canvas->image.height * canvas->image.width * 4);
+        Color canvasPixel = ((Color *)canvas->drawnImageData.data)[i];
 
-        if (canvasPixel == BLACK)
+        if (canvasPixel.a)
         {
             ((unsigned char *)tempImage.data)[i] = 0;
+            // ((unsigned char *)tempImage.data)[i + 1] = 0;
+            // ((unsigned char *)tempImage.data)[i + 2] = 0;
+            // ((unsigned char *)tempImage.data)[i + 3] = 0;
         }
     }
+#endif
 
     ConvertToRawRGBA32IfNot(&tempImage, arena);
 

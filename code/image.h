@@ -26,7 +26,8 @@ static const char *G_CANVAS_STRING_TAG_CHARS = "canvas";
 
 struct Canvas
 {
-    Image image;
+    Image rootImageData;
+    Image drawnImageData;
     Texture texture;
     BpImage *rootBpImage;
     bool drawing;
