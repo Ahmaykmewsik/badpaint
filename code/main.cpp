@@ -1,6 +1,16 @@
 
 #include "headers.h"
 
+PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread)
+{
+    ProcessedImage *processedImage = (ProcessedImage *)data;
+    Assert(processedImage);
+
+    UpdateBpImage(processedImage);
+    processedImage->frameFinished = G_CURRENT_FRAME;
+    Print("Finished");
+}
+
 int main(void)
 {
     GameMemory gameMemory = {};
@@ -8,20 +18,34 @@ int main(void)
     InitializeArena(&gameMemory.permanentArena, Megabytes(100));
     InitializeArena(&gameMemory.temporaryArena, Megabytes(1000));
     InitializeArena(&gameMemory.rootImageArena, Megabytes(50));
-    InitializeArena(&gameMemory.canvasArena, Megabytes(50));
-    InitializeArena(&gameMemory.circularScratchBuffer, Megabytes(1000), true);
+    InitializeArena(&gameMemory.canvasArena, Megabytes(100));
 
     InitializeArena(&gameMemory.twoFrameArenaModIndex0, Megabytes(100));
     InitializeArena(&gameMemory.twoFrameArenaModIndex1, Megabytes(100));
 
+    unsigned int threadCount = 8;
+    PlatformWorkQueue *threadWorkQueue = SetupThreads(threadCount, &gameMemory);
+
+    BpImage *rootBpImage = PushStruct(&gameMemory.permanentArena, BpImage);
+    Canvas *canvas = PushStruct(&gameMemory.permanentArena, Canvas);
+
+    ProcessedImage *processdImages = PushArray(&gameMemory.permanentArena, threadCount, ProcessedImage);
+    for (int i = 0;
+         i < threadCount;
+         i++)
+    {
+        ProcessedImage *processedImage = processdImages + i;
+        processedImage->rootBpImage = rootBpImage;
+        processedImage->canvas = canvas;
+        InitializeArena(&processedImage->workArena, Megabytes(300));
+    }
+
     GameState *gameState = PushStruct(&gameMemory.permanentArena, GameState);
     G_STRING_TEMP_MEM_ARENA = &gameMemory.temporaryArena;
-    _G_TEMPORARY_ARENA_DONT_FUCKING_USE_THIS_EXCEPT_IN_A_MACRO = &gameMemory.temporaryArena;
+    // _G_CIRCULAR_ARENA_DONT_FUCKING_USE_THIS_EXCEPT_IN_A_MACRO = &gameMemory.circularScratchBuffer;
     G_UI_INPUTS = PushStruct(&gameMemory.permanentArena, UiInputs);
     G_UI_STATE = PushStruct(&gameMemory.permanentArena, UiState);
     G_UI_HASH_TAG_STRING = CreateStringOnArena("##", &gameMemory.permanentArena);
-
-    SetupThreads(&gameMemory);
 
     SetTargetFPS(60);
 
@@ -43,23 +67,16 @@ int main(void)
     Font defaultFont = LoadFontEx("./assets/W95FA.otf", 18, 0, 0);
     Font bigFont = LoadFontEx("./assets/W95FA.otf", 48, 0, 0);
 
-    Canvas canvas = {};
-
     Color brushColor = BLACK;
-    float brushSize = 5;
+    float brushSize = 1;
 
-    BpImage rootBpImage = {};
     Texture loadedTexture = {};
 
     stbi_write_force_png_filter = 5;
 
-    // BpImage savedImage = {};
-
     //NOTE: DEVELOPER HACK
     {
-        // rootBpImage = LoadDataIntoRawImage("./assets/handmadelogo.png", &gameMemory);
-        // UploadAndReplaceTexture(&rootBpImage, &loadedTexture, &gameMemory.temporaryArena);
-        // InitializeCanvas(&canvasImage, &canvasTexture, &rootBpImage, &gameMemory.temporaryArena);
+        InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootBpImage, canvas, &loadedTexture);
     }
 
     while (!WindowShouldClose())
@@ -105,34 +122,65 @@ int main(void)
         UiBox *canvasUiBox = GetUiBoxLastFrameOfStringKey(canvasStringKey);
         if (canvasUiBox && canvasUiBox->down)
         {
-            float scale = Max(1, canvas.image.width / canvasUiBox->rect.dim.x);
-            Print(scale);
-
+            float scale = Max(1, canvas->image.width / canvasUiBox->rect.dim.x);
+            // Print(scale);
 #if 0
             V2 startPos = scale * (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos);
             V2 endPos = scale * (mousePixelPos - canvasUiBox->rect.pos);
 
             ImageDrawLine(&canvas.image, startPos.x, startPos.y, endPos.x, endPos.y, BLACK);
             UpdateTexture(&canvas.image, &canvas.texture);
+#else
+            V2 startPos = scale * (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos);
+            V2 endPos = scale * (mousePixelPos - canvasUiBox->rect.pos);
+
+            float distance = Max(1, DistanceV2(startPos, endPos));
+
+            canvas->drawing = true;
+            for (int i = 0;
+                 i <= distance;
+                 i++)
+            {
+                V2 pos = Lerp(startPos, endPos, i / distance);
+                ImageDrawCircle(&canvas->image, pos.x, pos.y, brushSize, brushColor);
+            }
+            canvas->drawing = false;
 #endif
 
-            V2 pos = scale * (mousePixelPos - canvasUiBox->rect.pos);
-            ImageDrawCircle(&canvas.image, pos.x, pos.y, brushSize, brushColor);
-            UpdateTexture(&canvas.image, &canvas.texture);
+            ProcessedImage *processedImage = {};
+            for (int i = 0;
+                 i < threadCount;
+                 i++)
+            {
+                ProcessedImage *processedImageOfIndex = processdImages + i;
+                if (!processedImageOfIndex->active)
+                {
+                    processedImage = processedImageOfIndex;
+                    break;
+                }
+            }
+
+            if (processedImage)
+            {
+                Print("Starting Work");
+                processedImage->frameStarted = G_CURRENT_FRAME;
+                processedImage->active = true;
+                PlatformAddThreadWorkEntry(threadWorkQueue, ProcessImageOnThread, (void *)processedImage);
+            }
+            else
+            {
+                Print("no thread avaliabe");
+                //TODO: what to do when no arenas avaliable?
+            }
+
+            UpdateTexture(&canvas->image, &canvas->texture);
         }
 
         if (IsFileDropped())
         {
             FilePathList droppedFiles = LoadDroppedFiles();
             char *fileName = droppedFiles.paths[0];
-
-            rootBpImage = LoadDataIntoRawImage(fileName, &gameMemory);
-            if (rootBpImage.data)
-            {
-                UploadAndReplaceTexture(&rootBpImage, &loadedTexture, &gameMemory.temporaryArena);
-                InitializeCanvas(&canvas, &rootBpImage, &gameMemory);
-            }
-
+            InitializeNewImage(fileName, &gameMemory, rootBpImage, canvas, &loadedTexture);
             UnloadDroppedFiles(droppedFiles);
         }
 
@@ -147,38 +195,32 @@ int main(void)
         if (IsKeyPressed(KEY_FIVE))
             stbi_write_force_png_filter = 5;
 
-        if (rootBpImage.data)
+        ProcessedImage *latestCompletedProcessedImage = {};
+        for (int i = 0;
+             i < threadCount;
+             i++)
         {
-            BpImage tempImage = MakeBpImageCopy(&rootBpImage, &gameMemory.temporaryArena);
-
-            ConvertNewBpImage(&tempImage, IMAGE_FORMAT_PNG_FILTERED, &gameMemory.temporaryArena);
-
-            Assert(canvas.image.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
-
-            for (int i = 0;
-                 i < tempImage.dataSize;
-                 i++)
+            ProcessedImage *processedImageOfIndex = processdImages + i;
+            if (processedImageOfIndex->active && processedImageOfIndex->frameFinished > 0)
             {
-                Assert(i < canvas.image.height * canvas.image.width * 4);
-                Color canvasPixel = ((Color *)canvas.image.data)[i];
-
-                if (canvasPixel == BLACK)
+                if (latestCompletedProcessedImage && (latestCompletedProcessedImage->frameStarted > processedImageOfIndex->frameStarted))
                 {
-                    ((unsigned char *)tempImage.data)[i] = 0;
+                    Print("Throwing away image");
+                    ResetProcessedImage(processedImageOfIndex);
+                }
+                else
+                {
+                    latestCompletedProcessedImage = processedImageOfIndex;
                 }
             }
+        }
 
-#if 0
-                for (int i = 0;
-                     i < 100;
-                     i++)
-                {
-                    unsigned int pos = RandomInRangeInt(0, tempImage.dataSize);
-                    ((unsigned char *)tempImage.data)[pos] += RandomInRangeInt(0, 100000);
-                }
-#endif
-
-            UploadAndReplaceTexture(&tempImage, &loadedTexture, &gameMemory.temporaryArena);
+        if (latestCompletedProcessedImage)
+        {
+            UploadAndReplaceTexture(&latestCompletedProcessedImage->finalProcessedImage, &loadedTexture);
+            Print("Uploading New Image");
+            //TODO: put the latest uploaded image somewhere for safekeeping
+            ResetProcessedImage(latestCompletedProcessedImage);
         }
 
         //----------------------------------------------------
@@ -247,9 +289,9 @@ int main(void)
                     CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER);
                     UiParent()
                     {
-                        if (canvas.image.data)
+                        if (canvas->image.data)
                         {
-                            G_UI_INPUTS->texture = canvas.texture;
+                            G_UI_INPUTS->texture = canvas->texture;
                             SetUiAxis({UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT}, {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT});
                             CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE, G_UI_HASH_TAG_STRING + G_CANVAS_STRING_TAG_CHARS);
                         }
@@ -339,6 +381,8 @@ int main(void)
         ResetMemoryArena(&gameMemory.temporaryArena);
         MemoryArena *memoryArenaLastFrame = GetTwoFrameArenaLastFrame(&gameMemory);
         ResetMemoryArena(memoryArenaLastFrame);
+
+        G_CURRENT_FRAME++;
     }
 
     RayCloseWindow();

@@ -71,7 +71,7 @@ BpImage MakeBpImageCopy(BpImage *bpImage, MemoryArena *arena)
     return result;
 }
 
-BpImage LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory)
+BpImage LoadDataIntoRawBpImage(const char *filePath, GameMemory *gameMemory)
 {
     BpImage result = {};
 
@@ -245,7 +245,13 @@ void PiratedSTB_EncodePngCompression(BpImage *bpImage, MemoryArena *arena)
     unsigned char *filt = (unsigned char *)bpImage->data;
 
     int dataSize = {};
-    bpImage->data = stbi_zlib_compress(filt, y * (x * n + 1), &dataSize, stbi_write_png_compression_level);
+
+    //TODO: break apart so we don't have another copy here
+    unsigned char *out = stbi_zlib_compress(filt, y * (x * n + 1), &dataSize, stbi_write_png_compression_level);
+
+    bpImage->data = PushSize(arena, dataSize);
+    memcpy(bpImage->data, out, dataSize);
+
     bpImage->dataSize = dataSize;
     bpImage->imageFormat = IMAGE_FORMAT_PNG_COMPRESSED;
 }
@@ -395,34 +401,21 @@ void ConvertNewBpImage(BpImage *bpImage, IMAGE_FORMAT imageFormat, MemoryArena *
     }
 }
 
-void UploadAndReplaceTexture(BpImage *bpImage, Texture *texture, MemoryArena *temporaryArena)
+void UploadAndReplaceTexture(BpImage *bpImage, Texture *texture)
 {
-    Assert(!IsZero(bpImage->dim));
+    Assert(bpImage->data);
+    Assert(bpImage->imageFormat == IMAGE_FORMAT_RAW_RGBA32);
 
-    ConvertToRawRGBA32IfNot(bpImage, temporaryArena);
+    if (texture->id)
+        rlUnloadTexture(texture->id);
 
-    if (bpImage->data)
-    {
-        if (texture->id)
-            rlUnloadTexture(texture->id);
-
-        *texture = {};
-
-        if (bpImage->data)
-        {
-            texture->id = rlLoadTexture(bpImage->data, bpImage->dim.x, bpImage->dim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
-            texture->width = bpImage->dim.x;
-            texture->height = bpImage->dim.y;
-            texture->mipmaps = 1;
-            texture->format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
-            // GenTextureMipmaps(texture);
-        }
-    }
-    else
-    {
-        //TODO: Log error
-        Print("Empty bpImage passed into texture uploader!");
-    }
+    *texture = {};
+    texture->id = rlLoadTexture(bpImage->data, bpImage->dim.x, bpImage->dim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
+    texture->width = bpImage->dim.x;
+    texture->height = bpImage->dim.y;
+    texture->mipmaps = 1;
+    texture->format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+    // GenTextureMipmaps(texture);
 }
 
 void UpdateTexture(Image *image, Texture *texture)
@@ -455,11 +448,14 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, GameMemory *gameMemo
     if (canvas->texture.id)
         UnloadTexture(canvas->texture);
 
-    //TODO: pass this information in instead of encoding png right here
-    BpImage tempImage = MakeBpImageCopy(rootBpImage, &gameMemory->temporaryArena);
-    ConvertNewBpImage(&tempImage, IMAGE_FORMAT_PNG_FILTERED, &gameMemory->temporaryArena);
+    float closestSquare = {};
+    {
+        //TODO: pass this information in instead of encoding png right here
+        BpImage tempImage = MakeBpImageCopy(rootBpImage, &gameMemory->temporaryArena);
+        ConvertNewBpImage(&tempImage, IMAGE_FORMAT_PNG_FILTERED, &gameMemory->temporaryArena);
+        closestSquare = Round(SqrtFloat(tempImage.dataSize));
+    }
 
-    float closestSquare = Round(SqrtFloat(tempImage.dataSize));
     float pixelCount = closestSquare * closestSquare;
 
     ResetMemoryArena(&gameMemory->canvasArena);
@@ -479,4 +475,52 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, GameMemory *gameMemo
     canvas->image.mipmaps = 1;
 
     canvas->texture = LoadTextureFromImage(canvas->image);
+}
+
+void InitializeNewImage(const char *fileName, GameMemory *gameMemory, BpImage *rootBpImage, Canvas *canvas, Texture *loadedTexture)
+{
+    *rootBpImage = LoadDataIntoRawBpImage(fileName, gameMemory);
+    if (rootBpImage->data)
+    {
+        UploadAndReplaceTexture(rootBpImage, loadedTexture);
+        InitializeCanvas(canvas, rootBpImage, gameMemory);
+    }
+}
+
+void UpdateBpImage(ProcessedImage *processedImage)
+{
+    MemoryArena *arena = &processedImage->workArena;
+    BpImage tempImage = MakeBpImageCopy(processedImage->rootBpImage, arena);
+
+    ConvertNewBpImage(&tempImage, IMAGE_FORMAT_PNG_FILTERED, arena);
+
+    Canvas *canvas = processedImage->canvas;
+
+    Assert(processedImage->canvas->image.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+
+    for (int i = 0;
+         i < tempImage.dataSize;
+         i++)
+    {
+        Assert(i < canvas->image.height * canvas->image.width * 4);
+        Color canvasPixel = ((Color *)canvas->image.data)[i];
+
+        if (canvasPixel == BLACK)
+        {
+            ((unsigned char *)tempImage.data)[i] = 0;
+        }
+    }
+
+    ConvertToRawRGBA32IfNot(&tempImage, arena);
+
+    processedImage->finalProcessedImage = tempImage;
+}
+
+void ResetProcessedImage(ProcessedImage *processedImage)
+{
+    ResetMemoryArena(&processedImage->workArena);
+    processedImage->active = false;
+    processedImage->frameStarted = 0;
+    processedImage->frameFinished = 0;
+    processedImage->finalProcessedImage = {};
 }

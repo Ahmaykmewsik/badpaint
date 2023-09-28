@@ -29,4 +29,16 @@ struct Canvas
     Image image;
     Texture texture;
     BpImage *rootBpImage;
+    bool drawing;
+};
+
+struct ProcessedImage 
+{
+    bool active;
+    BpImage *rootBpImage;
+    Canvas *canvas;
+    BpImage finalProcessedImage;
+    MemoryArena workArena;
+    unsigned int frameStarted;
+    unsigned int frameFinished;
 };

@@ -95,8 +95,6 @@ struct GameMemory
     MemoryArena rootImageArena;
     MemoryArena canvasArena;
 
-    MemoryArena circularScratchBuffer;
-
     MemoryArena twoFrameArenaModIndex0;
     MemoryArena twoFrameArenaModIndex1;
 };
@@ -135,7 +133,7 @@ inline void ResetMemoryArena(MemoryArena *arena)
 inline void Align(unsigned int *input, unsigned int align)
 {
     if (*input & (align - 1))
-        *input += align - (*input % align);
+        *input += (align - (*input % align));
 }
 
 inline void Align8(unsigned int *input)
@@ -155,7 +153,7 @@ struct ArrayInfo
     unsigned int lastIndex;
 };
 
-#define TypeSize(count, type) ((count) * sizeof(type))
+#define TypeSize(count, type) (count * sizeof(type))
 
 #define PushStruct(arena, type) (type *)PushSize_(arena, sizeof(type))
 #define PushArray(arena, count, type) (type *)PushSize_(arena, TypeSize(count, type))
@@ -175,7 +173,7 @@ inline void *PushSize_(MemoryArena *arena, unsigned int size)
     }
 
     // NOTE: Assumes that the base value is already aligned
-    Align(&arena->used, 8);
+    // Align(&arena->used, 8);
 
     Assert((arena->used + size) < arena->size);
 
@@ -278,12 +276,12 @@ inline MemoryArena *GetTwoFrameArenaLastFrame(GameMemory *gameMemory)
     return result;
 }
 
-static MemoryArena *_G_TEMPORARY_ARENA_DONT_FUCKING_USE_THIS_EXCEPT_IN_A_MACRO = {};
+static MemoryArena *_G_CIRCULAR_ARENA_DONT_FUCKING_USE_THIS_EXCEPT_IN_A_MACRO = {};
 
 inline void *_TempALLOC(int size)
 {
-    Assert(_G_TEMPORARY_ARENA_DONT_FUCKING_USE_THIS_EXCEPT_IN_A_MACRO);
-    void *result = PushSize(_G_TEMPORARY_ARENA_DONT_FUCKING_USE_THIS_EXCEPT_IN_A_MACRO, size);
+    Assert(_G_CIRCULAR_ARENA_DONT_FUCKING_USE_THIS_EXCEPT_IN_A_MACRO);
+    void *result = PushSize(_G_CIRCULAR_ARENA_DONT_FUCKING_USE_THIS_EXCEPT_IN_A_MACRO, size);
     return result;
 }
 
@@ -307,5 +305,4 @@ inline void *_TempREALLOC(void *p, int oldSize, int newSize)
 
 inline void _TempFREE(void *p)
 {
-
 }

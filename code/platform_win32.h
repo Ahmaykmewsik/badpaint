@@ -4,4 +4,10 @@
 #include "vn_intrinsics.h"
 #endif
 
-void SetupThreads(GameMemory *gameMemory);
+struct PlatformWorkQueue;
+#define PLATFORM_WORK_QUEUE_CALLBACK(name) void name(PlatformWorkQueue *queue, void *data)
+typedef PLATFORM_WORK_QUEUE_CALLBACK(PlatformWorkQueueCallback);
+    
+PlatformWorkQueue *SetupThreads(unsigned int threadCount, GameMemory *gameMemory);
+void PlatformAddThreadWorkEntry(PlatformWorkQueue *queue, PlatformWorkQueueCallback *callback, void *data);
+// void PlatformCompleteAllThreadWork(PlatformWorkQueue *queue);

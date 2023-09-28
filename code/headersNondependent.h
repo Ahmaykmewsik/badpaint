@@ -11,9 +11,12 @@
 #include "../includes//raylib//src/external/glfw/include/GLFW/glfw3.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
+
+#if 0
 #define STBIW_MALLOC(size) _TempALLOC(size)
 #define STBIW_REALLOC_SIZED(p, oldSize, newSize) _TempREALLOC(p, oldSize, newSize)
 #define STBIW_FREE(p) _TempFREE(p)
+#endif
 
 #include "../includes/raylib/src/external/stb_image_write.h"
 

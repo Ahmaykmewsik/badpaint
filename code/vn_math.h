@@ -990,6 +990,11 @@ inline void ModNext(unsigned int &i, int size)
     i = (i + 1) % size;
 }
 
+inline void ModNext(volatile unsigned int &i, int size)
+{
+    i = (i + 1) % size;
+}
+
 inline void ModBack(int &i, int size)
 {
     i = (size + (i - 1)) % size;
@@ -1134,7 +1139,7 @@ inline V2 Lerp(V2 start, V2 end, float amount)
     V2 result;
 
     result.x = Lerp(start.x, amount, end.x);
-    result.y = Lerp(start.x, amount, end.x);
+    result.y = Lerp(start.y, amount, end.y);
 
     return result;
 }
@@ -1144,8 +1149,8 @@ inline V3 Lerp(V3 start, V3 end, float amount)
     V3 result;
 
     result.x = Lerp(start.x, amount, end.x);
-    result.y = Lerp(start.x, amount, end.x);
-    result.z = Lerp(start.x, amount, end.x);
+    result.y = Lerp(start.y, amount, end.y);
+    result.z = Lerp(start.z, amount, end.z);
 
     return result;
 }
