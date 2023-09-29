@@ -443,27 +443,6 @@ void UploadTexture(Texture *texture, void *data, int width, int height)
     }
 }
 
-void BlendCanvasAndUploadTexture(Canvas *canvas, MemoryArena *temporaryArena)
-{
-    Image outputImage = {};
-    unsigned int pixelCount = canvas->rootImageData.width * canvas->rootImageData.height;
-    Color *pixels = PushArray(temporaryArena, pixelCount, Color);
-
-    for (int i = 0;
-         i < pixelCount;
-         i++)
-    {
-        Color rootPixel = ((Color *)canvas->rootImageData.data)[i];
-        Color drawnPixel = ((Color *)canvas->drawnImageData.data)[i];
-        if (drawnPixel.r || drawnPixel.g || drawnPixel.b || drawnPixel.a)
-            *(pixels + i) = drawnPixel;
-        else
-            *(pixels + i) = rootPixel;
-    }
-
-    UploadTexture(&canvas->texture, pixels, canvas->rootImageData.width, canvas->rootImageData.height);
-}
-
 void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, GameMemory *gameMemory)
 {
     if (canvas->texture.id)
@@ -480,7 +459,7 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, GameMemory *gameMemo
 
     // float dataRatio = (float)tempImage.dataSize / (float)rootBpImage->dataSize;
 
-    // V2 canvasDim = rootBpImage->dim * dataRatio; 
+    // V2 canvasDim = rootBpImage->dim * dataRatio;
     V2 canvasDim = V2{rootBpImage->dim.x * 4, rootBpImage->dim.y} + 1;
     // V2 canvasDim = V2{tempImage.dim.x, tempImage.dim.y};
 
@@ -519,7 +498,7 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, GameMemory *gameMemo
         rlUnloadTexture(canvas->texture.id);
     canvas->texture = {};
 
-    BlendCanvasAndUploadTexture(canvas, &gameMemory->temporaryArena);
+    canvas->needsTextureUpload = true;
 }
 
 void InitializeNewImage(const char *fileName, GameMemory *gameMemory, BpImage *rootBpImage, Canvas *canvas, Texture *loadedTexture)
@@ -567,11 +546,70 @@ void UpdateBpImage(ProcessedImage *processedImage)
     processedImage->finalProcessedImage = tempImage;
 }
 
-void ResetProcessedImage(ProcessedImage *processedImage)
+void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas, MemoryArena *temporaryArena)
 {
     ResetMemoryArena(&processedImage->workArena);
     processedImage->active = false;
     processedImage->frameStarted = 0;
     processedImage->frameFinished = 0;
     processedImage->finalProcessedImage = {};
+
+    unsigned int pixelCount = canvas->drawnImageData.width * canvas->drawnImageData.height;
+    for (int i = 0;
+         i <= pixelCount;
+         i++)
+    {
+        Color *drawnPixel = &((Color *)canvas->drawnImageData.data)[i];
+        if ((drawnPixel->r || drawnPixel->g || drawnPixel->b) && drawnPixel->a == processedImage->index)
+            drawnPixel->a = 255;
+    }
+
+    canvas->needsTextureUpload = true;
+}
+
+ProcessedImage *GetFreeProcessedImage(ProcessedImage *processedImages, unsigned int threadCount)
+{
+    ProcessedImage *processedImage = {};
+    for (int i = 0;
+         i < threadCount;
+         i++)
+    {
+        ProcessedImage *processedImageOfIndex = processedImages + i;
+        if (!processedImageOfIndex->active)
+        {
+            processedImage = processedImageOfIndex;
+            break;
+        }
+    }
+    return processedImage;
+}
+
+PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread)
+{
+    ProcessedImage *processedImage = (ProcessedImage *)data;
+    Assert(processedImage);
+
+    UpdateBpImage(processedImage);
+    processedImage->frameFinished = G_CURRENT_FRAME;
+    Print("Finished");
+}
+
+void StartProcessedImageWork(Canvas *canvas, unsigned int threadCount, ProcessedImage *processedImage, PlatformWorkQueue *threadWorkQueue)
+{
+    unsigned int pixelCount = canvas->drawnImageData.width * canvas->drawnImageData.height;
+    for (int i = 0;
+         i <= pixelCount;
+         i++)
+    {
+        Color *drawnPixel = &((Color *)canvas->drawnImageData.data)[i];
+        if (drawnPixel->a == threadCount + 1)
+            drawnPixel->a = processedImage->index;
+    }
+
+    canvas->waitingOnAvaliableThread = false;
+
+    Print("Starting Work");
+    processedImage->frameStarted = G_CURRENT_FRAME;
+    processedImage->active = true;
+    PlatformAddThreadWorkEntry(threadWorkQueue, ProcessImageOnThread, (void *)processedImage);
 }

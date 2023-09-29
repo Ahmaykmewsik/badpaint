@@ -2,16 +2,6 @@
 #include "headers.h"
 #include <gl/gl.h>
 
-PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread)
-{
-    ProcessedImage *processedImage = (ProcessedImage *)data;
-    Assert(processedImage);
-
-    UpdateBpImage(processedImage);
-    processedImage->frameFinished = G_CURRENT_FRAME;
-    Print("Finished");
-}
-
 int main(void)
 {
     GameMemory gameMemory = {};
@@ -19,7 +9,7 @@ int main(void)
     InitializeArena(&gameMemory.permanentArena, Megabytes(100));
     InitializeArena(&gameMemory.temporaryArena, Megabytes(1000));
     InitializeArena(&gameMemory.rootImageArena, Megabytes(50));
-    InitializeArena(&gameMemory.canvasArena, Megabytes(100));
+    InitializeArena(&gameMemory.canvasArena, Megabytes(500));
 
     InitializeArena(&gameMemory.twoFrameArenaModIndex0, Megabytes(100));
     InitializeArena(&gameMemory.twoFrameArenaModIndex1, Megabytes(100));
@@ -30,14 +20,15 @@ int main(void)
     BpImage *rootBpImage = PushStruct(&gameMemory.permanentArena, BpImage);
     Canvas *canvas = PushStruct(&gameMemory.permanentArena, Canvas);
 
-    ProcessedImage *processdImages = PushArray(&gameMemory.permanentArena, threadCount, ProcessedImage);
+    ProcessedImage *processedImages = PushArray(&gameMemory.permanentArena, threadCount, ProcessedImage);
     for (int i = 0;
          i < threadCount;
          i++)
     {
-        ProcessedImage *processedImage = processdImages + i;
+        ProcessedImage *processedImage = processedImages + i;
         processedImage->rootBpImage = rootBpImage;
         processedImage->canvas = canvas;
+        processedImage->index = i;
         InitializeArena(&processedImage->workArena, Megabytes(300));
     }
 
@@ -71,7 +62,7 @@ int main(void)
     Color deleteColor = RED;
 
     Color brushColor = deleteColor;
-    float brushSize = 1;
+    float brushSize = 20;
 
     Texture loadedTexture = {};
 
@@ -112,13 +103,9 @@ int main(void)
 
         if (IsKeyPressed(KEY_E))
         {
-            brushColor = BLANK;
-            brushSize = 20;
         }
         if (IsKeyPressed(KEY_D))
         {
-            brushColor = deleteColor;
-            brushSize = 5;
         }
 
         String canvasStringKey = CreateString(G_CANVAS_STRING_TAG_CHARS);
@@ -126,36 +113,18 @@ int main(void)
         if (canvasUiBox && canvasUiBox->down)
         {
             float scale = Max(1, canvas->rootImageData.width / canvasUiBox->rect.dim.x);
-            // Print(scale);
-#if 0
-            V2 startPos = scale * (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos);
-            V2 endPos = scale * (mousePixelPos - canvasUiBox->rect.pos);
 
-            ImageDrawLine(&canvas.image, startPos.x, startPos.y, endPos.x, endPos.y, BLACK);
-            UpdateTexture(&canvas.image, &canvas.texture);
-#else
             V2 startPos = scale * (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos);
             V2 endPos = scale * (mousePixelPos - canvasUiBox->rect.pos);
 
             float distance = Max(1, DistanceV2(startPos, endPos));
-
-            canvas->drawing = true;
-            for (int i = 0;
-                 i <= distance;
-                 i++)
-            {
-                V2 pos = Lerp(startPos, endPos, i / distance);
-                ImageDrawCircle(&canvas->drawnImageData, pos.x, pos.y, brushSize, brushColor);
-            }
-            canvas->drawing = false;
-#endif
 
             ProcessedImage *processedImage = {};
             for (int i = 0;
                  i < threadCount;
                  i++)
             {
-                ProcessedImage *processedImageOfIndex = processdImages + i;
+                ProcessedImage *processedImageOfIndex = processedImages + i;
                 if (!processedImageOfIndex->active)
                 {
                     processedImage = processedImageOfIndex;
@@ -163,20 +132,39 @@ int main(void)
                 }
             }
 
+            Color colorToPaint = brushColor;
+
+            unsigned int processedImageIndex = (processedImage)
+                                                   ? processedImage->index
+                                                   : threadCount + 1;
+            colorToPaint.a = processedImageIndex;
+
+            for (int i = 0;
+                 i <= distance;
+                 i++)
+            {
+                V2 pos = Lerp(startPos, endPos, i / distance);
+                ImageDrawCircle(&canvas->drawnImageData, pos.x, pos.y, brushSize, colorToPaint);
+            }
+
             if (processedImage)
             {
-                Print("Starting Work");
-                processedImage->frameStarted = G_CURRENT_FRAME;
-                processedImage->active = true;
-                PlatformAddThreadWorkEntry(threadWorkQueue, ProcessImageOnThread, (void *)processedImage);
+                StartProcessedImageWork(canvas, threadCount, processedImage, threadWorkQueue);
             }
             else
             {
                 Print("no thread avaliabe");
-                //TODO: what to do when no arenas avaliable?
+                canvas->waitingOnAvaliableThread = true;
             }
 
-            BlendCanvasAndUploadTexture(canvas, &gameMemory.temporaryArena);
+            canvas->needsTextureUpload = true;
+        }
+
+        if (canvas->waitingOnAvaliableThread)
+        {
+            ProcessedImage *processedImage = GetFreeProcessedImage(processedImages, threadCount);
+            if (processedImage)
+                StartProcessedImageWork(canvas, threadCount, processedImage, threadWorkQueue);
         }
 
         if (IsFileDropped())
@@ -203,13 +191,13 @@ int main(void)
              i < threadCount;
              i++)
         {
-            ProcessedImage *processedImageOfIndex = processdImages + i;
+            ProcessedImage *processedImageOfIndex = processedImages + i;
             if (processedImageOfIndex->active && processedImageOfIndex->frameFinished > 0)
             {
                 if (latestCompletedProcessedImage && (latestCompletedProcessedImage->frameStarted > processedImageOfIndex->frameStarted))
                 {
                     Print("Throwing away image");
-                    ResetProcessedImage(processedImageOfIndex);
+                    ResetProcessedImage(processedImageOfIndex, canvas, &gameMemory.temporaryArena);
                 }
                 else
                 {
@@ -223,7 +211,34 @@ int main(void)
             UploadAndReplaceTexture(&latestCompletedProcessedImage->finalProcessedImage, &loadedTexture);
             Print("Uploading New Image");
             //TODO: put the latest uploaded image somewhere for safekeeping
-            ResetProcessedImage(latestCompletedProcessedImage);
+            ResetProcessedImage(latestCompletedProcessedImage, canvas, &gameMemory.temporaryArena);
+        }
+
+        if (canvas->needsTextureUpload)
+        {
+            Image outputImage = {};
+            unsigned int pixelCount = canvas->rootImageData.width * canvas->rootImageData.height;
+            Color *pixels = PushArray(&gameMemory.temporaryArena, pixelCount, Color);
+
+            for (int i = 0;
+                 i < pixelCount;
+                 i++)
+            {
+                Color rootPixel = ((Color *)canvas->rootImageData.data)[i];
+                Color drawnPixel = ((Color *)canvas->drawnImageData.data)[i];
+
+                if (drawnPixel.r || drawnPixel.g || drawnPixel.b || drawnPixel.a)
+                {
+                    if (drawnPixel.a < 255)
+                        drawnPixel.a = 100;
+
+                    *(pixels + i) = drawnPixel;
+                }
+                else
+                    *(pixels + i) = rootPixel;
+            }
+
+            UploadTexture(&canvas->texture, pixels, canvas->rootImageData.width, canvas->rootImageData.height);
         }
 
         //----------------------------------------------------

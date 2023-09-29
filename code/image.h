@@ -30,12 +30,14 @@ struct Canvas
     Image drawnImageData;
     Texture texture;
     BpImage *rootBpImage;
-    bool drawing;
+    bool needsTextureUpload;
+    bool waitingOnAvaliableThread;
 };
 
 struct ProcessedImage 
 {
     bool active;
+    unsigned int index;
     BpImage *rootBpImage;
     Canvas *canvas;
     BpImage finalProcessedImage;
