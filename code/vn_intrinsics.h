@@ -94,6 +94,7 @@ struct GameMemory
     MemoryArena temporaryArena;
     MemoryArena rootImageArena;
     MemoryArena canvasArena;
+    MemoryArena mouseClickArena;
 
     MemoryArena twoFrameArenaModIndex0;
     MemoryArena twoFrameArenaModIndex1;

@@ -1134,7 +1134,7 @@ inline float Lerp(float start, float amount, float end)
     return result;
 }
 
-inline V2 Lerp(V2 start, V2 end, float amount)
+inline V2 Lerp(V2 start, float amount, V2 end)
 {
     V2 result;
 
@@ -1144,7 +1144,7 @@ inline V2 Lerp(V2 start, V2 end, float amount)
     return result;
 }
 
-inline V3 Lerp(V3 start, V3 end, float amount)
+inline V3 Lerp(V3 start, float amount, V3 end)
 {
     V3 result;
 

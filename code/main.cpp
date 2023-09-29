@@ -9,6 +9,7 @@ int WinMain(void)
     InitializeArena(&gameMemory.temporaryArena, Megabytes(1000));
     InitializeArena(&gameMemory.rootImageArena, Megabytes(50));
     InitializeArena(&gameMemory.canvasArena, Megabytes(500));
+    InitializeArena(&gameMemory.mouseClickArena, Megabytes(1));
 
     InitializeArena(&gameMemory.twoFrameArenaModIndex0, Megabytes(100));
     InitializeArena(&gameMemory.twoFrameArenaModIndex1, Megabytes(100));
@@ -33,7 +34,6 @@ int WinMain(void)
 
     GameState *gameState = PushStruct(&gameMemory.permanentArena, GameState);
     G_STRING_TEMP_MEM_ARENA = &gameMemory.temporaryArena;
-    // _G_CIRCULAR_ARENA_DONT_FUCKING_USE_THIS_EXCEPT_IN_A_MACRO = &gameMemory.circularScratchBuffer;
     G_UI_INPUTS = PushStruct(&gameMemory.permanentArena, UiInputs);
     G_UI_STATE = PushStruct(&gameMemory.permanentArena, UiState);
     G_UI_HASH_TAG_STRING = CreateStringOnArena("##", &gameMemory.permanentArena);
@@ -72,6 +72,15 @@ int WinMain(void)
     G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE].key[0] = KEY_E;
     G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE].key[0] = KEY_R;
 
+    V2 pressedMousePos = {};
+    String draggedUiStringKey = {};
+
+    Slider brushSizeSlider = {};
+    brushSizeSlider.sliderAction = SLIDER_ACTION_BRUSH_SIZE;
+    brushSizeSlider.unsignedIntToChange = &currentBrush.size;
+    brushSizeSlider.min = 1;
+    brushSizeSlider.max = 50;
+
     //NOTE: DEVELOPER HACK
     {
         InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootBpImage, canvas, &loadedTexture);
@@ -85,6 +94,14 @@ int WinMain(void)
         gameState->windowDim = WidthHeightToV2(GetScreenWidth(), GetScreenHeight());
 
         V2 mousePixelPos = V2{(float)GetMouseX(), (float)GetMouseY()};
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
+        {
+            ResetMemoryArena(&gameMemory.mouseClickArena);
+            draggedUiStringKey = {};
+
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+                pressedMousePos = mousePixelPos;
+        }
 
         for (int i = 0;
              i < COMMAND_COUNT;
@@ -122,9 +139,25 @@ int WinMain(void)
                     if (uiBox->uiInputs.command)
                     {
                         CommandState *state = G_COMMAND_STATES + uiBox->uiInputs.command;
-                        state->down = uiBox->down;
-                        state->pressed = uiBox->pressed;
+                        state->down |= uiBox->down;
+                        state->pressed |= uiBox->pressed;
                     }
+
+                    if (uiBox->pressed && uiBox->keyString.length)
+                    {
+                        draggedUiStringKey = uiBox->keyString;
+                        MoveStringToArena(&draggedUiStringKey, &gameMemory.mouseClickArena);
+                    }
+                }
+
+                if (uiBox->uiInputs.sliderAction && draggedUiStringKey == uiBox->keyString)
+                {
+                    float normPressedPosInRect = (pressedMousePos.x - uiBox->rect.pos.x) / uiBox->rect.dim.x;
+                    float normDifference = (pressedMousePos.x - mousePixelPos.x) / uiBox->rect.dim.x;
+                    float normValue = Clamp(0, normPressedPosInRect - normDifference, 1);
+
+                    //TODO: lookup slider
+                    *brushSizeSlider.unsignedIntToChange = Lerp(brushSizeSlider.min, normValue, brushSizeSlider.max);
                 }
             }
         }
@@ -170,7 +203,7 @@ int WinMain(void)
                      i <= distance;
                      i++)
                 {
-                    V2 pos = Lerp(startPos, endPos, i / distance);
+                    V2 pos = Lerp(startPos, i / distance, endPos);
                     ImageDrawCircle(&canvas->drawnImageData, pos.x, pos.y, currentBrush.size, colorToPaint);
                 }
 
@@ -187,7 +220,7 @@ int WinMain(void)
                      i <= distance;
                      i++)
                 {
-                    V2 pos = Lerp(startPos, endPos, i / distance);
+                    V2 pos = Lerp(startPos, i / distance, endPos);
                     ImageDrawCircle(&canvas->drawnImageData, pos.x, pos.y, currentBrush.size, colorToPaint);
                 }
 
@@ -322,9 +355,7 @@ int WinMain(void)
             CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
             UiParent()
             {
-                SetUiAxis({UI_SIZE_KIND_TEXT}, {UI_SIZE_KIND_TEXT});
-                String fps = CreateString("FPS: ") + GetFPS();
-                CreateUiBox(UI_FLAG_DRAW_TEXT, fps);
+                CreateUiBox();
 
                 SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
                 CreateUiBox();
@@ -382,7 +413,7 @@ int WinMain(void)
             ReactiveUiColorState uiColorState = {};
             uiColorState.active.disabled = DARKGRAY;
             uiColorState.active.down = Color{100, 100, 100, 255};
-            uiColorState.active.hovered = Color{200, 200, 200, 255};
+            uiColorState.active.hovered = Color{230, 230, 230, 255};
             uiColorState.active.neutral = Color{221, 221, 221, 255};
             uiColorState.nonActive.disabled = DARKGRAY;
             uiColorState.nonActive.down = Color{100, 100, 100, 255};
@@ -463,10 +494,44 @@ int WinMain(void)
             SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, 40});
             CreateUiBox();
 
+            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_TEXT});
+            CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED, IntToString(currentBrush.size));
+
+            ReactiveUiColor uiColorParent = {};
+            uiColorParent.down = Color{220, 220, 220, 255};
+            uiColorParent.hovered = Color{200, 200, 200, 255};
+            uiColorParent.neutral = Color{180, 180, 180, 255};
+            String stringKey = CreateString("brushSizeSlider");
+            UiBox *sliderUiBox = GetUiBoxLastFrameOfStringKey(stringKey);
+            uiSettings->backColor = GetReactiveColor(sliderUiBox, uiColorParent, false);
+            G_UI_INPUTS->sliderAction = SLIDER_ACTION_BRUSH_SIZE;
+
+            Slider slider = brushSizeSlider;
+            float value = MapNormalize(*brushSizeSlider.unsignedIntToChange, brushSizeSlider.min, brushSizeSlider.max);
+            G_UI_INPUTS->value = value;
+
+            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight * 0.5f});
+            CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_INTERACTABLE | UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER, G_UI_HASH_TAG_STRING + stringKey);
+            UiParent()
+            {
+                SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, value}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
+                ReactiveUiColor uiColorChild = {};
+                uiColorChild.down = Color{20, 131, 255, 255};
+                uiColorChild.hovered = Color{10, 131, 251, 255};
+                uiColorChild.neutral = Color{0, 121, 241, 255};
+                uiSettings->backColor = GetReactiveColor(sliderUiBox, uiColorChild, false);
+                CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER);
+            }
+
             SetUiAxis({UI_SIZE_KIND_PIXELS, toolbarWidth}, {UI_SIZE_KIND_PIXELS, toolbarWidth});
             uiSettings->backColor = G_BRUSH_EFFECT_COLORS[currentBrush.brushEffect];
             CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);
         }
+
+        SetUiAxis({UI_SIZE_KIND_PIXELS, windowDim.x}, {UI_SIZE_KIND_TEXT});
+        String fps = CreateString("FPS: ") + GetFPS();
+        // G_UI_INPUTS->pixelPosition = V2{0, 0};
+        CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, fps);
 
         int uiBoxArrayIndexThisFrame = GetFrameModIndexThisFrame();
 

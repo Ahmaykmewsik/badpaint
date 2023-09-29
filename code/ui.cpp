@@ -2,18 +2,6 @@
 
 #include "headers.h"
 
-bool IsCommandDown(COMMAND command)
-{
-    bool result = G_COMMAND_STATES[command].down;
-    return result;
-}
-
-bool IsCommandPressed(COMMAND command)
-{
-    bool result = G_COMMAND_STATES[command].pressed;
-    return result;
-}
-
 void CreateUiBox(unsigned int flags = 0, String string = {})
 {
     Assert(G_UI_INPUTS);
@@ -438,10 +426,13 @@ UiBox *GetUiBoxLastFrameOfStringKey(String stringKey)
 
     int uiBoxArrayIndex = GetFrameModIndexLastFrame();
     for (int uiBoxIndex = 0;
-         uiBoxIndex < G_UI_STATE->uiBoxCount;
+         uiBoxIndex < ArrayCount(G_UI_STATE->uiBoxes[uiBoxArrayIndex]);
          uiBoxIndex++)
     {
         UiBox *uiBox = &G_UI_STATE->uiBoxes[uiBoxArrayIndex][uiBoxIndex];
+        if (uiBoxIndex != uiBox->index)
+            break;
+        
         if (uiBox->keyString == stringKey)
         {
             result = uiBox;
@@ -482,6 +473,8 @@ void RenderUiEntries(GameState *gameState, UiBox *uiBox, int uiDepth = 0)
 
             if (IsFlag(uiBox, UI_FLAG_ALIGN_TEXT_CENTERED))
                 pos += GetCeneteredPosInRect(uiBox->rect, uiBox->textDim);
+            else if (IsFlag(uiBox, UI_FLAG_ALIGN_TEXT_RIGHT))
+                pos.x += uiBox->rect.dim.x - uiBox->textDim.x;
 
             DrawTextPro(uiBox->uiSettings.font, uiBox->string.chars, V2ToRayVector(pos), {}, 0, uiBox->uiSettings.font.baseSize, 1, uiBox->uiSettings.frontColor);
         }
