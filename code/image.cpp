@@ -606,7 +606,7 @@ void StartProcessedImageWork(Canvas *canvas, unsigned int threadCount, Processed
             drawnPixel->a = processedImage->index;
     }
 
-    canvas->waitingOnAvaliableThread = false;
+    canvas->proccessAsap = false;
 
     Print("Starting Work");
     processedImage->frameStarted = G_CURRENT_FRAME;

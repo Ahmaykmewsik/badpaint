@@ -30,8 +30,8 @@ struct Canvas
     Image drawnImageData;
     Texture texture;
     BpImage *rootBpImage;
+    bool proccessAsap;
     bool needsTextureUpload;
-    bool waitingOnAvaliableThread;
 };
 
 struct ProcessedImage 
@@ -44,4 +44,19 @@ struct ProcessedImage
     MemoryArena workArena;
     unsigned int frameStarted;
     unsigned int frameFinished;
+};
+
+enum BRUSH_EFFECT
+{
+    BRUSH_EFFECT_NULL,
+    BRUSH_EFFECT_ERASE_EFFECT,
+    BRUSH_EFFECT_REMOVE,
+};
+
+static Color G_BRUSH_EFFECT_COLORS[] = {BLANK, BLANK, RED};
+
+struct Brush
+{
+    BRUSH_EFFECT brushEffect;
+    unsigned int size;
 };

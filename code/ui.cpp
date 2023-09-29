@@ -2,6 +2,18 @@
 
 #include "headers.h"
 
+bool IsCommandDown(COMMAND command)
+{
+    bool result = G_COMMAND_STATES[command].down;
+    return result;
+}
+
+bool IsCommandPressed(COMMAND command)
+{
+    bool result = G_COMMAND_STATES[command].pressed;
+    return result;
+}
+
 void CreateUiBox(unsigned int flags = 0, String string = {})
 {
     Assert(G_UI_INPUTS);
@@ -344,9 +356,16 @@ Color GetReactiveColor(UiBox *uiBoxLastFrame, ReactiveUiColor reactiveUiColor, b
         result = reactiveUiColor.disabled;
     else if (uiBoxLastFrame)
     {
-        if (uiBoxLastFrame->down)
+        bool down = uiBoxLastFrame->down;
+        bool hovered = uiBoxLastFrame->hovered;
+
+        COMMAND command = uiBoxLastFrame->uiInputs.command;
+        if (command)
+            down = G_COMMAND_STATES[command].down;
+
+        if (down)
             result = reactiveUiColor.down;
-        else if (uiBoxLastFrame->hovered)
+        else if (hovered)
             result = reactiveUiColor.hovered;
     }
 
@@ -496,4 +515,21 @@ void RenderUiEntries(GameState *gameState, UiBox *uiBox, int uiDepth = 0)
         RenderUiEntries(gameState, uiBox->firstChild, uiDepth + 2);
         RenderUiEntries(gameState, uiBox->next, uiDepth);
     }
+}
+
+void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled = false)
+{
+    ReactiveUiColor reactiveUiColor = (active)
+                                          ? reactiveUiColorState.active
+                                          : reactiveUiColorState.nonActive;
+    UiBox *uiBoxLastFrame = GetUiBoxOfStringLastFrame(string);
+    G_UI_STATE->uiSettings.backColor = GetReactiveColor(uiBoxLastFrame, reactiveUiColor, disabled);
+
+    UiSettings *uiSettings = &G_UI_STATE->uiSettings;
+    uiSettings->frontColor = BLACK;
+    uiSettings->detailColor = BLACK;
+    uiSettings->borderColor = (active) ? BLACK : GRAY;
+
+    unsigned int flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED | UI_FLAG_INTERACTABLE;
+    CreateUiBox(flags, string);
 }

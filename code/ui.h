@@ -6,6 +6,25 @@
 
 static String G_UI_HASH_TAG_STRING = {};
 
+enum COMMAND
+{
+    COMMAND_NULL,
+    COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE,
+    COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE,
+    COMMAND_COUNT,
+};
+
+#define MAX_KEYS_FOR_INPUT_BINDING 3
+
+struct CommandState
+{
+    KeyboardKey key[MAX_KEYS_FOR_INPUT_BINDING];
+    bool down;
+    bool pressed;
+};
+
+static CommandState G_COMMAND_STATES[COMMAND_COUNT];
+
 enum UI_SIZE_KIND
 {
     UI_SIZE_KIND_NULL,
@@ -67,6 +86,7 @@ struct UiInputs
     V2 pixelPosition;
     Texture texture;
     V2 manualDim;
+    COMMAND command;
 };
 
 static UiInputs *G_UI_INPUTS = {};
