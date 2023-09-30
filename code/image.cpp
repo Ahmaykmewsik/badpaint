@@ -613,3 +613,41 @@ void StartProcessedImageWork(Canvas *canvas, unsigned int threadCount, Processed
     processedImage->active = true;
     PlatformAddThreadWorkEntry(threadWorkQueue, ProcessImageOnThread, (void *)processedImage);
 }
+
+bool ExportImage(Image image, String filepath)
+{
+    bool result = false;
+    int channels = 4;
+
+    //HACK: append png if there's no file path lol
+    //TODO: the platform layer should handle this not the game
+    String fileExtention = CreateString(GetFileExtension(filepath.chars));
+    if (!fileExtention.length)
+        filepath += ".png";
+
+    fileExtention = CreateString(GetFileExtension(filepath.chars));
+
+    if (fileExtention == ".png")
+    {
+        int dataSize = 0;
+        unsigned char *fileData = stbi_write_png_to_mem((const unsigned char *)image.data, image.width * channels, image.width, image.height, channels, &dataSize);
+        result = SaveFileData(filepath.chars, fileData, dataSize);
+        RL_FREE(fileData);
+    }
+    else if (fileExtention == ".bmp")
+    {
+        result = stbi_write_bmp(filepath.chars, image.width, image.height, channels, image.data);
+    }
+    else if (fileExtention == ".jpg" || fileExtention == ".jpeg")
+    {
+        result = stbi_write_jpg(filepath.chars, image.width, image.height, channels, image.data, 100); // JPG quality: between 1 and 100
+    }
+    else 
+    {
+        // Export raw pixel data (without header)
+        // NOTE: It's up to the user to track image parameters
+        result = SaveFileData(filepath.chars, image.data, GetPixelDataSize(image.width, image.height, image.format));
+    }
+
+    return result;
+}

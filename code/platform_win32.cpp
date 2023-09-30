@@ -5,6 +5,8 @@
 
 #include <intrin.h>
 #include "Windows.h"
+#include <shobjidl.h>
+#include <string.h>
 
 struct WorkQueueEntry
 {
@@ -79,6 +81,70 @@ PlatformWorkQueue *SetupThreads(unsigned int threadCount, GameMemory *gameMemory
         DWORD threadID;
         HANDLE threadHandle = CreateThread(0, 0, ThreadProc, result, 0, &threadID);
         CloseHandle(threadHandle);
+    }
+
+    return result;
+}
+
+bool GetPngImageFilePathFromUser(char *buffer, unsigned int bufferSize, unsigned int *filePathLength)
+{
+    bool result = false;
+
+    if (buffer && bufferSize > 0)
+    {
+        HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+        IFileSaveDialog *pFileSaveDialog = NULL;
+
+        if (SUCCEEDED(hr))
+        {
+            hr = CoCreateInstance(CLSID_FileSaveDialog, NULL, CLSCTX_ALL, IID_IFileSaveDialog, (void **)&pFileSaveDialog);
+            if (SUCCEEDED(hr))
+            {
+                COMDLG_FILTERSPEC imageFileTypes[] = {
+                    {L"PNG", L"*.png"},
+                };
+                UINT fileTypeCount = sizeof(imageFileTypes) / sizeof(imageFileTypes[0]);
+
+                hr = pFileSaveDialog->SetFileTypes(fileTypeCount, imageFileTypes);
+                if (SUCCEEDED(hr))
+                {
+                    hr = pFileSaveDialog->SetFileTypeIndex(0);
+                    if (SUCCEEDED(hr))
+                    {
+                        hr = pFileSaveDialog->Show(NULL);
+                        if (SUCCEEDED(hr))
+                        {
+                            IShellItem *pItem;
+                            hr = pFileSaveDialog->GetResult(&pItem);
+                            if (SUCCEEDED(hr))
+                            {
+                                PWSTR filePathW;
+                                hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &filePathW);
+                                pItem->Release();
+
+                                if (SUCCEEDED(hr))
+                                {
+                                    int pathLen = WideCharToMultiByte(CP_UTF8, 0, filePathW, -1, NULL, 0, NULL, NULL);
+                                    if (pathLen <= (bufferSize - 1))
+                                    {
+                                        WideCharToMultiByte(CP_UTF8, 0, filePathW, -1, buffer, bufferSize - 1, NULL, NULL);
+                                        result = true;
+                                        //TODO: append filetype if not there
+                                        *filePathLength = strlen(buffer);
+                                    }
+                                    else
+                                    {
+                                        hr = E_NOT_SUFFICIENT_BUFFER;
+                                    }
+                                    CoTaskMemFree(filePathW);
+                                }
+                            }
+                        }
+                    }
+                }
+                pFileSaveDialog->Release();
+            }
+        }
     }
 
     return result;

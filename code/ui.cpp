@@ -281,9 +281,9 @@ void CalculateUiRelativePositions(UiBox *uiBox)
 {
     if (uiBox)
     {
-        if (!uiBox->parent || IsFlag(uiBox->parent, UI_FLAG_CHILDREN_MANUAL_LAYOUT))
+        if (IsFlag(uiBox, UI_FLAG_MANUAL_POSITION) || (!uiBox->parent || IsFlag(uiBox->parent, UI_FLAG_CHILDREN_MANUAL_POSITION)))
         {
-            uiBox->computedRelativePixelPos = uiBox->uiInputs.pixelPosition;
+            uiBox->computedRelativePixelPos = uiBox->uiInputs.relativePixelPosition;
         }
         else if (uiBox->parent && IsFlag(uiBox, UI_FLAG_CENTER_IN_PARENT))
         {
@@ -432,7 +432,7 @@ UiBox *GetUiBoxLastFrameOfStringKey(String stringKey)
         UiBox *uiBox = &G_UI_STATE->uiBoxes[uiBoxArrayIndex][uiBoxIndex];
         if (uiBoxIndex != uiBox->index)
             break;
-        
+
         if (uiBox->keyString == stringKey)
         {
             result = uiBox;

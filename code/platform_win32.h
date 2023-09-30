@@ -9,5 +9,7 @@ struct PlatformWorkQueue;
 typedef PLATFORM_WORK_QUEUE_CALLBACK(PlatformWorkQueueCallback);
     
 PlatformWorkQueue *SetupThreads(unsigned int threadCount, GameMemory *gameMemory);
+
 void PlatformAddThreadWorkEntry(PlatformWorkQueue *queue, PlatformWorkQueueCallback *callback, void *data);
-// void PlatformCompleteAllThreadWork(PlatformWorkQueue *queue);
+
+bool GetPngImageFilePathFromUser(char *buffer, unsigned int bufferSize, unsigned int *filePathLength);

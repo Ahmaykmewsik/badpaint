@@ -39,8 +39,9 @@ enum UI_FLAGS
     UI_FLAG_DRAW_BORDER = (1 << 4),
     UI_FLAG_DRAW_TEXTURE = (1 << 5),
 
-    UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT = (1 << 11),
-    UI_FLAG_CHILDREN_MANUAL_LAYOUT = (1 << 12),
+    UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT = (1 << 9),
+    UI_FLAG_CHILDREN_MANUAL_POSITION = (1 << 10),
+    UI_FLAG_MANUAL_POSITION = (1 << 11),
     UI_FLAG_ALIGN_TEXT_CENTERED = (1 << 13),
     UI_FLAG_ALIGN_TEXT_RIGHT = (1 << 14),
     UI_FLAG_ALIGN_TEXTURE_CENTERED = (1 << 15),
@@ -65,7 +66,7 @@ struct UiSettings
 struct UiInputs
 {
     float value;
-    V2 pixelPosition;
+    V2 relativePixelPosition;
     Texture texture;
     V2 manualDim;
     COMMAND command;

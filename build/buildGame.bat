@@ -26,7 +26,7 @@ IF NOT EXIST "%DIRECTORY_NAME%" (
 
 set CODEPATHS= ..\code\main.cpp ..\code\platform_win32.cpp
 set INCLUDES= -I ..\includes\ 
-set LIBRARIES= .\libraries\builtLibraries.lib user32.lib shell32.lib gdi32.lib winmm.lib kernel32.lib 
+set LIBRARIES= .\libraries\builtLibraries.lib user32.lib shell32.lib gdi32.lib winmm.lib kernel32.lib Ole32.lib 
 
 @REM Uncomment when you want to update the application icon
 @REM rc resources.rc

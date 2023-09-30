@@ -5,14 +5,15 @@ int WinMain(void)
 {
     GameMemory gameMemory = {};
 
-    InitializeArena(&gameMemory.permanentArena, Megabytes(100));
+    InitializeArena(&gameMemory.permanentArena, Megabytes(1));
     InitializeArena(&gameMemory.temporaryArena, Megabytes(1000));
     InitializeArena(&gameMemory.rootImageArena, Megabytes(50));
     InitializeArena(&gameMemory.canvasArena, Megabytes(500));
     InitializeArena(&gameMemory.mouseClickArena, Megabytes(1));
+    InitializeArena(&gameMemory.circularScratchBuffer, Megabytes(10), true);
 
-    InitializeArena(&gameMemory.twoFrameArenaModIndex0, Megabytes(100));
-    InitializeArena(&gameMemory.twoFrameArenaModIndex1, Megabytes(100));
+    InitializeArena(&gameMemory.twoFrameArenaModIndex0, Megabytes(10));
+    InitializeArena(&gameMemory.twoFrameArenaModIndex1, Megabytes(10));
 
     unsigned int threadCount = 8;
     PlatformWorkQueue *threadWorkQueue = SetupThreads(threadCount, &gameMemory);
@@ -81,6 +82,9 @@ int WinMain(void)
     brushSizeSlider.min = 1;
     brushSizeSlider.max = 50;
 
+    String saveNotificationMessage = {};
+    float saveNotificationMessageAlpha = 0;
+
     //NOTE: DEVELOPER HACK
     {
         InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootBpImage, canvas, &loadedTexture);
@@ -102,6 +106,8 @@ int WinMain(void)
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
                 pressedMousePos = mousePixelPos;
         }
+
+        ZeroArray(G_COMMAND_STATES);
 
         for (int i = 0;
              i < COMMAND_COUNT;
@@ -170,6 +176,29 @@ int WinMain(void)
         if (IsCommandPressed(COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE))
         {
             currentBrush.brushEffect = BRUSH_EFFECT_REMOVE;
+        }
+
+        if (IsCommandPressed(COMMAND_EXPORT_IMAGE))
+        {
+            String filePath = AllocateString(256, &gameMemory.temporaryArena);
+            unsigned int filepathLength;
+            bool success = GetPngImageFilePathFromUser(filePath.chars, filePath.length, &filepathLength);
+            filePath.length = filepathLength;
+            if (success && filePath.length)
+            {
+                Image exportImgae = LoadImageFromTexture(loadedTexture);
+                ExportImage(exportImgae, filePath);
+
+                saveNotificationMessage = CreateString("You have given new life to: ") + filePath;
+                MoveStringToArena(&saveNotificationMessage, &gameMemory.circularScratchBuffer);
+                saveNotificationMessageAlpha = 1.0;
+            }
+            else
+            {
+                saveNotificationMessage = CreateString("Sorry the save failed. You fail too. You suck. Sorry.");
+                MoveStringToArena(&saveNotificationMessage, &gameMemory.circularScratchBuffer);
+                saveNotificationMessageAlpha = 1.0;
+            }
         }
 
         String canvasStringKey = CreateString(G_CANVAS_STRING_TAG_CHARS);
@@ -351,19 +380,34 @@ int WinMain(void)
         {
             uiSettings->frontColor = BLACK;
             uiSettings->borderColor = DARKGRAY;
+            uiSettings->backColor = Color{191, 191, 191, 255};
             SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, titleBarHeight});
-            CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
+            CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
             UiParent()
             {
-                CreateUiBox();
+                SetUiAxis({UI_SIZE_KIND_TEXT}, {UI_SIZE_KIND_TEXT});
+                String fps = CreateString("FPS: ") + GetFPS();
+                CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, fps);
 
-                SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
+                SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 0.4}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
                 CreateUiBox();
 
                 SetUiAxis({UI_SIZE_KIND_TEXT}, {UI_SIZE_KIND_TEXT});
-                uiSettings->frontColor = GREEN;
+                uiSettings->frontColor = BLACK;
                 String label = CreateString("PNG Filter: ") + G_PNG_FILTER_NAMES[stbi_write_force_png_filter];
                 CreateUiBox(UI_FLAG_DRAW_TEXT, label);
+
+                SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 0.3}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
+                CreateUiBox();
+
+                SetUiAxis({UI_SIZE_KIND_PIXELS, 200}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
+                String string = CreateString("EXPORT IMAGE") + G_UI_HASH_TAG_STRING + "export";
+                G_UI_INPUTS->command = COMMAND_EXPORT_IMAGE;
+                ReactiveUiColorState uiColorState = {};
+                uiColorState.nonActive.down = DARKGREEN;
+                uiColorState.nonActive.hovered = Color{10, 238, 58, 255};
+                uiColorState.nonActive.neutral = GREEN;
+                CreateUiButton(string, uiColorState, false, false);
             }
 
             SetUiAxis({UI_SIZE_KIND_PIXELS, gameState->windowDim.x}, {UI_SIZE_KIND_PIXELS, gameState->windowDim.y - titleBarHeight});
@@ -405,7 +449,7 @@ int WinMain(void)
         float toolbarWidth = toolboxWidthAndHeight * 2;
 
         SetUiAxis({UI_SIZE_KIND_PIXELS, toolbarWidth}, {UI_SIZE_KIND_PIXELS, 400});
-        G_UI_INPUTS->pixelPosition = V2{0, (float)titleBarHeight};
+        G_UI_INPUTS->relativePixelPosition = V2{0, (float)titleBarHeight};
         uiSettings->backColor = Color{191, 191, 191, 255};
         CreateUiBox(UI_FLAG_DRAW_BACKGROUND);
         UiParent()
@@ -528,10 +572,21 @@ int WinMain(void)
             CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);
         }
 
-        SetUiAxis({UI_SIZE_KIND_PIXELS, windowDim.x}, {UI_SIZE_KIND_TEXT});
-        String fps = CreateString("FPS: ") + GetFPS();
-        // G_UI_INPUTS->pixelPosition = V2{0, 0};
-        CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, fps);
+        if (saveNotificationMessage.length)
+        {
+            SetUiAxis({UI_SIZE_KIND_PIXELS, windowDim.x}, {UI_SIZE_KIND_TEXT});
+            uiSettings->frontColor = Color{255, 255, 255, (unsigned char)(saveNotificationMessageAlpha * 255)};
+            // uiSettings->backColor = Color{100, 100, 100, 100};
+            G_UI_INPUTS->relativePixelPosition = V2{0, titleBarHeight};
+            CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, saveNotificationMessage);
+
+            saveNotificationMessageAlpha -= 0.001;
+            if (saveNotificationMessageAlpha <= 0)
+            {
+                saveNotificationMessage = {};
+                saveNotificationMessageAlpha = {};
+            }
+        }
 
         int uiBoxArrayIndexThisFrame = GetFrameModIndexThisFrame();
 

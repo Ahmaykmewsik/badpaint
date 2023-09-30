@@ -95,6 +95,7 @@ struct GameMemory
     MemoryArena rootImageArena;
     MemoryArena canvasArena;
     MemoryArena mouseClickArena;
+    MemoryArena circularScratchBuffer;
 
     MemoryArena twoFrameArenaModIndex0;
     MemoryArena twoFrameArenaModIndex1;
