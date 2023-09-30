@@ -24,8 +24,6 @@ struct StringArray
     unsigned int count;
 };
 
-static String EMPTY_STRING = {};
-
 //-----Char functions------
 
 inline bool CharIsAlphaUpper(char c)

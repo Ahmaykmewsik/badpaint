@@ -308,3 +308,6 @@ inline void *_TempREALLOC(void *p, int oldSize, int newSize)
 inline void _TempFREE(void *p)
 {
 }
+
+static const char *buildDate = __DATE__;
+static const char *buildTime = __TIME__;

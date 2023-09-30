@@ -343,7 +343,7 @@ void DecodePng(BpImage *bpImage, MemoryArena *arena)
     }
     else
     {
-        Print(lodepng_error_text(state.error));
+        // Print(lodepng_error_text(state.error));
     }
 
     lodepng_state_cleanup(&state);
@@ -439,7 +439,7 @@ void UploadTexture(Texture *texture, void *data, int width, int height)
     else
     {
         //TODO: Log error
-        Print("Empty image passed into texture uploader!");
+        // Print("Empty image passed into texture uploader!");
     }
 }
 
@@ -454,16 +454,7 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, GameMemory *gameMemo
 
     BpImage tempImage = MakeBpImageCopy(rootBpImage, &gameMemory->temporaryArena);
     ConvertNewBpImage(&tempImage, IMAGE_FORMAT_PNG_FILTERED, &gameMemory->temporaryArena);
-    // closestSquare = Round(SqrtFloat(tempImage.dataSize));
-    // closestSquare = Round(SqrtFloat(tempImage.dataSize));
-
-    // float dataRatio = (float)tempImage.dataSize / (float)rootBpImage->dataSize;
-
-    // V2 canvasDim = rootBpImage->dim * dataRatio;
     V2 canvasDim = V2{rootBpImage->dim.x * 4, rootBpImage->dim.y} + 1;
-    // V2 canvasDim = V2{tempImage.dim.x, tempImage.dim.y};
-
-    // float pixelCount = tempImage.dataSize;
     float pixelCount = rootBpImage->dataSize;
 
     ResetMemoryArena(&gameMemory->canvasArena);
@@ -474,9 +465,7 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, GameMemory *gameMemo
          i < pixelCount;
          i++)
     {
-        // unsigned char value = ((unsigned char *)rootBpImage->data)[i];
         unsigned char value = ((unsigned char *)tempImage.data)[i];
-        // value = 255 - value;
         pixelsRootImage[i] = Color{value, value, value, 255};
     }
 
@@ -534,9 +523,6 @@ void UpdateBpImage(ProcessedImage *processedImage)
         if (canvasPixel.a)
         {
             ((unsigned char *)tempImage.data)[i] = 0;
-            // ((unsigned char *)tempImage.data)[i + 1] = 0;
-            // ((unsigned char *)tempImage.data)[i + 2] = 0;
-            // ((unsigned char *)tempImage.data)[i + 3] = 0;
         }
     }
 #endif
@@ -591,7 +577,7 @@ PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread)
 
     UpdateBpImage(processedImage);
     processedImage->frameFinished = G_CURRENT_FRAME;
-    Print("Finished");
+    // Print("Finished");
 }
 
 void StartProcessedImageWork(Canvas *canvas, unsigned int threadCount, ProcessedImage *processedImage, PlatformWorkQueue *threadWorkQueue)
@@ -608,7 +594,7 @@ void StartProcessedImageWork(Canvas *canvas, unsigned int threadCount, Processed
 
     canvas->proccessAsap = false;
 
-    Print("Starting Work");
+    // Print("Starting Work");
     processedImage->frameStarted = G_CURRENT_FRAME;
     processedImage->active = true;
     PlatformAddThreadWorkEntry(threadWorkQueue, ProcessImageOnThread, (void *)processedImage);

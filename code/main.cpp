@@ -1,20 +1,9 @@
 
 #include "headers.h"
 
-int WinMain(void)
+void RunApp(GameMemory gameMemory)
 {
-    GameMemory gameMemory = {};
-
-    InitializeArena(&gameMemory.permanentArena, Megabytes(1));
-    InitializeArena(&gameMemory.temporaryArena, Megabytes(1000));
-    InitializeArena(&gameMemory.rootImageArena, Megabytes(50));
-    InitializeArena(&gameMemory.canvasArena, Megabytes(500));
-    InitializeArena(&gameMemory.mouseClickArena, Megabytes(1));
-    InitializeArena(&gameMemory.circularScratchBuffer, Megabytes(10), true);
-
-    InitializeArena(&gameMemory.twoFrameArenaModIndex0, Megabytes(10));
-    InitializeArena(&gameMemory.twoFrameArenaModIndex1, Megabytes(10));
-
+    //TODO: move to platform layer
     unsigned int threadCount = 8;
     PlatformWorkQueue *threadWorkQueue = SetupThreads(threadCount, &gameMemory);
 
@@ -264,7 +253,7 @@ int WinMain(void)
             }
             else
             {
-                Print("no thread avaliabe");
+                // Print("no thread avaliabe");
                 canvas->proccessAsap = true;
             }
 
@@ -310,7 +299,7 @@ int WinMain(void)
             {
                 if (latestCompletedProcessedImage && (latestCompletedProcessedImage->frameStarted > processedImageOfIndex->frameStarted))
                 {
-                    Print("Throwing away image");
+                    // Print("Throwing away image");
                     ResetProcessedImage(processedImageOfIndex, canvas, &gameMemory.temporaryArena);
                 }
                 else
@@ -323,7 +312,7 @@ int WinMain(void)
         if (latestCompletedProcessedImage)
         {
             UploadAndReplaceTexture(&latestCompletedProcessedImage->finalProcessedImage, &loadedTexture);
-            Print("Uploading New Image");
+            // Print("Uploading New Image");
             //TODO: put the latest uploaded image somewhere for safekeeping
             ResetProcessedImage(latestCompletedProcessedImage, canvas, &gameMemory.temporaryArena);
         }
@@ -668,6 +657,4 @@ int WinMain(void)
     }
 
     RayCloseWindow();
-
-    return 0;
 }
