@@ -9,15 +9,14 @@ enum COMMAND
     COMMAND_NULL,
     COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE,
     COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE,
+    COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM,
     COMMAND_EXPORT_IMAGE,
     COMMAND_COUNT,
 };
 
-#define MAX_KEYS_FOR_INPUT_BINDING 3
-
 struct CommandState
 {
-    KeyboardKey key[MAX_KEYS_FOR_INPUT_BINDING];
+    KeyboardKey key;
     bool down;
     bool pressed;
     bool sentValue;
@@ -31,9 +30,10 @@ enum BRUSH_EFFECT
     BRUSH_EFFECT_NULL,
     BRUSH_EFFECT_ERASE_EFFECT,
     BRUSH_EFFECT_REMOVE,
+    BRUSH_EFFECT_MAX,
 };
 
-static Color G_BRUSH_EFFECT_COLORS[] = {BLANK, BLANK, RED};
+static Color G_BRUSH_EFFECT_COLORS[] = {BLANK, BLANK, RED, YELLOW};
 
 struct Brush
 {

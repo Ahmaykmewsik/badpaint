@@ -976,7 +976,7 @@ int CALLBACK WinMain(HINSTANCE instance,
 {
     GameMemory gameMemory = {};
     InitializeArena(&gameMemory.permanentArena, Megabytes(1));
-    InitializeArena(&gameMemory.temporaryArena, Megabytes(1000));
+    InitializeArena(&gameMemory.temporaryArena, Megabytes(400));
     InitializeArena(&gameMemory.rootImageArena, Megabytes(50));
     InitializeArena(&gameMemory.canvasArena, Megabytes(500));
     InitializeArena(&gameMemory.mouseClickArena, Kilobytes(10));
@@ -984,7 +984,7 @@ int CALLBACK WinMain(HINSTANCE instance,
 
     InitializeArena(&gameMemory.twoFrameArenaModIndex0, Megabytes(10));
     InitializeArena(&gameMemory.twoFrameArenaModIndex1, Megabytes(10));
-    InitializeArena(&gameMemory.canvasRollbackArena, Megabytes(100));
+    InitializeArena(&gameMemory.canvasRollbackArena, Megabytes(800));
 
     G_STRING_TEMP_MEM_ARENA = &gameMemory.temporaryArena;
 

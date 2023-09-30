@@ -1,6 +1,7 @@
 
 #if __clang__
 #include "headersNondependent.h"
+#include "input.h"
 #endif
 
 enum IMAGE_FORMAT
@@ -29,6 +30,7 @@ struct Canvas
     Image rootImageData;
     Image drawnImageData;
     Texture texture;
+    Brush *brush;
     bool proccessAsap;
     bool needsTextureUpload;
     bool oldDataPresent;

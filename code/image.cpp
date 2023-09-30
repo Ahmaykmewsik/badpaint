@@ -92,75 +92,87 @@ BpImage LoadDataIntoRawBpImage(const char *filePath, GameMemory *gameMemory)
 
             if (outputData != NULL)
             {
-                result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
-                result.dim.x = width;
-                result.dim.y = height;
-                result.dataSize = GetSizeOfRawRGBA32(result.dim);
-                result.data = PushSize(&gameMemory->rootImageArena, result.dataSize);
-
-                if (comp != 4)
+                int dataSize = GetSizeOfRawRGBA32(WidthHeightToV2(width, height));
+                if (dataSize < 30000000)
                 {
-                    V4 *pixels = PushArray(&gameMemory->temporaryArena, width * height, V4);
-                    for (int i = 0, k = 0;
-                         i < result.dim.x * result.dim.y;
-                         i++)
+                    ResetMemoryArena(&gameMemory->rootImageArena);
+                    result.dim.x = width;
+                    result.dim.y = height;
+                    result.dataSize = dataSize;
+                    result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
+                    result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
+                    result.data = PushSize(&gameMemory->rootImageArena, result.dataSize);
+
+                    if (comp != 4)
                     {
-                        switch (comp)
+                        V4 *pixels = PushArray(&gameMemory->temporaryArena, width * height, V4);
+                        for (int i = 0, k = 0;
+                             i < result.dim.x * result.dim.y;
+                             i++)
                         {
-                        case 1:
-                        {
-                            //NOTE: PIXELFORMAT_UNCOMPRESSED_GRAYSCALE
-                            pixels[i].x = (float)((unsigned char *)outputData)[i] / 255.0f;
-                            pixels[i].y = (float)((unsigned char *)outputData)[i] / 255.0f;
-                            pixels[i].z = (float)((unsigned char *)outputData)[i] / 255.0f;
-                            pixels[i].w = 1.0f;
-                            break;
+                            switch (comp)
+                            {
+                            case 1:
+                            {
+                                //NOTE: PIXELFORMAT_UNCOMPRESSED_GRAYSCALE
+                                pixels[i].x = (float)((unsigned char *)outputData)[i] / 255.0f;
+                                pixels[i].y = (float)((unsigned char *)outputData)[i] / 255.0f;
+                                pixels[i].z = (float)((unsigned char *)outputData)[i] / 255.0f;
+                                pixels[i].w = 1.0f;
+                                break;
+                            }
+                            case 2:
+                            {
+                                //NOTE: PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA
+                                pixels[i].x = (float)((unsigned char *)outputData)[k] / 255.0f;
+                                pixels[i].y = (float)((unsigned char *)outputData)[k] / 255.0f;
+                                pixels[i].z = (float)((unsigned char *)outputData)[k] / 255.0f;
+                                pixels[i].w = (float)((unsigned char *)outputData)[k + 1] / 255.0f;
+                                k += 2;
+                                break;
+                            }
+                            case 3:
+                            {
+                                //NOTE: PIXELFORMAT_UNCOMPRESSED_R8G8B8
+                                pixels[i].x = (float)((unsigned char *)outputData)[k] / 255.0f;
+                                pixels[i].y = (float)((unsigned char *)outputData)[k + 1] / 255.0f;
+                                pixels[i].z = (float)((unsigned char *)outputData)[k + 2] / 255.0f;
+                                pixels[i].w = 1.0f;
+                                k += 3;
+                                break;
+                            }
+                                InvalidDefaultCase
+                            }
                         }
-                        case 2:
+
+                        for (int i = 0, k = 0;
+                             i < result.dataSize;
+                             i += 4, k++)
                         {
-                            //NOTE: PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA
-                            pixels[i].x = (float)((unsigned char *)outputData)[k] / 255.0f;
-                            pixels[i].y = (float)((unsigned char *)outputData)[k] / 255.0f;
-                            pixels[i].z = (float)((unsigned char *)outputData)[k] / 255.0f;
-                            pixels[i].w = (float)((unsigned char *)outputData)[k + 1] / 255.0f;
-                            k += 2;
-                            break;
-                        }
-                        case 3:
-                        {
-                            //NOTE: PIXELFORMAT_UNCOMPRESSED_R8G8B8
-                            pixels[i].x = (float)((unsigned char *)outputData)[k] / 255.0f;
-                            pixels[i].y = (float)((unsigned char *)outputData)[k + 1] / 255.0f;
-                            pixels[i].z = (float)((unsigned char *)outputData)[k + 2] / 255.0f;
-                            pixels[i].w = 1.0f;
-                            k += 3;
-                            break;
-                        }
-                            InvalidDefaultCase
+                            ((unsigned char *)result.data)[i] = (unsigned char)(pixels[k].x * 255.0f);
+                            ((unsigned char *)result.data)[i + 1] = (unsigned char)(pixels[k].y * 255.0f);
+                            ((unsigned char *)result.data)[i + 2] = (unsigned char)(pixels[k].z * 255.0f);
+                            ((unsigned char *)result.data)[i + 3] = (unsigned char)(pixels[k].w * 255.0f);
                         }
                     }
-
-                    for (int i = 0, k = 0;
-                         i < result.dataSize;
-                         i += 4, k++)
+                    else
                     {
-                        ((unsigned char *)result.data)[i] = (unsigned char)(pixels[k].x * 255.0f);
-                        ((unsigned char *)result.data)[i + 1] = (unsigned char)(pixels[k].y * 255.0f);
-                        ((unsigned char *)result.data)[i + 2] = (unsigned char)(pixels[k].z * 255.0f);
-                        ((unsigned char *)result.data)[i + 3] = (unsigned char)(pixels[k].w * 255.0f);
+                        memcpy(result.data, outputData, result.dataSize);
                     }
                 }
                 else
                 {
-                    memcpy(result.data, outputData, result.dataSize);
+                    String notification = CreateString("Holy fuck!!!! I am NOT touching that! That's WAY too big! I would crash!!!");
+                    InitNotificationMessage(notification, &gameMemory->circularScratchBuffer);
                 }
-
-                stbi_image_free(outputData);
             }
             else
             {
-                //TODO: load invalid data anyway somehow
+                String notification = CreateString("I don't recognize that as an image. In the future you'll be able to load arbitrary data, but not yet.");
+                InitNotificationMessage(notification, &gameMemory->circularScratchBuffer);
             }
+
+            stbi_image_free(outputData);
         }
     }
     else
@@ -450,7 +462,7 @@ unsigned int GetCanvasDatasize(Canvas *canvas)
     return result;
 }
 
-void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, GameMemory *gameMemory)
+void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, Brush *brush, GameMemory *gameMemory)
 {
     if (canvas->texture.id)
         UnloadTexture(canvas->texture);
@@ -502,15 +514,17 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, GameMemory *gameMemo
     canvas->rollbackImageData = PushArray(&gameMemory->canvasRollbackArena, canvas->rollbackSizeCount * canvasSize, unsigned char);
     canvas->rollbackIndexStart = 0;
     canvas->rollbackIndexNext = 0;
+
+    canvas->brush = brush;
 }
 
-void InitializeNewImage(const char *fileName, GameMemory *gameMemory, BpImage *rootBpImage, Canvas *canvas, Texture *loadedTexture)
+void InitializeNewImage(const char *fileName, GameMemory *gameMemory, BpImage *rootBpImage, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush)
 {
     *rootBpImage = LoadDataIntoRawBpImage(fileName, gameMemory);
     if (rootBpImage->data)
     {
         UploadAndReplaceTexture(rootBpImage, loadedTexture);
-        InitializeCanvas(canvas, rootBpImage, gameMemory);
+        InitializeCanvas(canvas, rootBpImage, currentBrush, gameMemory);
     }
 }
 
@@ -526,7 +540,6 @@ void UpdateBpImage(ProcessedImage *processedImage)
     Assert(processedImage->canvas->rootImageData.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
     Assert(processedImage->canvas->drawnImageData.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
 
-#if 1
     for (int i = 0;
          i < tempImage.dataSize;
          i += 1)
@@ -536,10 +549,24 @@ void UpdateBpImage(ProcessedImage *processedImage)
 
         if (canvasPixel.a)
         {
-            ((unsigned char *)tempImage.data)[i] = 0;
+            switch (processedImage->canvas->brush->brushEffect)
+            {
+            case BRUSH_EFFECT_REMOVE:
+            {
+                ((unsigned char *)tempImage.data)[i] = 0;
+                break;
+            }
+            case BRUSH_EFFECT_MAX:
+            {
+                ((unsigned char *)tempImage.data)[i] = 255;
+                break;
+            }
+            case BRUSH_EFFECT_ERASE_EFFECT:
+                break;
+                InvalidDefaultCase
+            }
         }
     }
-#endif
 
     ConvertToRawRGBA32IfNot(&tempImage, arena);
 
@@ -602,7 +629,7 @@ void StartProcessedImageWork(Canvas *canvas, unsigned int threadCount, Processed
          i++)
     {
         Color *drawnPixel = &((Color *)canvas->drawnImageData.data)[i];
-        if (drawnPixel->a == threadCount + 1 || ((drawnPixel->r || drawnPixel->g || drawnPixel->b) && canvas->oldDataPresent))
+        if (drawnPixel->a == threadCount + 1 || ((drawnPixel->r || drawnPixel->g || drawnPixel->b) && drawnPixel->a != 255 && canvas->oldDataPresent))
             drawnPixel->a = processedImage->index;
     }
 

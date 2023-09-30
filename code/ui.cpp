@@ -451,12 +451,10 @@ V2 GetCeneteredPosInRect(Rect rect, V2 dim)
     return result;
 }
 
-void RenderUiEntries(GameState *gameState, UiBox *uiBox, int uiDepth = 0)
+void RenderUiEntries(UiBox *uiBox, V2 windowPixelDim, int uiDepth = 0)
 {
     if (uiBox)
     {
-        V2 windowPixelDim = gameState->windowDim;
-
         int drawOrder = 0;
 
         if (IsFlag(uiBox, UI_FLAG_DRAW_BACKGROUND) && uiBox->uiSettings.backColor.a)
@@ -505,8 +503,8 @@ void RenderUiEntries(GameState *gameState, UiBox *uiBox, int uiDepth = 0)
             DrawRectangleLines(rect.pos.x, rect.pos.y, rect.dim.x, rect.dim.y, uiBox->uiSettings.borderColor);
         }
 
-        RenderUiEntries(gameState, uiBox->firstChild, uiDepth + 2);
-        RenderUiEntries(gameState, uiBox->next, uiDepth);
+        RenderUiEntries(uiBox->firstChild, windowPixelDim, uiDepth + 2);
+        RenderUiEntries(uiBox->next, windowPixelDim, uiDepth);
     }
 }
 
@@ -525,11 +523,4 @@ void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bo
 
     unsigned int flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED | UI_FLAG_INTERACTABLE;
     CreateUiBox(flags, string);
-}
-
-void InitNotificationMessage(String string, float *saveNotificationMessageAlpha, MemoryArena *circularScratchBuffer)
-{
-    G_NOTIFICATION_MESSAGE = string;
-    MoveStringToArena(&G_NOTIFICATION_MESSAGE, circularScratchBuffer);
-    *saveNotificationMessageAlpha = 1.0;
 }

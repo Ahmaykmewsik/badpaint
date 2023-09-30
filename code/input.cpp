@@ -15,3 +15,10 @@ bool IsCommandPressed(COMMAND command)
     bool result = G_COMMAND_STATES[command].pressed;
     return result;
 }
+
+void InitNotificationMessage(String string, MemoryArena *circularScratchBuffer)
+{
+    G_NOTIFICATION_MESSAGE = string;
+    MoveStringToArena(&G_NOTIFICATION_MESSAGE, circularScratchBuffer);
+    G_NOTIFICATION_ALPHA = 1.0;
+}

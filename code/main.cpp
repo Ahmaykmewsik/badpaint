@@ -22,7 +22,6 @@ void RunApp(GameMemory gameMemory)
         InitializeArena(&processedImage->workArena, Megabytes(300));
     }
 
-    GameState *gameState = PushStruct(&gameMemory.permanentArena, GameState);
     G_STRING_TEMP_MEM_ARENA = &gameMemory.temporaryArena;
     G_UI_INPUTS = PushStruct(&gameMemory.permanentArena, UiInputs);
     G_UI_STATE = PushStruct(&gameMemory.permanentArena, UiState);
@@ -38,8 +37,7 @@ void RunApp(GameMemory gameMemory)
 
     V2 screenDim = V2{(float)GetMonitorWidth(0), (float)GetMonitorHeight(0)};
 
-    gameState->windowDim = screenDim * 0.8f;
-    V2 windowDim = gameState->windowDim;
+    V2 windowDim = screenDim * 0.8f;
 
     V2 windowPosMiddle = PositionInCenter(screenDim, windowDim);
     SetWindowPosition(windowPosMiddle.x, windowPosMiddle.y);
@@ -59,8 +57,8 @@ void RunApp(GameMemory gameMemory)
     stbi_write_force_png_filter = 5;
     int pngFilterLastFrame = stbi_write_force_png_filter;
 
-    G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE].key[0] = KEY_E;
-    G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE].key[0] = KEY_R;
+    G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE].key = KEY_E;
+    G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE].key = KEY_R;
 
     V2 pressedMousePos = {};
     String draggedUiStringKey = {};
@@ -71,19 +69,17 @@ void RunApp(GameMemory gameMemory)
     brushSizeSlider.min = 1;
     brushSizeSlider.max = 50;
 
-    float saveNotificationMessageAlpha = 0;
-
     //NOTE: DEVELOPER HACK
-    {
-        InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootBpImage, canvas, &loadedTexture);
-    }
+    // {
+    // InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootBpImage, canvas, &loadedTexture);
+    // }
 
     while (!WindowShouldClose())
     {
         G_UI_STATE->twoFrameArenaLastFrame = GetTwoFrameArenaLastFrame(&gameMemory);
         G_UI_STATE->twoFrameArenaThisFrame = GetTwoFrameArenaThisFrame(&gameMemory);
         int uiBoxArrayIndex = GetFrameModIndexLastFrame();
-        gameState->windowDim = WidthHeightToV2(GetScreenWidth(), GetScreenHeight());
+        windowDim = WidthHeightToV2(GetScreenWidth(), GetScreenHeight());
 
         V2 mousePixelPos = V2{(float)GetMouseX(), (float)GetMouseY()};
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
@@ -95,14 +91,32 @@ void RunApp(GameMemory gameMemory)
                 pressedMousePos = mousePixelPos;
         }
 
-        ZeroArray(G_COMMAND_STATES);
-
         if (IsFileDropped())
         {
             FilePathList droppedFiles = LoadDroppedFiles();
             char *fileName = droppedFiles.paths[0];
-            InitializeNewImage(fileName, &gameMemory, rootBpImage, canvas, &loadedTexture);
+            InitializeNewImage(fileName, &gameMemory, rootBpImage, canvas, &loadedTexture, &currentBrush);
+            if (rootBpImage->dataSize > 15000000)
+            {
+                String notification = CreateString("...Are you serious?!? Ok be patient with me, this image is fucking huge. I'm not going to run well at all.");
+                InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
+            }
+            else if (rootBpImage->dataSize > 8000000)
+            {
+                String notification = CreateString("Jesus!!! I'm not really ready to edit images this big yet, but I can try. Don't blame me if I'm slow though. You asked for it.");
+                InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
+            }
+            else if (rootBpImage->dataSize > 5000000)
+            {
+                String notification = CreateString("Woah, this image is kind of large!. I'll try my best...");
+                InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
+            }
             UnloadDroppedFiles(droppedFiles);
+        }
+
+        if (IsKeyDown(KEY_E))
+        {
+            int foo = 4;
         }
 
         for (int i = 0;
@@ -110,16 +124,16 @@ void RunApp(GameMemory gameMemory)
              i++)
         {
             CommandState *state = G_COMMAND_STATES + i;
-            for (int j = 0;
-                 j < MAX_KEYS_FOR_INPUT_BINDING;
-                 j++)
+            KeyboardKey key = state->key;
+            if (key)
             {
-                KeyboardKey key = state->key[j];
-                if (key)
-                {
-                    state->down = IsKeyDown(key);
-                    state->pressed = IsKeyPressed(key);
-                }
+                state->down = IsKeyDown(key);
+                state->pressed = IsKeyPressed(key);
+            }
+            else
+            {
+                state->down = false;
+                state->pressed = false;
             }
         }
 
@@ -165,33 +179,38 @@ void RunApp(GameMemory gameMemory)
         }
 
         if (IsCommandPressed(COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE))
-        {
             currentBrush.brushEffect = BRUSH_EFFECT_ERASE_EFFECT;
-        }
-
         if (IsCommandPressed(COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE))
-        {
             currentBrush.brushEffect = BRUSH_EFFECT_REMOVE;
-        }
+        if (IsCommandPressed(COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM))
+            currentBrush.brushEffect = BRUSH_EFFECT_REMOVE;
 
         if (IsCommandPressed(COMMAND_EXPORT_IMAGE))
         {
-            String filePath = AllocateString(256, &gameMemory.temporaryArena);
-            unsigned int filepathLength;
-            bool success = GetPngImageFilePathFromUser(filePath.chars, filePath.length, &filepathLength);
-            filePath.length = filepathLength;
-            if (success && filePath.length)
+            if (loadedTexture.height && loadedTexture.width)
             {
-                Image exportImgae = LoadImageFromTexture(loadedTexture);
-                ExportImage(exportImgae, filePath);
+                String filePath = AllocateString(256, &gameMemory.temporaryArena);
+                unsigned int filepathLength;
+                bool success = GetPngImageFilePathFromUser(filePath.chars, filePath.length, &filepathLength);
+                filePath.length = filepathLength;
+                if (success && filePath.length)
+                {
+                    Image exportImgae = LoadImageFromTexture(loadedTexture);
+                    ExportImage(exportImgae, filePath);
 
-                String notification = CreateString("You have given new life to: ") + filePath;
-                InitNotificationMessage(notification, &saveNotificationMessageAlpha, &gameMemory.circularScratchBuffer);
+                    String notification = CreateString("You have given new life to: ") + filePath;
+                    InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
+                }
+                else
+                {
+                    String notification = CreateString("Sorry the save failed. You fail too. You suck. Sorry.");
+                    InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
+                }
             }
             else
             {
-                String notification = CreateString("Sorry the save failed. You fail too. You suck. Sorry.");
-                InitNotificationMessage(notification, &saveNotificationMessageAlpha, &gameMemory.circularScratchBuffer);
+                String notification = CreateString("Bruh.");
+                InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
             }
         }
 
@@ -259,6 +278,24 @@ void RunApp(GameMemory gameMemory)
 
                 break;
             }
+            case BRUSH_EFFECT_MAX:
+            {
+                unsigned int processedImageIndex = (processedImage)
+                                                       ? processedImage->index
+                                                       : threadCount + 1;
+                colorToPaint.a = processedImageIndex;
+
+                for (int i = 0;
+                     i <= distance;
+                     i++)
+                {
+                    V2 pos = Lerp(startPos, i / distance, endPos);
+                    ImageDrawCircle(&canvas->drawnImageData, pos.x, pos.y, currentBrush.size, colorToPaint);
+                }
+
+                break;
+            }
+
                 InvalidDefaultCase
             }
 
@@ -285,11 +322,12 @@ void RunApp(GameMemory gameMemory)
                 memcpy(canvas->drawnImageData.data, rollbackImage, canvasSize);
                 canvas->proccessAsap = true;
                 canvas->needsTextureUpload = true;
+                canvas->oldDataPresent = true;
             }
             else
             {
                 String notification = CreateString("The past is no more. You must now live with your mistakes. You've run out of undos!");
-                InitNotificationMessage(notification, &saveNotificationMessageAlpha, &gameMemory.circularScratchBuffer);
+                InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
             }
         }
 
@@ -388,7 +426,7 @@ void RunApp(GameMemory gameMemory)
 
         float titleBarHeight = 20;
 
-        SetUiAxis({UI_SIZE_KIND_PIXELS, gameState->windowDim.x}, {UI_SIZE_KIND_PIXELS, gameState->windowDim.y});
+        SetUiAxis({UI_SIZE_KIND_PIXELS, windowDim.x}, {UI_SIZE_KIND_PIXELS, windowDim.y});
         CreateUiBox();
         UiParent()
         {
@@ -399,32 +437,10 @@ void RunApp(GameMemory gameMemory)
             CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
             UiParent()
             {
-                SetUiAxis({UI_SIZE_KIND_TEXT}, {UI_SIZE_KIND_TEXT});
-                String fps = CreateString("FPS: ") + GetFPS();
-                CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, fps);
-
-                SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 0.4}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
-                CreateUiBox();
-
-                SetUiAxis({UI_SIZE_KIND_TEXT}, {UI_SIZE_KIND_TEXT});
-                uiSettings->frontColor = BLACK;
-                String label = CreateString("PNG Filter: ") + G_PNG_FILTER_NAMES[stbi_write_force_png_filter];
-                CreateUiBox(UI_FLAG_DRAW_TEXT, label);
-
-                SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 0.3}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
-                CreateUiBox();
-
-                SetUiAxis({UI_SIZE_KIND_PIXELS, 200}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
-                String string = CreateString("EXPORT IMAGE") + G_UI_HASH_TAG_STRING + "export";
-                G_UI_INPUTS->command = COMMAND_EXPORT_IMAGE;
-                ReactiveUiColorState uiColorState = {};
-                uiColorState.nonActive.down = DARKGREEN;
-                uiColorState.nonActive.hovered = Color{10, 238, 58, 255};
-                uiColorState.nonActive.neutral = GREEN;
-                CreateUiButton(string, uiColorState, false, false);
+                //TODO: Menu
             }
 
-            SetUiAxis({UI_SIZE_KIND_PIXELS, gameState->windowDim.x}, {UI_SIZE_KIND_PIXELS, gameState->windowDim.y - titleBarHeight});
+            SetUiAxis({UI_SIZE_KIND_PIXELS, windowDim.x}, {UI_SIZE_KIND_PIXELS, windowDim.y - titleBarHeight});
             CreateUiBox();
             UiParent()
             {
@@ -440,7 +456,7 @@ void RunApp(GameMemory gameMemory)
                     }
                     else
                     {
-                        String string = CreateString("Drop any file into the window for editing.");
+                        String string = CreateString("Drop any image into the window for editing.");
                         SetUiAxis({UI_SIZE_KIND_TEXT, 1}, {UI_SIZE_KIND_TEXT, 1});
                         CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_CENTER_IN_PARENT, string);
                     }
@@ -462,21 +478,13 @@ void RunApp(GameMemory gameMemory)
         float toolboxWidthAndHeight = 35;
         float toolbarWidth = toolboxWidthAndHeight * 2;
 
-        SetUiAxis({UI_SIZE_KIND_PIXELS, toolbarWidth}, {UI_SIZE_KIND_PIXELS, 400});
+        SetUiAxis({UI_SIZE_KIND_PIXELS, toolbarWidth}, {UI_SIZE_KIND_PIXELS, 350});
         G_UI_INPUTS->relativePixelPosition = V2{0, (float)titleBarHeight};
         uiSettings->backColor = Color{191, 191, 191, 255};
         CreateUiBox(UI_FLAG_DRAW_BACKGROUND);
         UiParent()
         {
             ReactiveUiColorState uiColorState = {};
-            uiColorState.active.disabled = DARKGRAY;
-            uiColorState.active.down = Color{100, 100, 100, 255};
-            uiColorState.active.hovered = Color{230, 230, 230, 255};
-            uiColorState.active.neutral = Color{221, 221, 221, 255};
-            uiColorState.nonActive.disabled = DARKGRAY;
-            uiColorState.nonActive.down = Color{100, 100, 100, 255};
-            uiColorState.nonActive.hovered = Color{221, 221, 221, 255};
-            uiColorState.nonActive.neutral = Color{191, 191, 191, 255};
 
             uiSettings->frontColor = BLACK;
             uiSettings->borderColor = GRAY;
@@ -531,11 +539,23 @@ void RunApp(GameMemory gameMemory)
             {
                 SetUiAxis({UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight}, {UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight});
                 String string = CreateString("E") + G_UI_HASH_TAG_STRING + CreateString(BRUSH_EFFECT_ERASE_EFFECT);
+                uiColorState.active.down = Color{100, 100, 100, 255};
+                uiColorState.active.hovered = Color{255, 255, 255, 255};
+                uiColorState.active.neutral = Color{245, 245, 245, 255};
+                uiColorState.nonActive.down = Color{100, 100, 100, 255};
+                uiColorState.nonActive.hovered = Color{221, 221, 221, 255};
+                uiColorState.nonActive.neutral = Color{191, 191, 191, 255};
                 bool active = currentBrush.brushEffect == BRUSH_EFFECT_ERASE_EFFECT;
                 G_UI_INPUTS->command = COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE;
                 CreateUiButton(string, uiColorState, active, false);
 
                 string = CreateString("R") + G_UI_HASH_TAG_STRING + CreateString(BRUSH_EFFECT_REMOVE);
+                uiColorState.active.down = Color{130, 0, 0, 255};
+                uiColorState.active.hovered = Color{240, 51, 65, 255};
+                uiColorState.active.neutral = Color{230, 41, 55, 255};
+                uiColorState.nonActive.down = Color{130, 0, 0, 255};
+                uiColorState.nonActive.hovered = Color{231, 110, 110, 255};
+                uiColorState.nonActive.neutral = Color{222, 100, 100, 255};
                 active = currentBrush.brushEffect == BRUSH_EFFECT_REMOVE;
                 G_UI_INPUTS->command = COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE;
                 CreateUiButton(string, uiColorState, active, false);
@@ -582,25 +602,54 @@ void RunApp(GameMemory gameMemory)
             }
 
             SetUiAxis({UI_SIZE_KIND_PIXELS, toolbarWidth}, {UI_SIZE_KIND_PIXELS, toolbarWidth});
+
             uiSettings->backColor = G_BRUSH_EFFECT_COLORS[currentBrush.brushEffect];
+            if (currentBrush.brushEffect == BRUSH_EFFECT_ERASE_EFFECT)
+                uiSettings->backColor = Color{100, 100, 100, 255};
+            uiSettings->borderColor = BLACK;
             CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);
         }
 
         if (G_NOTIFICATION_MESSAGE.length)
         {
             SetUiAxis({UI_SIZE_KIND_PIXELS, windowDim.x}, {UI_SIZE_KIND_TEXT});
-            uiSettings->frontColor = Color{255, 255, 255, (unsigned char)(saveNotificationMessageAlpha * 255)};
-            // uiSettings->backColor = Color{100, 100, 100, 100};
+            uiSettings->frontColor = Color{255, 255, 255, (unsigned char)(G_NOTIFICATION_ALPHA * 255)};
+            uiSettings->backColor = Color{100, 100, 100, (unsigned char)(G_NOTIFICATION_ALPHA * 255)};
             G_UI_INPUTS->relativePixelPosition = V2{0, titleBarHeight};
-            CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, G_NOTIFICATION_MESSAGE);
+            CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, G_NOTIFICATION_MESSAGE);
 
-            saveNotificationMessageAlpha -= 0.001;
-            if (saveNotificationMessageAlpha <= 0)
+            G_NOTIFICATION_ALPHA -= 0.001;
+            if (G_NOTIFICATION_ALPHA <= 0)
             {
                 G_NOTIFICATION_MESSAGE = {};
-                saveNotificationMessageAlpha = {};
+                G_NOTIFICATION_ALPHA = {};
             }
         }
+
+        SetUiAxis({UI_SIZE_KIND_TEXT}, {UI_SIZE_KIND_TEXT});
+        uiSettings->frontColor = BLACK;
+        String fps = CreateString("FPS: ") + GetFPS();
+        CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, fps);
+
+        uiSettings->frontColor = DARKGRAY;
+        G_UI_INPUTS->relativePixelPosition = V2{windowDim.x * 0.07f, 2};
+        String label = CreateString("Use 1-5 to toggle differnet PNG filter algorythms");
+        CreateUiBox(UI_FLAG_DRAW_TEXT, label);
+
+        uiSettings->frontColor = BLACK;
+        G_UI_INPUTS->relativePixelPosition = V2{windowDim.x * 0.45f, 2};
+        label = CreateString("PNG Filter: ") + G_PNG_FILTER_NAMES[stbi_write_force_png_filter];
+        CreateUiBox(UI_FLAG_DRAW_TEXT, label);
+
+        SetUiAxis({UI_SIZE_KIND_PIXELS, 200}, {UI_SIZE_KIND_TEXT});
+        G_UI_INPUTS->relativePixelPosition = V2{windowDim.x * 0.8f, 2};
+        label = CreateString("EXPORT IMAGE") + G_UI_HASH_TAG_STRING + "export";
+        G_UI_INPUTS->command = COMMAND_EXPORT_IMAGE;
+        ReactiveUiColorState uiColorState = {};
+        uiColorState.nonActive.down = DARKGREEN;
+        uiColorState.nonActive.hovered = Color{10, 238, 58, 255};
+        uiColorState.nonActive.neutral = GREEN;
+        CreateUiButton(label, uiColorState, false, false);
 
         int uiBoxArrayIndexThisFrame = GetFrameModIndexThisFrame();
 
@@ -656,7 +705,7 @@ void RunApp(GameMemory gameMemory)
                     CalculateUiDownwardsDependentSizes(uiBox);
                     CalculateUiRelativePositions(uiBox);
                     CalculateUiPosGivenReletativePositions(uiBox);
-                    RenderUiEntries(gameState, uiBox);
+                    RenderUiEntries(uiBox, windowDim);
                 }
             }
         }
