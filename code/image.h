@@ -29,9 +29,14 @@ struct Canvas
     Image rootImageData;
     Image drawnImageData;
     Texture texture;
-    BpImage *rootBpImage;
     bool proccessAsap;
     bool needsTextureUpload;
+    bool oldDataPresent;
+
+    unsigned char *rollbackImageData;
+    unsigned int rollbackSizeCount;
+    unsigned int rollbackIndexNext;
+    unsigned int rollbackIndexStart;
 };
 
 struct ProcessedImage 

@@ -526,3 +526,10 @@ void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bo
     unsigned int flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED | UI_FLAG_INTERACTABLE;
     CreateUiBox(flags, string);
 }
+
+void InitNotificationMessage(String string, float *saveNotificationMessageAlpha, MemoryArena *circularScratchBuffer)
+{
+    G_NOTIFICATION_MESSAGE = string;
+    MoveStringToArena(&G_NOTIFICATION_MESSAGE, circularScratchBuffer);
+    *saveNotificationMessageAlpha = 1.0;
+}

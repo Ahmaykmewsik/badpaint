@@ -229,7 +229,7 @@ static String filenameString = {};
 
 #define CRASH_ERROR_MESSAGE "CRAP! The game just crashed! That wasn't supposed to happen!!!"                     \
                             "\n\nThis is a problem that needs to be fixed. "                                     \
-                            "Would you like to send an anonymous crash report to Ahmaykmewsik? "                  \
+                            "Would you like to send an anonymous crash report to Ahmaykmewsik? "                 \
                             "I can send it to them via Discord so they can fix whatever the hell just happened." \
                             "\n\nIf you have a moment, please explain briefly what you were doing right before I crashed."
 
@@ -979,11 +979,12 @@ int CALLBACK WinMain(HINSTANCE instance,
     InitializeArena(&gameMemory.temporaryArena, Megabytes(1000));
     InitializeArena(&gameMemory.rootImageArena, Megabytes(50));
     InitializeArena(&gameMemory.canvasArena, Megabytes(500));
-    InitializeArena(&gameMemory.mouseClickArena, Megabytes(1));
+    InitializeArena(&gameMemory.mouseClickArena, Kilobytes(10));
     InitializeArena(&gameMemory.circularScratchBuffer, Megabytes(10), true);
 
     InitializeArena(&gameMemory.twoFrameArenaModIndex0, Megabytes(10));
     InitializeArena(&gameMemory.twoFrameArenaModIndex1, Megabytes(10));
+    InitializeArena(&gameMemory.canvasRollbackArena, Megabytes(100));
 
     G_STRING_TEMP_MEM_ARENA = &gameMemory.temporaryArena;
 

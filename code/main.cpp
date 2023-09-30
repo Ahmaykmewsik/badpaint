@@ -71,7 +71,6 @@ void RunApp(GameMemory gameMemory)
     brushSizeSlider.min = 1;
     brushSizeSlider.max = 50;
 
-    String saveNotificationMessage = {};
     float saveNotificationMessageAlpha = 0;
 
     //NOTE: DEVELOPER HACK
@@ -97,6 +96,14 @@ void RunApp(GameMemory gameMemory)
         }
 
         ZeroArray(G_COMMAND_STATES);
+
+        if (IsFileDropped())
+        {
+            FilePathList droppedFiles = LoadDroppedFiles();
+            char *fileName = droppedFiles.paths[0];
+            InitializeNewImage(fileName, &gameMemory, rootBpImage, canvas, &loadedTexture);
+            UnloadDroppedFiles(droppedFiles);
+        }
 
         for (int i = 0;
              i < COMMAND_COUNT;
@@ -178,15 +185,13 @@ void RunApp(GameMemory gameMemory)
                 Image exportImgae = LoadImageFromTexture(loadedTexture);
                 ExportImage(exportImgae, filePath);
 
-                saveNotificationMessage = CreateString("You have given new life to: ") + filePath;
-                MoveStringToArena(&saveNotificationMessage, &gameMemory.circularScratchBuffer);
-                saveNotificationMessageAlpha = 1.0;
+                String notification = CreateString("You have given new life to: ") + filePath;
+                InitNotificationMessage(notification, &saveNotificationMessageAlpha, &gameMemory.circularScratchBuffer);
             }
             else
             {
-                saveNotificationMessage = CreateString("Sorry the save failed. You fail too. You suck. Sorry.");
-                MoveStringToArena(&saveNotificationMessage, &gameMemory.circularScratchBuffer);
-                saveNotificationMessageAlpha = 1.0;
+                String notification = CreateString("Sorry the save failed. You fail too. You suck. Sorry.");
+                InitNotificationMessage(notification, &saveNotificationMessageAlpha, &gameMemory.circularScratchBuffer);
             }
         }
 
@@ -194,6 +199,16 @@ void RunApp(GameMemory gameMemory)
         UiBox *canvasUiBox = GetUiBoxLastFrameOfStringKey(canvasStringKey);
         if (canvasUiBox && canvasUiBox->down)
         {
+            if (canvasUiBox->pressed)
+            {
+                unsigned int canvasSize = GetCanvasDatasize(canvas);
+                unsigned char *newRollbackImage = &canvas->rollbackImageData[(canvasSize * canvas->rollbackIndexNext)];
+                memcpy(newRollbackImage, canvas->drawnImageData.data, canvasSize);
+                ModNext(canvas->rollbackIndexNext, canvas->rollbackSizeCount - 1);
+                if (canvas->rollbackIndexNext == canvas->rollbackIndexStart)
+                    ModNext(canvas->rollbackIndexStart, canvas->rollbackSizeCount - 1);
+            }
+
             ProcessedImage *processedImage = {};
             for (int i = 0;
                  i < threadCount;
@@ -260,19 +275,29 @@ void RunApp(GameMemory gameMemory)
             canvas->needsTextureUpload = true;
         }
 
+        if ((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown((KEY_RIGHT_CONTROL))) && IsKeyPressed(KEY_Z))
+        {
+            if (canvas->rollbackIndexNext != canvas->rollbackIndexStart)
+            {
+                ModBack(canvas->rollbackIndexNext, canvas->rollbackSizeCount - 1);
+                unsigned int canvasSize = GetCanvasDatasize(canvas);
+                unsigned char *rollbackImage = &canvas->rollbackImageData[(canvasSize * canvas->rollbackIndexNext)];
+                memcpy(canvas->drawnImageData.data, rollbackImage, canvasSize);
+                canvas->proccessAsap = true;
+                canvas->needsTextureUpload = true;
+            }
+            else
+            {
+                String notification = CreateString("The past is no more. You must now live with your mistakes. You've run out of undos!");
+                InitNotificationMessage(notification, &saveNotificationMessageAlpha, &gameMemory.circularScratchBuffer);
+            }
+        }
+
         if (canvas->proccessAsap)
         {
             ProcessedImage *processedImage = GetFreeProcessedImage(processedImages, threadCount);
             if (processedImage)
                 StartProcessedImageWork(canvas, threadCount, processedImage, threadWorkQueue);
-        }
-
-        if (IsFileDropped())
-        {
-            FilePathList droppedFiles = LoadDroppedFiles();
-            char *fileName = droppedFiles.paths[0];
-            InitializeNewImage(fileName, &gameMemory, rootBpImage, canvas, &loadedTexture);
-            UnloadDroppedFiles(droppedFiles);
         }
 
         if (IsKeyPressed(KEY_ONE))
@@ -561,18 +586,18 @@ void RunApp(GameMemory gameMemory)
             CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);
         }
 
-        if (saveNotificationMessage.length)
+        if (G_NOTIFICATION_MESSAGE.length)
         {
             SetUiAxis({UI_SIZE_KIND_PIXELS, windowDim.x}, {UI_SIZE_KIND_TEXT});
             uiSettings->frontColor = Color{255, 255, 255, (unsigned char)(saveNotificationMessageAlpha * 255)};
             // uiSettings->backColor = Color{100, 100, 100, 100};
             G_UI_INPUTS->relativePixelPosition = V2{0, titleBarHeight};
-            CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, saveNotificationMessage);
+            CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, G_NOTIFICATION_MESSAGE);
 
             saveNotificationMessageAlpha -= 0.001;
             if (saveNotificationMessageAlpha <= 0)
             {
-                saveNotificationMessage = {};
+                G_NOTIFICATION_MESSAGE = {};
                 saveNotificationMessageAlpha = {};
             }
         }

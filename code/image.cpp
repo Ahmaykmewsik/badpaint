@@ -443,6 +443,13 @@ void UploadTexture(Texture *texture, void *data, int width, int height)
     }
 }
 
+unsigned int GetCanvasDatasize(Canvas *canvas)
+{
+    V2 dim = WidthHeightToV2(canvas->drawnImageData.width, canvas->drawnImageData.height);
+    unsigned int result = GetSizeOfRawRGBA32(dim);
+    return result;
+}
+
 void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, GameMemory *gameMemory)
 {
     if (canvas->texture.id)
@@ -488,6 +495,13 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, GameMemory *gameMemo
     canvas->texture = {};
 
     canvas->needsTextureUpload = true;
+
+    ResetMemoryArena(&gameMemory->canvasRollbackArena);
+    unsigned int canvasSize = GetCanvasDatasize(canvas);
+    canvas->rollbackSizeCount = Floor((float)gameMemory->canvasRollbackArena.size / canvasSize) - 1;
+    canvas->rollbackImageData = PushArray(&gameMemory->canvasRollbackArena, canvas->rollbackSizeCount * canvasSize, unsigned char);
+    canvas->rollbackIndexStart = 0;
+    canvas->rollbackIndexNext = 0;
 }
 
 void InitializeNewImage(const char *fileName, GameMemory *gameMemory, BpImage *rootBpImage, Canvas *canvas, Texture *loadedTexture)
@@ -588,11 +602,12 @@ void StartProcessedImageWork(Canvas *canvas, unsigned int threadCount, Processed
          i++)
     {
         Color *drawnPixel = &((Color *)canvas->drawnImageData.data)[i];
-        if (drawnPixel->a == threadCount + 1)
+        if (drawnPixel->a == threadCount + 1 || ((drawnPixel->r || drawnPixel->g || drawnPixel->b) && canvas->oldDataPresent))
             drawnPixel->a = processedImage->index;
     }
 
     canvas->proccessAsap = false;
+    canvas->oldDataPresent = false;
 
     // Print("Starting Work");
     processedImage->frameStarted = G_CURRENT_FRAME;
@@ -628,7 +643,7 @@ bool ExportImage(Image image, String filepath)
     {
         result = stbi_write_jpg(filepath.chars, image.width, image.height, channels, image.data, 100); // JPG quality: between 1 and 100
     }
-    else 
+    else
     {
         // Export raw pixel data (without header)
         // NOTE: It's up to the user to track image parameters
