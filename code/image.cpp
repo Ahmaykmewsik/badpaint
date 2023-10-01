@@ -348,15 +348,18 @@ void DecodePng(BpImage *bpImage, MemoryArena *arena)
         if (outData)
         {
             bpImage->dataSize = rawRGBA32DataSize;
-            bpImage->imageFormat = IMAGE_FORMAT_RAW_RGBA32;
             bpImage->data = PushSize(arena, bpImage->dataSize);
             memcpy(bpImage->data, outData, bpImage->dataSize);
         }
     }
     else
     {
-        // Print(lodepng_error_text(state.error));
+        bpImage->dataSize = 0;
+        bpImage->data = {};
+        bpImage->dim = {};
     }
+
+    bpImage->imageFormat = IMAGE_FORMAT_RAW_RGBA32;
 
     lodepng_state_cleanup(&state);
 }
@@ -388,6 +391,8 @@ void ConvertToRawRGBA32IfNot(BpImage *bpImage, MemoryArena *arena)
             InvalidDefaultCase
         }
     }
+
+    Assert(bpImage->imageFormat == IMAGE_FORMAT_RAW_RGBA32);
 }
 
 void ConvertNewBpImage(BpImage *bpImage, IMAGE_FORMAT imageFormat, MemoryArena *temporaryArena)
@@ -462,6 +467,35 @@ unsigned int GetCanvasDatasize(Canvas *canvas)
     return result;
 }
 
+BpImage CreateDataImage(BpImage *rootBpImage, BpImage finalImage, GameMemory *gameMemory)
+{
+    BpImage result = {};
+
+    if (!finalImage.data)
+    {
+        finalImage = MakeBpImageCopy(rootBpImage, &gameMemory->temporaryArena);
+        ConvertNewBpImage(&finalImage, IMAGE_FORMAT_PNG_FILTERED, &gameMemory->temporaryArena);
+    }
+
+    float pixelCount = rootBpImage->dataSize;
+    ResetMemoryArena(&gameMemory->latestCompletedImageArena);
+    Color *pixelsRootImage = PushArray(&gameMemory->latestCompletedImageArena, pixelCount, Color);
+    for (int i = 0;
+         i < pixelCount;
+         i++)
+    {
+        unsigned char value = ((unsigned char *)finalImage.data)[i];
+        pixelsRootImage[i] = Color{value, value, value, 255};
+    }
+
+    result.data = pixelsRootImage;
+    result.dim = V2{rootBpImage->dim.x * 4, rootBpImage->dim.y} + 1;
+    result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
+    result.dataSize = pixelCount * sizeof(Color); //NOTE: sizeof(unsigned char) * 4
+
+    return result;
+}
+
 void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, Brush *brush, GameMemory *gameMemory)
 {
     if (canvas->texture.id)
@@ -477,24 +511,9 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, Brush *brush, GameMe
     float pixelCount = rootBpImage->dataSize;
 
     ResetMemoryArena(&gameMemory->canvasArena);
-    Color *pixelsRootImage = PushArray(&gameMemory->canvasArena, pixelCount, Color);
     Color *pixelsDrawn = PushArray(&gameMemory->canvasArena, pixelCount, Color);
 
-    for (int i = 0;
-         i < pixelCount;
-         i++)
-    {
-        unsigned char value = ((unsigned char *)tempImage.data)[i];
-        pixelsRootImage[i] = Color{value, value, value, 255};
-    }
-
     ZeroArrayType(pixelsDrawn, pixelCount, Color);
-
-    canvas->rootImageData.data = pixelsRootImage;
-    canvas->rootImageData.width = canvasDim.x;
-    canvas->rootImageData.height = canvasDim.y;
-    canvas->rootImageData.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
-    canvas->rootImageData.mipmaps = 1;
 
     canvas->drawnImageData.data = pixelsDrawn;
     canvas->drawnImageData.width = canvasDim.x;
@@ -518,47 +537,60 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, Brush *brush, GameMe
     canvas->brush = brush;
 }
 
-void InitializeNewImage(const char *fileName, GameMemory *gameMemory, BpImage *rootBpImage, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush)
+void InitializeNewImage(const char *fileName, GameMemory *gameMemory, BpImage *rootBpImage, BpImage *latestCompletedBpImage, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush)
 {
     *rootBpImage = LoadDataIntoRawBpImage(fileName, gameMemory);
     if (rootBpImage->data)
     {
         UploadAndReplaceTexture(rootBpImage, loadedTexture);
         InitializeCanvas(canvas, rootBpImage, currentBrush, gameMemory);
+        *latestCompletedBpImage = CreateDataImage(rootBpImage, {}, gameMemory);
     }
 }
 
-void UpdateBpImage(ProcessedImage *processedImage)
+void UpdateBpImageOnThread(ProcessedImage *processedImage)
 {
     MemoryArena *arena = &processedImage->workArena;
-    BpImage tempImage = MakeBpImageCopy(processedImage->rootBpImage, arena);
 
-    ConvertNewBpImage(&tempImage, IMAGE_FORMAT_PNG_FILTERED, arena);
+    BpImage *convertedImage = &processedImage->convertedImage;
+    *convertedImage = MakeBpImageCopy(processedImage->rootBpImage, arena);
+
+    ConvertNewBpImage(&processedImage->convertedImage, IMAGE_FORMAT_PNG_FILTERED, arena);
 
     Canvas *canvas = processedImage->canvas;
 
-    Assert(processedImage->canvas->rootImageData.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
     Assert(processedImage->canvas->drawnImageData.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
 
     for (int i = 0;
-         i < tempImage.dataSize;
+         i < convertedImage->dataSize;
          i += 1)
     {
-        // Assert(i < canvas->image.height * canvas->image.width * 4);
         Color canvasPixel = ((Color *)canvas->drawnImageData.data)[i];
 
-        if (canvasPixel.a)
+        if (canvasPixel.r)
         {
-            switch (processedImage->canvas->brush->brushEffect)
+            switch (canvasPixel.r)
             {
             case BRUSH_EFFECT_REMOVE:
             {
-                ((unsigned char *)tempImage.data)[i] = 0;
+                ((unsigned char *)convertedImage->data)[i] = 0;
                 break;
             }
             case BRUSH_EFFECT_MAX:
             {
-                ((unsigned char *)tempImage.data)[i] = 255;
+                ((unsigned char *)convertedImage->data)[i] = 255;
+                break;
+            }
+            case BRUSH_EFFECT_SHIFT:
+            {
+                int shiftAmount = 36;
+                if (i < convertedImage->dataSize - shiftAmount)
+                    ((unsigned char *)convertedImage->data)[i] = ((unsigned char *)convertedImage->data)[i + shiftAmount];
+                break;
+            }
+            case BRUSH_EFFECT_RANDOM:
+            {
+                ((unsigned char *)convertedImage->data)[i] = canvasPixel.g;
                 break;
             }
             case BRUSH_EFFECT_ERASE_EFFECT:
@@ -568,9 +600,9 @@ void UpdateBpImage(ProcessedImage *processedImage)
         }
     }
 
-    ConvertToRawRGBA32IfNot(&tempImage, arena);
+    processedImage->finalProcessedBpImage = MakeBpImageCopy(convertedImage, arena);
 
-    processedImage->finalProcessedImage = tempImage;
+    ConvertToRawRGBA32IfNot(&processedImage->finalProcessedBpImage, arena);
 }
 
 void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas, MemoryArena *temporaryArena)
@@ -579,7 +611,7 @@ void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas, MemoryA
     processedImage->active = false;
     processedImage->frameStarted = 0;
     processedImage->frameFinished = 0;
-    processedImage->finalProcessedImage = {};
+    processedImage->finalProcessedBpImage = {};
 
     unsigned int pixelCount = canvas->drawnImageData.width * canvas->drawnImageData.height;
     for (int i = 0;
@@ -616,7 +648,7 @@ PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread)
     ProcessedImage *processedImage = (ProcessedImage *)data;
     Assert(processedImage);
 
-    UpdateBpImage(processedImage);
+    UpdateBpImageOnThread(processedImage);
     processedImage->frameFinished = G_CURRENT_FRAME;
     // Print("Finished");
 }

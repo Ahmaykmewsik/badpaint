@@ -46,6 +46,18 @@ inline V4 ColorNormalizeV4(Color color)
     return result;
 }
 
+inline Color LerpColor(Color c1, float amount, Color c2)
+{
+    Color result;
+
+    result.r = Lerp(c1.r, amount, c2.r);
+    result.g = Lerp(c1.g, amount, c2.g);
+    result.b = Lerp(c1.b, amount, c2.b);
+    result.a = Lerp(c1.a, amount, c2.a);
+
+    return result;
+}
+
 inline bool operator==(Color a, Color b)
 {
     bool result = a.r == b.r &&

@@ -9,6 +9,9 @@ void RunApp(GameMemory gameMemory)
 
     BpImage *rootBpImage = PushStruct(&gameMemory.permanentArena, BpImage);
     Canvas *canvas = PushStruct(&gameMemory.permanentArena, Canvas);
+    BpImage latestCompletedBpImage = {};
+
+    bool imageIsBroken = {};
 
     ProcessedImage *processedImages = PushArray(&gameMemory.permanentArena, threadCount, ProcessedImage);
     for (int i = 0;
@@ -50,7 +53,7 @@ void RunApp(GameMemory gameMemory)
 
     Brush currentBrush = {};
     currentBrush.brushEffect = BRUSH_EFFECT_REMOVE;
-    currentBrush.size = 20;
+    currentBrush.size = 3;
 
     Texture loadedTexture = {};
 
@@ -59,6 +62,9 @@ void RunApp(GameMemory gameMemory)
 
     G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE].key = KEY_E;
     G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE].key = KEY_R;
+    G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX].key = KEY_M;
+    G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT].key = KEY_S;
+    G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM].key = KEY_N;
 
     V2 pressedMousePos = {};
     String draggedUiStringKey = {};
@@ -70,9 +76,9 @@ void RunApp(GameMemory gameMemory)
     brushSizeSlider.max = 50;
 
     //NOTE: DEVELOPER HACK
-    // {
-    // InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootBpImage, canvas, &loadedTexture);
-    // }
+    {
+        InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootBpImage, &latestCompletedBpImage, canvas, &loadedTexture, &currentBrush);
+    }
 
     while (!WindowShouldClose())
     {
@@ -95,7 +101,8 @@ void RunApp(GameMemory gameMemory)
         {
             FilePathList droppedFiles = LoadDroppedFiles();
             char *fileName = droppedFiles.paths[0];
-            InitializeNewImage(fileName, &gameMemory, rootBpImage, canvas, &loadedTexture, &currentBrush);
+            InitializeNewImage(fileName, &gameMemory, rootBpImage, &latestCompletedBpImage, canvas, &loadedTexture, &currentBrush);
+
             if (rootBpImage->dataSize > 15000000)
             {
                 String notification = CreateString("...Are you serious?!? Ok be patient with me, this image is fucking huge. I'm not going to run well at all.");
@@ -182,8 +189,12 @@ void RunApp(GameMemory gameMemory)
             currentBrush.brushEffect = BRUSH_EFFECT_ERASE_EFFECT;
         if (IsCommandPressed(COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE))
             currentBrush.brushEffect = BRUSH_EFFECT_REMOVE;
+        if (IsCommandPressed(COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX))
+            currentBrush.brushEffect = BRUSH_EFFECT_MAX;
+        if (IsCommandPressed(COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT))
+            currentBrush.brushEffect = BRUSH_EFFECT_SHIFT;
         if (IsCommandPressed(COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM))
-            currentBrush.brushEffect = BRUSH_EFFECT_REMOVE;
+            currentBrush.brushEffect = BRUSH_EFFECT_RANDOM;
 
         if (IsCommandPressed(COMMAND_EXPORT_IMAGE))
         {
@@ -216,7 +227,7 @@ void RunApp(GameMemory gameMemory)
 
         String canvasStringKey = CreateString(G_CANVAS_STRING_TAG_CHARS);
         UiBox *canvasUiBox = GetUiBoxLastFrameOfStringKey(canvasStringKey);
-        if (canvasUiBox && canvasUiBox->down)
+        if (canvasUiBox && canvasUiBox->down && !imageIsBroken)
         {
             if (canvasUiBox->pressed)
             {
@@ -241,62 +252,28 @@ void RunApp(GameMemory gameMemory)
                 }
             }
 
-            float scale = Max(1, canvas->rootImageData.width / canvasUiBox->rect.dim.x);
+            float scale = Max(1, latestCompletedBpImage.dim.x / canvasUiBox->rect.dim.x);
             V2 startPos = scale * (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos);
             V2 endPos = scale * (mousePixelPos - canvasUiBox->rect.pos);
             float distance = Max(1, DistanceV2(startPos, endPos));
-            Color colorToPaint = G_BRUSH_EFFECT_COLORS[currentBrush.brushEffect];
+            Color colorToPaint = {};
 
-            switch (currentBrush.brushEffect)
-            {
-            case BRUSH_EFFECT_ERASE_EFFECT:
-            {
-                for (int i = 0;
-                     i <= distance;
-                     i++)
-                {
-                    V2 pos = Lerp(startPos, i / distance, endPos);
-                    ImageDrawCircle(&canvas->drawnImageData, pos.x, pos.y, currentBrush.size, colorToPaint);
-                }
-
-                break;
-            }
-            case BRUSH_EFFECT_REMOVE:
+            if (currentBrush.brushEffect != BRUSH_EFFECT_ERASE_EFFECT)
             {
                 unsigned int processedImageIndex = (processedImage)
                                                        ? processedImage->index
                                                        : threadCount + 1;
+                colorToPaint.r = currentBrush.brushEffect;
+                colorToPaint.g = RandomInRangeInt(0, 255);
                 colorToPaint.a = processedImageIndex;
-
-                for (int i = 0;
-                     i <= distance;
-                     i++)
-                {
-                    V2 pos = Lerp(startPos, i / distance, endPos);
-                    ImageDrawCircle(&canvas->drawnImageData, pos.x, pos.y, currentBrush.size, colorToPaint);
-                }
-
-                break;
             }
-            case BRUSH_EFFECT_MAX:
+
+            for (int i = 0;
+                 i <= distance;
+                 i++)
             {
-                unsigned int processedImageIndex = (processedImage)
-                                                       ? processedImage->index
-                                                       : threadCount + 1;
-                colorToPaint.a = processedImageIndex;
-
-                for (int i = 0;
-                     i <= distance;
-                     i++)
-                {
-                    V2 pos = Lerp(startPos, i / distance, endPos);
-                    ImageDrawCircle(&canvas->drawnImageData, pos.x, pos.y, currentBrush.size, colorToPaint);
-                }
-
-                break;
-            }
-
-                InvalidDefaultCase
+                V2 pos = Lerp(startPos, i / distance, endPos);
+                ImageDrawCircle(&canvas->drawnImageData, pos.x, pos.y, currentBrush.size, colorToPaint);
             }
 
             if (processedImage)
@@ -323,6 +300,7 @@ void RunApp(GameMemory gameMemory)
                 canvas->proccessAsap = true;
                 canvas->needsTextureUpload = true;
                 canvas->oldDataPresent = true;
+                imageIsBroken = false;
             }
             else
             {
@@ -374,38 +352,54 @@ void RunApp(GameMemory gameMemory)
 
         if (latestCompletedProcessedImage)
         {
-            UploadAndReplaceTexture(&latestCompletedProcessedImage->finalProcessedImage, &loadedTexture);
-            // Print("Uploading New Image");
-            //TODO: put the latest uploaded image somewhere for safekeeping
+            if (latestCompletedProcessedImage->finalProcessedBpImage.data)
+            {
+                UploadAndReplaceTexture(&latestCompletedProcessedImage->finalProcessedBpImage, &loadedTexture);
+                // Print("Uploading New Image");
+                //TODO: put the latest uploaded image somewhere for safekeeping?
+            }
+            else
+            {
+                imageIsBroken = true;
+            }
+
+            ResetMemoryArena(&gameMemory.latestCompletedImageArena);
+            latestCompletedBpImage = CreateDataImage(rootBpImage, latestCompletedProcessedImage->convertedImage, &gameMemory);
             ResetProcessedImage(latestCompletedProcessedImage, canvas, &gameMemory.temporaryArena);
         }
 
-        if (canvas->needsTextureUpload)
+        if (canvas->needsTextureUpload && latestCompletedBpImage.dataSize)
         {
             canvas->needsTextureUpload = false;
             Image outputImage = {};
-            unsigned int pixelCount = canvas->rootImageData.width * canvas->rootImageData.height;
+            V2 dim = latestCompletedBpImage.dim;
+            unsigned int pixelCount = dim.x * dim.y;
             Color *pixels = PushArray(&gameMemory.temporaryArena, pixelCount, Color);
 
             for (int i = 0;
                  i < pixelCount;
                  i++)
             {
-                Color rootPixel = ((Color *)canvas->rootImageData.data)[i];
-                Color drawnPixel = ((Color *)canvas->drawnImageData.data)[i];
+                Color rootPixel = ((Color *)latestCompletedBpImage.data)[i];
+                Color canvasPixel = ((Color *)canvas->drawnImageData.data)[i];
+                Color drawnPixel = G_BRUSH_EFFECT_COLORS[canvasPixel.r];
+                Color *outPixel = (pixels + i);
 
-                if (drawnPixel.r || drawnPixel.g || drawnPixel.b || drawnPixel.a)
+                if (canvasPixel.r)
                 {
-                    if (drawnPixel.a < 255)
-                        drawnPixel.a = 100;
+                    float mix = 0.8;
+                    if (canvasPixel.a < 255)
+                        mix = 0.5;
 
-                    *(pixels + i) = drawnPixel;
+                    *outPixel = LerpColor(rootPixel, mix, drawnPixel);
                 }
                 else
-                    *(pixels + i) = rootPixel;
+                {
+                    *outPixel = rootPixel;
+                }
             }
 
-            UploadTexture(&canvas->texture, pixels, canvas->rootImageData.width, canvas->rootImageData.height);
+            UploadTexture(&canvas->texture, pixels, dim.x, dim.y);
         }
 
         //----------------------------------------------------
@@ -450,9 +444,18 @@ void RunApp(GameMemory gameMemory)
                 {
                     if (loadedTexture.id)
                     {
-                        G_UI_INPUTS->texture = loadedTexture;
-                        SetUiAxis({UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT}, {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT});
-                        CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT);
+                        if (!imageIsBroken)
+                        {
+                            G_UI_INPUTS->texture = loadedTexture;
+                            SetUiAxis({UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT}, {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT});
+                            CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT);
+                        }
+                        else
+                        {
+                            String string = CreateString("Congulations! You broke the image. (undo with Ctrl-Z)");
+                            SetUiAxis({UI_SIZE_KIND_TEXT, 1}, {UI_SIZE_KIND_TEXT, 1});
+                            CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_CENTER_IN_PARENT, string);
+                        }
                     }
                     else
                     {
@@ -475,10 +478,11 @@ void RunApp(GameMemory gameMemory)
             }
         }
 
-        float toolboxWidthAndHeight = 35;
-        float toolbarWidth = toolboxWidthAndHeight * 2;
+        float toolbarWidth = G_TOOLBOX_WIDTH_AND_HEIGHT * 2;
 
-        SetUiAxis({UI_SIZE_KIND_PIXELS, toolbarWidth}, {UI_SIZE_KIND_PIXELS, 350});
+        SetUiAxis({UI_SIZE_KIND_PIXELS, toolbarWidth}, {
+                                                           UI_SIZE_KIND_PIXELS,
+                                                       });
         G_UI_INPUTS->relativePixelPosition = V2{0, (float)titleBarHeight};
         uiSettings->backColor = Color{191, 191, 191, 255};
         CreateUiBox(UI_FLAG_DRAW_BACKGROUND);
@@ -489,89 +493,81 @@ void RunApp(GameMemory gameMemory)
             uiSettings->frontColor = BLACK;
             uiSettings->borderColor = GRAY;
 
-            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight});
+            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
             CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
             UiParent()
             {
-                SetUiAxis({UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight}, {UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight});
+                SetUiAxis({UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
                 CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);
                 CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);
             }
-            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight});
+            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
             CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
             UiParent()
             {
-                SetUiAxis({UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight}, {UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight});
+                SetUiAxis({UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
                 CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);
                 CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);
             }
-            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight});
+            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
             CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
             UiParent()
             {
-                SetUiAxis({UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight}, {UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight});
+                SetUiAxis({UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
                 CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);
                 CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);
             }
-            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight});
+            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
             CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
             UiParent()
             {
-                SetUiAxis({UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight}, {UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight});
+                SetUiAxis({UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
                 CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);
                 CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);
             }
-            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight});
+            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
             CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
             UiParent()
             {
-                SetUiAxis({UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight}, {UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight});
+                SetUiAxis({UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
                 CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);
                 CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);
-            }
-
-            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, 40});
-            CreateUiBox();
-
-            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight});
-            CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
-            UiParent()
-            {
-                SetUiAxis({UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight}, {UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight});
-                String string = CreateString("E") + G_UI_HASH_TAG_STRING + CreateString(BRUSH_EFFECT_ERASE_EFFECT);
-                uiColorState.active.down = Color{100, 100, 100, 255};
-                uiColorState.active.hovered = Color{255, 255, 255, 255};
-                uiColorState.active.neutral = Color{245, 245, 245, 255};
-                uiColorState.nonActive.down = Color{100, 100, 100, 255};
-                uiColorState.nonActive.hovered = Color{221, 221, 221, 255};
-                uiColorState.nonActive.neutral = Color{191, 191, 191, 255};
-                bool active = currentBrush.brushEffect == BRUSH_EFFECT_ERASE_EFFECT;
-                G_UI_INPUTS->command = COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE;
-                CreateUiButton(string, uiColorState, active, false);
-
-                string = CreateString("R") + G_UI_HASH_TAG_STRING + CreateString(BRUSH_EFFECT_REMOVE);
-                uiColorState.active.down = Color{130, 0, 0, 255};
-                uiColorState.active.hovered = Color{240, 51, 65, 255};
-                uiColorState.active.neutral = Color{230, 41, 55, 255};
-                uiColorState.nonActive.down = Color{130, 0, 0, 255};
-                uiColorState.nonActive.hovered = Color{231, 110, 110, 255};
-                uiColorState.nonActive.neutral = Color{222, 100, 100, 255};
-                active = currentBrush.brushEffect == BRUSH_EFFECT_REMOVE;
-                G_UI_INPUTS->command = COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE;
-                CreateUiButton(string, uiColorState, active, false);
-            }
-            uiSettings->frontColor = BLACK;
-            uiSettings->borderColor = GRAY;
-
-            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight});
-            CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
-            UiParent()
-            {
             }
 
             SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, 40});
             CreateUiBox();
 
+            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
+            CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
+            UiParent()
+            {
+                CreateBrushEffectButton(BRUSH_EFFECT_ERASE_EFFECT, CreateString("Ers"), Color{245, 245, 245, 255}, COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE, &currentBrush);
+                CreateBrushEffectButton(BRUSH_EFFECT_REMOVE, CreateString("Rmv"), G_BRUSH_EFFECT_COLORS[BRUSH_EFFECT_REMOVE], COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE, &currentBrush);
+            }
+            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
+            CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
+            UiParent()
+            {
+                CreateBrushEffectButton(BRUSH_EFFECT_MAX, CreateString("Max"), G_BRUSH_EFFECT_COLORS[BRUSH_EFFECT_MAX], COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX, &currentBrush);
+                CreateBrushEffectButton(BRUSH_EFFECT_SHIFT, CreateString("Sft"), G_BRUSH_EFFECT_COLORS[BRUSH_EFFECT_SHIFT], COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT, &currentBrush);
+            }
+            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
+            CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
+            UiParent()
+            {
+                CreateBrushEffectButton(BRUSH_EFFECT_RANDOM, CreateString("Rnd"), G_BRUSH_EFFECT_COLORS[BRUSH_EFFECT_RANDOM], COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM, &currentBrush);
+            }
+
+            // SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
+            // CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
+            // UiParent()
+            // {
+            // }
+
+            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, 40});
+            CreateUiBox();
+
+            uiSettings->backColor = Color{191, 191, 191, 255};
             SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_TEXT});
             CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED, IntToString(currentBrush.size));
 
@@ -588,7 +584,7 @@ void RunApp(GameMemory gameMemory)
             float value = MapNormalize(*brushSizeSlider.unsignedIntToChange, brushSizeSlider.min, brushSizeSlider.max);
             G_UI_INPUTS->value = value;
 
-            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, toolboxWidthAndHeight * 0.5f});
+            SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT * 0.5f});
             CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_INTERACTABLE | UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER, G_UI_HASH_TAG_STRING + stringKey);
             UiParent()
             {
@@ -605,7 +601,7 @@ void RunApp(GameMemory gameMemory)
 
             uiSettings->backColor = G_BRUSH_EFFECT_COLORS[currentBrush.brushEffect];
             if (currentBrush.brushEffect == BRUSH_EFFECT_ERASE_EFFECT)
-                uiSettings->backColor = Color{100, 100, 100, 255};
+                uiSettings->backColor = Color{245, 245, 245, 255};
             uiSettings->borderColor = BLACK;
             CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);
         }
@@ -628,8 +624,11 @@ void RunApp(GameMemory gameMemory)
 
         SetUiAxis({UI_SIZE_KIND_TEXT}, {UI_SIZE_KIND_TEXT});
         uiSettings->frontColor = BLACK;
-        String fps = CreateString("FPS: ") + GetFPS();
-        CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, fps);
+        int fps = GetFPS();
+        String fpsString = CreateString("FPS: ") + IntToString(fps);
+        if (fps < 60)
+            uiSettings->frontColor = RED;
+        CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, fpsString);
 
         uiSettings->frontColor = DARKGRAY;
         G_UI_INPUTS->relativePixelPosition = V2{windowDim.x * 0.07f, 2};

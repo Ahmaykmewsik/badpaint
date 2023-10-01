@@ -981,6 +981,7 @@ int CALLBACK WinMain(HINSTANCE instance,
     InitializeArena(&gameMemory.canvasArena, Megabytes(500));
     InitializeArena(&gameMemory.mouseClickArena, Kilobytes(10));
     InitializeArena(&gameMemory.circularScratchBuffer, Megabytes(10), true);
+    InitializeArena(&gameMemory.latestCompletedImageArena, Megabytes(100));
 
     InitializeArena(&gameMemory.twoFrameArenaModIndex0, Megabytes(10));
     InitializeArena(&gameMemory.twoFrameArenaModIndex1, Megabytes(10));

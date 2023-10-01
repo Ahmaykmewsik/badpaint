@@ -27,7 +27,6 @@ static const char *G_CANVAS_STRING_TAG_CHARS = "canvas";
 
 struct Canvas
 {
-    Image rootImageData;
     Image drawnImageData;
     Texture texture;
     Brush *brush;
@@ -47,7 +46,8 @@ struct ProcessedImage
     unsigned int index;
     BpImage *rootBpImage;
     Canvas *canvas;
-    BpImage finalProcessedImage;
+    BpImage convertedImage;
+    BpImage finalProcessedBpImage;
     MemoryArena workArena;
     unsigned int frameStarted;
     unsigned int frameFinished;

@@ -524,3 +524,39 @@ void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bo
     unsigned int flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED | UI_FLAG_INTERACTABLE;
     CreateUiBox(flags, string);
 }
+
+Color AddConstantToColor(Color color, int constant)
+{
+    Color result = color;
+
+    result.r = Clamp(0, result.r + constant, 255);
+    result.g = Clamp(0, result.g + constant, 255);
+    result.b = Clamp(0, result.b + constant, 255);
+
+    return result;
+}
+
+ReactiveUiColorState CreateButtonReactiveUiColorState(Color color)
+{
+    ReactiveUiColorState result = {};
+
+    result.active.down = AddConstantToColor(color, -100);
+    result.active.hovered = AddConstantToColor(color, 10);
+    result.active.neutral = color;
+    result.nonActive.down = AddConstantToColor(color, -100);
+    result.nonActive.hovered = AddConstantToColor(color, -20);
+    result.nonActive.neutral = AddConstantToColor(color, -50);
+    return result;
+}
+
+static float G_TOOLBOX_WIDTH_AND_HEIGHT = 35;
+
+void CreateBrushEffectButton(BRUSH_EFFECT brushEffect, String string, Color baseColor, COMMAND command, Brush *currentBrush)
+{
+    SetUiAxis({UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
+    String stringButton = string + G_UI_HASH_TAG_STRING + CreateString(brushEffect);
+    ReactiveUiColorState uiColorState = CreateButtonReactiveUiColorState(baseColor);
+    bool active = currentBrush->brushEffect == brushEffect;
+    G_UI_INPUTS->command = command;
+    CreateUiButton(stringButton, uiColorState, active, false);
+}
