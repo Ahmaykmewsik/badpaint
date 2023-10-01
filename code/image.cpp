@@ -635,15 +635,17 @@ BpImage CreateDataImage(BpImage *rootBpImage, BpImage finalImage, GameMemory *ga
 {
     BpImage result = {};
 
+#if 0
     if (!finalImage.data)
     {
         finalImage = MakeBpImageCopy(rootBpImage, &gameMemory->temporaryArena);
         ConvertNewBpImage(&finalImage, IMAGE_FORMAT_PNG_FILTERED, &gameMemory->temporaryArena);
     }
 
-    float pixelCount = rootBpImage->dataSize;
+    int pixelCount = rootBpImage->dataSize;
     ResetMemoryArena(&gameMemory->latestCompletedImageArena);
     Color *pixelsRootImage = PushArray(&gameMemory->latestCompletedImageArena, pixelCount, Color);
+
     for (int i = 0;
          i < pixelCount;
          i++)
@@ -653,6 +655,13 @@ BpImage CreateDataImage(BpImage *rootBpImage, BpImage finalImage, GameMemory *ga
     }
 
     result.data = pixelsRootImage;
+    result.dim = V2{rootBpImage->dim.x * 4, rootBpImage->dim.y} + 1;
+    result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
+    result.dataSize = pixelCount * sizeof(Color); //NOTE: sizeof(unsigned char) * 4
+#endif
+
+    int pixelCount = rootBpImage->dataSize;
+    result.data = rootBpImage->data;
     result.dim = V2{rootBpImage->dim.x * 4, rootBpImage->dim.y} + 1;
     result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
     result.dataSize = pixelCount * sizeof(Color); //NOTE: sizeof(unsigned char) * 4
@@ -676,14 +685,22 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, Brush *brush, GameMe
 
     ResetMemoryArena(&gameMemory->canvasArena);
     Color *pixelsDrawn = PushArray(&gameMemory->canvasArena, pixelCount, Color);
-
     ZeroArrayType(pixelsDrawn, pixelCount, Color);
-
     canvas->drawnImageData.data = pixelsDrawn;
     canvas->drawnImageData.width = canvasDim.x;
     canvas->drawnImageData.height = canvasDim.y;
     canvas->drawnImageData.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
     canvas->drawnImageData.mipmaps = 1;
+
+    canvas->filteredRootImage = canvas->drawnImageData;
+    canvas->filteredRootImage.data = PushArray(&gameMemory->canvasArena, pixelCount, Color);
+    for (int i = 0;
+         i < pixelCount;
+         i++)
+    {
+        unsigned char value = ((unsigned char *)tempImage.data)[i];
+        ((Color *)(canvas->filteredRootImage.data))[i] = Color{value, value, value, 255};
+    }
 
     if (canvas->texture.id)
         rlUnloadTexture(canvas->texture.id);
@@ -701,14 +718,14 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, Brush *brush, GameMe
     canvas->brush = brush;
 }
 
-void InitializeNewImage(const char *fileName, GameMemory *gameMemory, BpImage *rootBpImage, BpImage *latestCompletedBpImage, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush)
+void InitializeNewImage(const char *fileName, GameMemory *gameMemory, BpImage *rootBpImage, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush)
 {
     *rootBpImage = LoadDataIntoRawBpImage(fileName, gameMemory);
     if (rootBpImage->data)
     {
         UploadAndReplaceTexture(rootBpImage, loadedTexture);
         InitializeCanvas(canvas, rootBpImage, currentBrush, gameMemory);
-        *latestCompletedBpImage = CreateDataImage(rootBpImage, {}, gameMemory);
+        // *latestCompletedBpImage = CreateDataImage(rootBpImage, {}, gameMemory);
     }
 }
 
@@ -805,6 +822,8 @@ void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas, MemoryA
     processedImage->finalProcessedBpImage = {};
 
     unsigned int pixelCount = canvas->drawnImageData.width * canvas->drawnImageData.height;
+
+#if 1
     for (int i = 0;
          i <= pixelCount;
          i++)
@@ -813,6 +832,7 @@ void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas, MemoryA
         if ((drawnPixel->r || drawnPixel->g || drawnPixel->b) && drawnPixel->a == processedImage->index)
             drawnPixel->a = 255;
     }
+#endif
 
     canvas->needsTextureUpload = true;
 }
@@ -847,14 +867,16 @@ PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread)
 void StartProcessedImageWork(Canvas *canvas, unsigned int threadCount, ProcessedImage *processedImage, PlatformWorkQueue *threadWorkQueue)
 {
     unsigned int pixelCount = canvas->drawnImageData.width * canvas->drawnImageData.height;
+#if 1
     for (int i = 0;
          i <= pixelCount;
          i++)
     {
         Color *drawnPixel = &((Color *)canvas->drawnImageData.data)[i];
-        if (drawnPixel->a == threadCount + 1 || ((drawnPixel->r || drawnPixel->g || drawnPixel->b) && drawnPixel->a != 255 && canvas->oldDataPresent))
+        if (drawnPixel->a == threadCount + 1 || (canvas->oldDataPresent && (drawnPixel->r || drawnPixel->g || drawnPixel->b) && drawnPixel->a != 255))
             drawnPixel->a = processedImage->index;
     }
+#endif
 
     canvas->proccessAsap = false;
     canvas->oldDataPresent = false;

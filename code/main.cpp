@@ -5,7 +5,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 {
     BpImage *rootBpImage = PushStruct(&gameMemory.permanentArena, BpImage);
     Canvas *canvas = PushStruct(&gameMemory.permanentArena, Canvas);
-    BpImage latestCompletedBpImage = {};
+    // BpImage latestCompletedBpImage = {};
 
     bool imageIsBroken = {};
 
@@ -74,7 +74,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
     //NOTE: DEVELOPER HACK
     {
-        InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootBpImage, &latestCompletedBpImage, canvas, &loadedTexture, &currentBrush);
+        InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootBpImage, canvas, &loadedTexture, &currentBrush);
     }
 
     while (!WindowShouldClose())
@@ -98,7 +98,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
         {
             FilePathList droppedFiles = LoadDroppedFiles();
             char *fileName = droppedFiles.paths[0];
-            InitializeNewImage(fileName, &gameMemory, rootBpImage, &latestCompletedBpImage, canvas, &loadedTexture, &currentBrush);
+            InitializeNewImage(fileName, &gameMemory, rootBpImage, canvas, &loadedTexture, &currentBrush);
 
             if (rootBpImage->dataSize > 15000000)
             {
@@ -249,7 +249,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
                 }
             }
 
-            float scale = Max(1, latestCompletedBpImage.dim.x / canvasUiBox->rect.dim.x);
+            float scale = Max(1, canvas->filteredRootImage.width / canvasUiBox->rect.dim.x);
             V2 startPos = scale * (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos);
             V2 endPos = scale * (mousePixelPos - canvasUiBox->rect.pos);
             float distance = Max(1, DistanceV2(startPos, endPos));
@@ -361,15 +361,15 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
             }
 
             ResetMemoryArena(&gameMemory.latestCompletedImageArena);
-            latestCompletedBpImage = CreateDataImage(rootBpImage, latestCompletedProcessedImage->convertedImage, &gameMemory);
+            // latestCompletedBpImage = CreateDataImage(rootBpImage, latestCompletedProcessedImage->convertedImage, &gameMemory);
             ResetProcessedImage(latestCompletedProcessedImage, canvas, &gameMemory.temporaryArena);
         }
 
-        if (canvas->needsTextureUpload && latestCompletedBpImage.dataSize)
+        if (canvas->needsTextureUpload)
         {
             canvas->needsTextureUpload = false;
             Image outputImage = {};
-            V2 dim = latestCompletedBpImage.dim;
+            V2 dim = WidthHeightToV2(canvas->filteredRootImage.width, canvas->filteredRootImage.height);
             unsigned int pixelCount = dim.x * dim.y;
             Color *pixels = PushArray(&gameMemory.temporaryArena, pixelCount, Color);
 
@@ -377,23 +377,17 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
                  i < pixelCount;
                  i++)
             {
-                Color rootPixel = ((Color *)latestCompletedBpImage.data)[i];
+                Color rootPixel = ((Color *)canvas->filteredRootImage.data)[i];
                 Color canvasPixel = ((Color *)canvas->drawnImageData.data)[i];
                 Color drawnPixel = G_BRUSH_EFFECT_COLORS[canvasPixel.r];
                 Color *outPixel = (pixels + i);
 
-                if (canvasPixel.r)
-                {
-                    float mix = 0.8;
-                    if (canvasPixel.a < 255)
-                        mix = 0.5;
+                if (canvasPixel.a < 255)
+                    drawnPixel.a = 255 * 0.5;
+                *outPixel = drawnPixel;
 
-                    *outPixel = LerpColor(rootPixel, mix, drawnPixel);
-                }
-                else
-                {
+                if (!canvasPixel.r)
                     *outPixel = rootPixel;
-                }
             }
 
             UploadTexture(&canvas->texture, pixels, dim.x, dim.y);
@@ -705,16 +699,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
                 }
             }
         }
-#if 0
-        if (!loadedImage.data)
-        {
-            DrawText("Drop any file into this window for editing.", 100, 40, 20, DARKGRAY);
-        }
-        else
-        {
-            DrawTextureEx(loadedTexture, {0, 0}, 0, 1, WHITE);
-        }
-#endif
 
         EndDrawing();
 

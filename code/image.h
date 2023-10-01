@@ -27,6 +27,7 @@ static const char *G_CANVAS_STRING_TAG_CHARS = "canvas";
 
 struct Canvas
 {
+    Image filteredRootImage;
     Image drawnImageData;
     Texture texture;
     Brush *brush;
