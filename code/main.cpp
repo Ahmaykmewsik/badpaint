@@ -1,14 +1,8 @@
 
 #include "headers.h"
 
-void RunApp(GameMemory gameMemory)
+void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned int threadCount)
 {
-    // *(int *)0 = 0;
-
-    //TODO: move to platform layer
-    unsigned int threadCount = 12;
-    PlatformWorkQueue *threadWorkQueue = SetupThreads(threadCount, &gameMemory);
-
     BpImage *rootBpImage = PushStruct(&gameMemory.permanentArena, BpImage);
     Canvas *canvas = PushStruct(&gameMemory.permanentArena, Canvas);
     BpImage latestCompletedBpImage = {};
@@ -285,7 +279,7 @@ void RunApp(GameMemory gameMemory)
             }
             else
             {
-                Print("No thread avaliabe");
+                // Print("No thread avaliabe");
                 canvas->proccessAsap = true;
             }
 
@@ -343,7 +337,7 @@ void RunApp(GameMemory gameMemory)
             {
                 if (latestCompletedProcessedImage && (latestCompletedProcessedImage->frameStarted > processedImageOfIndex->frameStarted))
                 {
-                    Print("Throwing away image from thread " + IntToString(latestCompletedProcessedImage->index));
+                    // Print("Throwing away image from thread " + IntToString(latestCompletedProcessedImage->index));
                     ResetProcessedImage(processedImageOfIndex, canvas, &gameMemory.temporaryArena);
                 }
                 else

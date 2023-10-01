@@ -270,7 +270,9 @@ void PiratedSTB_EncodePngCompression(BpImage *bpImage, MemoryArena *arena)
     unsigned int bitbuf = 0;
     int i, j, bitcount = 0;
     unsigned char *out = NULL;
+
     unsigned char ***hash_table = (unsigned char ***)PushSize(arena, stbiw__ZHASH * sizeof(unsigned char **));
+    // unsigned char ***hash_table = (unsigned char ***)STBIW_MALLOC(stbiw__ZHASH * sizeof(unsigned char **));
 
     if (quality < 5)
         quality = 5;
@@ -518,7 +520,7 @@ void DecodePng(BpImage *bpImage, MemoryArena *arena)
         bpImage->dataSize = 0;
         bpImage->data = {};
         bpImage->dim = {};
-        Print(lodepng_error_text(state.error));
+        // Print(lodepng_error_text(state.error));
     }
 
     bpImage->imageFormat = IMAGE_FORMAT_RAW_RGBA32;

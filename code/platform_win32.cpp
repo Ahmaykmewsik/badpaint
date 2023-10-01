@@ -13,6 +13,7 @@
 // #include <string.h>
 #include "minidumpapiset.h"
 #include "winhttp.h"
+#include "sysinfoapi.h"
 
 struct WorkQueueEntry
 {
@@ -537,7 +538,6 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
         HANDLE file = nullptr;
         for (;;)
         {
-
             // Print("---------Debugger strutting it's stuff right now you know it--------");
 
             // Get debug event
@@ -548,7 +548,6 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
                 fatal_init_error("Waiting for debug event failed");
                 ExitProcess(1);
             }
-
 
             // If the process exited, nag about failure, or silently exit on success
             if (debugEvent.dwDebugEventCode == EXIT_PROCESS_DEBUG_EVENT && debugEvent.dwProcessId == processInformation.dwProcessId)
@@ -975,15 +974,13 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
     ExitProcess(1);
 }
 
-// int CALLBACK WinMain(HINSTANCE instance,
-//                      HINSTANCE prevInstance,
-//                      LPSTR commandLine,
-//                      int showCode)
-// {
-    
-int main()
+int CALLBACK WinMain(HINSTANCE instance,
+                     HINSTANCE prevInstance,
+                     LPSTR commandLine,
+                     int showCode)
 {
-
+// int main()
+// {
     GameMemory gameMemory = {};
     InitializeArena(&gameMemory.permanentArena, Megabytes(1));
     InitializeArena(&gameMemory.temporaryArena, Megabytes(400));
@@ -999,15 +996,23 @@ int main()
 
     G_STRING_TEMP_MEM_ARENA = &gameMemory.temporaryArena;
 
-    HINSTANCE instance = GetModuleHandle(NULL);
-
+    // HINSTANCE instance = GetModuleHandle(NULL);
     CrashHandler(instance, &gameMemory);
 
     //NOTE: Thanks phillip and martins :D
     const char *string_or_null = getenv("_NO_DEBUG_HEAP");
     Assert(string_or_null);
 
-    RunApp(gameMemory);
+    unsigned int threadCount = 8;
+
+    SYSTEM_INFO systemInfo;
+    GetNativeSystemInfo(&systemInfo);
+    if (systemInfo.dwNumberOfProcessors)
+        threadCount = systemInfo.dwNumberOfProcessors;
+
+    PlatformWorkQueue *threadWorkQueue = SetupThreads(threadCount, &gameMemory);
+
+    RunApp(threadWorkQueue, gameMemory, threadCount);
 
     return 0;
 }

@@ -3,9 +3,10 @@
 #include "vn_intrinsics.h"
 #include "vn_string.h"
 #include "vn_math.h"
+#include "platform_win32.h"
 #endif
 
-void RunApp(GameMemory gameMemory);
+void RunApp(PlatformWorkQueue *platformWorkQueue, GameMemory gameMemory, unsigned int threadCount);
 
 #define VERSION_NUMBER "0.0.1"
 

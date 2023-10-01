@@ -734,6 +734,9 @@ inline bool operator!=(String s, const char *c)
     return !(c == s);
 }
 
+//NOTE: NO MORE PRINTING FOR YOU BUSTER
+//(Unless you uncomment this)
+#if 0
 inline void Print(String s)
 {
     printf("%s\n", s.chars);
@@ -791,6 +794,7 @@ inline void Print(long long unsigned int i)
 {
     printf("%llu", i);
 }
+#endif
 
 inline uintptr_t ConvertString_(String string, const char **stringArray, int sizeOfStringArray)
 {
