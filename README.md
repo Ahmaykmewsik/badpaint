@@ -2,11 +2,11 @@
 # **badpaint** 
 *An experimental real-time image corruption editor*
 
-[Image here]
+https://github.com/Ahmaykmewsik/badpaint/assets/6686290/3d97b0c9-4557-444a-8a15-e29e99a30e05
 
 *"It's like ms paint but bad" - Steve Jobs*
 
-## Features 
+# Features 
 - paint data directly onto a compressed image's data to make it glitch out
 - multithreaded image encoding updates your corrupted image in real time as you work
 - you can even break the image if you can figure out how (don't worry you have undo)
@@ -20,8 +20,7 @@ Warning: as this is was jam project, new features and experimentation were prior
 
 The jam page for this project, including logs of the jam's development, can be found here: https://handmade.network/p/441/badpaint/.
 
-----------------------
-## Installation & basic usage
+# Installation & basic usage
 The jam version of the application (v0.0.1) is available for tinkering here. To use the application, uncompress it and open it. Then drag any image onto the window and paint the bottom image.
 
 **Controls & keyboard shortcuts**
@@ -36,7 +35,7 @@ The jam version of the application (v0.0.1) is available for tinkering here. To 
 
 If the app crashes for any reason, a crash reporter will prompt you if you like to send a crash report via a discord webhook.
 
-## What the heck is going on? 
+# What the heck is going on? 
 The editor is surprisingly simple. The bottom image displays the raw data from a PNG in the middle of it's encoding process. Each byte is represented by a pixel ranging from black to white (0-255). The data is the state of the PNG after the PNG has gone through algorythmic filtering and before it is compressed. The pixels you insert via painting adds unintended arbitrary bytes into the data stream which are then compressed incorrectly by the PNG encoding algorithm resulting in the striking colorful glitches you see in the final top image. 
 
 You can press 1-5 to toggle different PNG filter algorithms, the effects of which will be visible in both windows. Something I didn't expect from this project is that playing with the data gives you an intuitive view of how a PNG is encoded. 
