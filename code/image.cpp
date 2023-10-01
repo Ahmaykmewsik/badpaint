@@ -253,18 +253,176 @@ void PiratedSTB_EncodePngCompression(BpImage *bpImage, MemoryArena *arena)
 
     int x = bpImage->dim.x;
     int y = bpImage->dim.y;
-    int n = 4;
+    // int n = 4;
     unsigned char *filt = (unsigned char *)bpImage->data;
 
     int dataSize = {};
 
-    //TODO: break apart so we don't have another copy here
-    // Print("STARTING STB COMPRESSION");
-    unsigned char *out = stbi_zlib_compress(filt, y * (x * n + 1), &dataSize, stbi_write_png_compression_level);
+    unsigned char *data = filt;
+    int data_len = y * (x * 4 + 1);
+    int *out_len = &dataSize;
+    int quality = stbi_write_png_compression_level;
+
+    static unsigned short lengthc[] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 259};
+    static unsigned char lengtheb[] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0};
+    static unsigned short distc[] = {1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 32768};
+    static unsigned char disteb[] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
+    unsigned int bitbuf = 0;
+    int i, j, bitcount = 0;
+    unsigned char *out = NULL;
+    unsigned char ***hash_table = (unsigned char ***)PushSize(arena, stbiw__ZHASH * sizeof(unsigned char **));
+
+    if (quality < 5)
+        quality = 5;
+
+    stbiw__sbpush(out, 0x78); // DEFLATE 32K window
+    stbiw__sbpush(out, 0x5e); // FLEVEL = 1
+    stbiw__zlib_add(1, 1);    // BFINAL = 1
+    stbiw__zlib_add(1, 2);    // BTYPE = 1 -- fixed huffman
+
+    for (i = 0; i < stbiw__ZHASH; ++i)
+        hash_table[i] = NULL;
+
+    //  Print("STB COMPRESSION -- START WHILE LOOP");
+    i = 0;
+    while (i < data_len - 3)
+    {
+        // hash next 3 bytes of data to be compressed
+        int h = stbiw__zhash(data + i) & (stbiw__ZHASH - 1), best = 3;
+        unsigned char *bestloc = 0;
+        unsigned char **hlist = hash_table[h];
+        int n = stbiw__sbcount(hlist);
+        for (j = 0; j < n; ++j)
+        {
+            if (hlist[j] - data > i - 32768)
+            { // if entry lies within window
+                int d = stbiw__zlib_countm(hlist[j], data + i, data_len - i);
+                if (d >= best)
+                {
+                    best = d;
+                    bestloc = hlist[j];
+                }
+            }
+        }
+        // when hash table entry is too long, delete half the entries
+        if (hash_table[h] && stbiw__sbn(hash_table[h]) == 2 * quality)
+        {
+            STBIW_MEMMOVE(hash_table[h], hash_table[h] + quality, sizeof(hash_table[h][0]) * quality);
+            stbiw__sbn(hash_table[h]) = quality;
+        }
+        stbiw__sbpush(hash_table[h], data + i);
+
+        if (bestloc)
+        {
+            // "lazy matching" - check match at *next* byte, and if it's better, do cur byte as literal
+            h = stbiw__zhash(data + i + 1) & (stbiw__ZHASH - 1);
+            hlist = hash_table[h];
+            n = stbiw__sbcount(hlist);
+            for (j = 0; j < n; ++j)
+            {
+                if (hlist[j] - data > i - 32767)
+                {
+                    int e = stbiw__zlib_countm(hlist[j], data + i + 1, data_len - i - 1);
+                    if (e > best)
+                    { // if next match is better, bail on current match
+                        bestloc = NULL;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (bestloc)
+        {
+            int d = (int)(data + i - bestloc); // distance back
+            STBIW_ASSERT(d <= 32767 && best <= 258);
+            for (j = 0; best > lengthc[j + 1] - 1; ++j)
+                ;
+            stbiw__zlib_huff(j + 257);
+            if (lengtheb[j])
+                stbiw__zlib_add(best - lengthc[j], lengtheb[j]);
+            for (j = 0; d > distc[j + 1] - 1; ++j)
+                ;
+            stbiw__zlib_add(stbiw__zlib_bitrev(j, 5), 5);
+            if (disteb[j])
+                stbiw__zlib_add(d - distc[j], disteb[j]);
+            i += best;
+        }
+        else
+        {
+            stbiw__zlib_huffb(data[i]);
+            ++i;
+        }
+    }
+
+    //  Print("STB COMPRESSION -- WRITE FINAL BYTES");
+    // write out final bytes
+    for (; i < data_len; ++i)
+        stbiw__zlib_huffb(data[i]);
+    stbiw__zlib_huff(256); // end of block
+    // pad with 0 bits to byte boundary
+    while (bitcount)
+        stbiw__zlib_add(0, 1);
+
+#if 0
+    for (i = 0; i < stbiw__ZHASH; ++i)
+        (void)stbiw__sbfree(hash_table[i]);
+    STBIW_FREE(hash_table);
+#endif
+
+    // store uncompressed instead if compression was worse
+    if (stbiw__sbn(out) > data_len + 2 + ((data_len + 32766) / 32767) * 5)
+    {
+        stbiw__sbn(out) = 2; // truncate to DEFLATE 32K window and FLEVEL = 1
+        for (j = 0; j < data_len;)
+        {
+            int blocklen = data_len - j;
+            if (blocklen > 32767)
+                blocklen = 32767;
+            stbiw__sbpush(out, data_len - j == blocklen); // BFINAL = ?, BTYPE = 0 -- no compression
+            stbiw__sbpush(out, STBIW_UCHAR(blocklen));    // LEN
+            stbiw__sbpush(out, STBIW_UCHAR(blocklen >> 8));
+            stbiw__sbpush(out, STBIW_UCHAR(~blocklen)); // NLEN
+            stbiw__sbpush(out, STBIW_UCHAR(~blocklen >> 8));
+            memcpy(out + stbiw__sbn(out), data + j, blocklen);
+            stbiw__sbn(out) += blocklen;
+            j += blocklen;
+        }
+    }
+
+    {
+        // compute adler32 on input
+        unsigned int s1 = 1, s2 = 0;
+        int blocklen = (int)(data_len % 5552);
+        j = 0;
+        while (j < data_len)
+        {
+            for (i = 0; i < blocklen; ++i)
+            {
+                s1 += data[j + i];
+                s2 += s1;
+            }
+            s1 %= 65521;
+            s2 %= 65521;
+            j += blocklen;
+            blocklen = 5552;
+        }
+        stbiw__sbpush(out, STBIW_UCHAR(s2 >> 8));
+        stbiw__sbpush(out, STBIW_UCHAR(s2));
+        stbiw__sbpush(out, STBIW_UCHAR(s1 >> 8));
+        stbiw__sbpush(out, STBIW_UCHAR(s1));
+    }
+    *out_len = stbiw__sbn(out);
+    // make returned pointer freeable
+    STBIW_MEMMOVE(stbiw__sbraw(out), out, *out_len);
+
+    unsigned char *dataOut = (unsigned char *)stbiw__sbraw(out);
+
     // Print("FINISHED STB COMPRESSION");
 
+    // int dataSize = out_len;
     bpImage->data = PushSize(arena, dataSize);
-    memcpy(bpImage->data, out, dataSize);
+    memcpy(bpImage->data, dataOut, dataSize);
 
     bpImage->dataSize = dataSize;
     bpImage->imageFormat = IMAGE_FORMAT_PNG_COMPRESSED;
@@ -352,6 +510,7 @@ void DecodePng(BpImage *bpImage, MemoryArena *arena)
             bpImage->dataSize = rawRGBA32DataSize;
             bpImage->data = PushSize(arena, bpImage->dataSize);
             memcpy(bpImage->data, outData, bpImage->dataSize);
+            lodepng_free(outData);
         }
     }
     else
@@ -359,6 +518,7 @@ void DecodePng(BpImage *bpImage, MemoryArena *arena)
         bpImage->dataSize = 0;
         bpImage->data = {};
         bpImage->dim = {};
+        Print(lodepng_error_text(state.error));
     }
 
     bpImage->imageFormat = IMAGE_FORMAT_RAW_RGBA32;

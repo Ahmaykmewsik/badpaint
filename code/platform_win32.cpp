@@ -469,6 +469,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
         siw.hStdError = GetStdHandle(STD_OUTPUT_HANDLE);
         PROCESS_INFORMATION processInformation = {}; // @Leak: CloseHandle()
 
+        SetEnvironmentVariableA("_NO_DEBUG_HEAP", "1");
 
         // Launch suspended, then read-modify-write the PEB (see below), then resume -p 2022-03-04
         if (!CreateProcessW(nullptr, cmdNew, nullptr, nullptr, true,
@@ -537,7 +538,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
         for (;;)
         {
 
-            Print("---------Debugger strutting it's stuff right now you know it--------");
+            // Print("---------Debugger strutting it's stuff right now you know it--------");
 
             // Get debug event
             DEBUG_EVENT debugEvent = {};
@@ -982,6 +983,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
     
 int main()
 {
+
     GameMemory gameMemory = {};
     InitializeArena(&gameMemory.permanentArena, Megabytes(1));
     InitializeArena(&gameMemory.temporaryArena, Megabytes(400));
@@ -1000,6 +1002,10 @@ int main()
     HINSTANCE instance = GetModuleHandle(NULL);
 
     CrashHandler(instance, &gameMemory);
+
+    //NOTE: Thanks phillip and martins :D
+    const char *string_or_null = getenv("_NO_DEBUG_HEAP");
+    Assert(string_or_null);
 
     RunApp(gameMemory);
 

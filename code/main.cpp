@@ -6,7 +6,7 @@ void RunApp(GameMemory gameMemory)
     // *(int *)0 = 0;
 
     //TODO: move to platform layer
-    unsigned int threadCount = 1;
+    unsigned int threadCount = 12;
     PlatformWorkQueue *threadWorkQueue = SetupThreads(threadCount, &gameMemory);
 
     BpImage *rootBpImage = PushStruct(&gameMemory.permanentArena, BpImage);
