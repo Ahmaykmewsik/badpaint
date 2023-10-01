@@ -202,7 +202,7 @@ bool SendGodDammitErrorWindow(HWND hWnd, const char *error)
     String string = CreateString("...oops, that didn't work. ") + error + " Try again?";
     wchar_t *stringW = ConvertToWideString(string);
 
-    int windowsResult = MessageBoxW(hWnd, stringW, L"GOD DAMMIT THAT DIDN'T WORK FUCK FUCK FUCK", MB_RETRYCANCEL | MB_ICONWARNING | MB_SYSTEMMODAL);
+    int windowsResult = MessageBoxW(hWnd, stringW, L"OH NO THAT DIDN'T WORK AAAAAAAAAAAAAAAAAAAAAAAAAAAA", MB_RETRYCANCEL | MB_ICONWARNING | MB_SYSTEMMODAL);
     bool result = windowsResult == IDRETRY;
 
     return result;
@@ -224,8 +224,8 @@ static String filenameString = {};
 
 #define DISCORD_WEBHOOK_ENDPOINT "/api/webhooks/1128779890456539156/beJJyIYDF8z2KLUsZulyOyf5gklQRcF8OyYKa2qDr-qVJTE_vIWKO_lDG7eGgohuKzvA"
 
-#define CRASH_ERROR_TITLE "OH SHITBALLS WE JUST CRASHED"
-#define CRASH_ERROR_TITLE_WIDE L"OH SHITBALLS WE JUST CRASHED"
+#define CRASH_ERROR_TITLE "OH FISHSTICKS WE JUST CRASHED"
+#define CRASH_ERROR_TITLE_WIDE L"OH FISHSTICKS WE JUST CRASHED"
 
 #define CRASH_ERROR_MESSAGE "CRAP! The game just crashed! That wasn't supposed to happen!!!"                     \
                             "\n\nThis is a problem that needs to be fixed. "                                     \
@@ -238,7 +238,7 @@ static String filenameString = {};
 
 #define crash_report_failure(str)                                                                                \
     ErrBox(                                                                                                      \
-        "OH SHIT. We done messed up BAD. "                                                                       \
+        "OH CRAP. We done messed up BAD. "                                                                       \
         "We messed up so bad that I couldn't even make a crash report! "                                         \
         "Don't even ask, man, that really freaked me out.\n\n" str " \n\n"                                       \
         "Please report this to notfungamesdeveloper@gmail.com or to Ahmaykmewsik on Discord, if you know them.", \
@@ -958,7 +958,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
                                             ? L"Alright. Shall I restart?"
                                             : L"Restart?";
 
-        if (MessageBoxW(nullptr, uploadedString, L"OH SHITBALLS WE CRASHED",
+        if (MessageBoxW(nullptr, uploadedString, L"OH FISHSTICKS WE CRASHED",
                         MB_YESNO | MB_ICONQUESTION | MB_SYSTEMMODAL | MB_SETFOREGROUND) != IDYES)
         {
             break;

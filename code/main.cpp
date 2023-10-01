@@ -105,12 +105,12 @@ void RunApp(GameMemory gameMemory)
 
             if (rootBpImage->dataSize > 15000000)
             {
-                String notification = CreateString("...Are you serious?!? Ok be patient with me, this image is fucking huge. I'm not going to run well at all.");
+                String notification = CreateString("...Are you serious?!? Ok be patient with me, this image is freaking huge. I'm not going to run well at all.");
                 InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
             }
             else if (rootBpImage->dataSize > 8000000)
             {
-                String notification = CreateString("Jesus!!! I'm not really ready to edit images this big yet, but I can try. Don't blame me if I'm slow though. You asked for it.");
+                String notification = CreateString("Uh...I'm not really ready to edit images this big yet, but I can try. Don't blame me if I'm slow though. You asked for it.");
                 InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
             }
             else if (rootBpImage->dataSize > 5000000)

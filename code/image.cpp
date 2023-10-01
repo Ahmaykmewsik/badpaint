@@ -162,7 +162,7 @@ BpImage LoadDataIntoRawBpImage(const char *filePath, GameMemory *gameMemory)
                 }
                 else
                 {
-                    String notification = CreateString("Holy fuck!!!! I am NOT touching that! That's WAY too big! I would crash!!!");
+                    String notification = CreateString("Geez!!! I am NOT touching that! That's WAY too big! I would crash!!!");
                     InitNotificationMessage(notification, &gameMemory->circularScratchBuffer);
                 }
             }
