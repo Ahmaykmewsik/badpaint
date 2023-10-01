@@ -770,7 +770,22 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
     // Print("Made copy of canvas edit on thead " + IntToString(processedImage->index));
 
     // ConvertToRawRGBA32IfNot(&processedImage->finalProcessedBpImage, arena);
-    PiratedSTB_EncodePngCompression(&processedImage->finalProcessedBpImage, arena);
+    // PiratedSTB_EncodePngCompression(&processedImage->finalProcessedBpImage, arena);
+
+    if (true)
+    {
+        unsigned char *tempData = (unsigned char *)PushSize(arena, processedImage->finalProcessedBpImage.dataSize);
+        fpng::pixel_deflate_dyn_4_rle_one_pass((const uint8_t *)processedImage->finalProcessedBpImage.data,
+                                               processedImage->finalProcessedBpImage.dim.x,
+                                               processedImage->finalProcessedBpImage.dim.y,
+                                               tempData, processedImage->finalProcessedBpImage.dataSize);
+        memcpy(processedImage->finalProcessedBpImage.data, tempData, processedImage->finalProcessedBpImage.dataSize);
+        processedImage->finalProcessedBpImage.imageFormat = IMAGE_FORMAT_PNG_COMPRESSED;
+    }
+    else
+    {
+        PiratedSTB_EncodePngCompression(&processedImage->finalProcessedBpImage, arena);
+    }
 
     // Print("Encoded PNG COmpression on thread " + IntToString(processedImage->index));
     PiratedSTB_EncodePngCRC(&processedImage->finalProcessedBpImage, arena);

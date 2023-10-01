@@ -22,3 +22,6 @@
 
 #include "../includes/lodepng.h"
 #include "../includes/lodepng.c"
+
+#include "../includes/fpng.cpp"
+#include "../includes/fpng.h"
