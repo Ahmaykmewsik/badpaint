@@ -24,6 +24,7 @@ IF NOT EXIST "%DIRECTORY_NAME%" (
     mkdir "%DIRECTORY_NAME%"
 )
 
+set FLAGS= -EHsc -Zi -Od 
 set CODEPATHS= ..\code\platform_win32.cpp ..\code\main.cpp
 set INCLUDES= -I ..\includes\ 
 set LIBRARIES= .\libraries\builtLibraries.lib user32.lib shell32.lib gdi32.lib winmm.lib kernel32.lib Ole32.lib winhttp.lib dbghelp.lib comctl32.lib
@@ -31,7 +32,7 @@ set LIBRARIES= .\libraries\builtLibraries.lib user32.lib shell32.lib gdi32.lib w
 @REM Uncomment when you want to update the application icon
 @REM rc resources.rc
 
-set COMMAND= cl -EHsc -Zi -O2 %CODEPATHS% %INCLUDES% %LIBRARIES% /Fe"%DIRECTORY_NAME%\badpaint.exe"
+set COMMAND= cl %FLAGS% %CODEPATHS% %INCLUDES% %LIBRARIES% /Fe"%DIRECTORY_NAME%\badpaint.exe"
 
 @REM%COMMAND% 
 

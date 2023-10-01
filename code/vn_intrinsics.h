@@ -17,11 +17,15 @@
 
 #define ArrayCount(Array) (int)(sizeof(Array) / sizeof((Array)[0]))
 
+#if RELEASE_BUILD
+#define Assert(expression)
+#else
 #define Assert(expression) \
     if (!(expression))     \
     {                      \
         *(int *)0 = 0;     \
     }
+#endif
 
 // if (!!(expression))
 //     __debugbreak()

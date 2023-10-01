@@ -469,6 +469,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
         siw.hStdError = GetStdHandle(STD_OUTPUT_HANDLE);
         PROCESS_INFORMATION processInformation = {}; // @Leak: CloseHandle()
 
+
         // Launch suspended, then read-modify-write the PEB (see below), then resume -p 2022-03-04
         if (!CreateProcessW(nullptr, cmdNew, nullptr, nullptr, true,
                             CREATE_SUSPENDED | DEBUG_ONLY_THIS_PROCESS, nullptr, nullptr, &siw, &processInformation))
@@ -520,8 +521,8 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
             if (!WriteProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), &processBytesWritten) || processBytesWritten != sizeof(peb))
                 return;
         };
-        persuade_process_no_debugger_is_present(pi.hProcess);
 #endif
+        // persuade_process_no_debugger_is_present(processInformation.hProcess);
 
         // Kick off the subprocess
         if (ResumeThread(processInformation.hThread) != 1)
@@ -535,6 +536,9 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
         HANDLE file = nullptr;
         for (;;)
         {
+
+            Print("---------Debugger strutting it's stuff right now you know it--------");
+
             // Get debug event
             DEBUG_EVENT debugEvent = {};
             if (!WaitForDebugEvent(&debugEvent, INFINITE))
@@ -543,6 +547,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
                 fatal_init_error("Waiting for debug event failed");
                 ExitProcess(1);
             }
+
 
             // If the process exited, nag about failure, or silently exit on success
             if (debugEvent.dwDebugEventCode == EXIT_PROCESS_DEBUG_EVENT && debugEvent.dwProcessId == processInformation.dwProcessId)
@@ -969,10 +974,13 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
     ExitProcess(1);
 }
 
-int CALLBACK WinMain(HINSTANCE instance,
-                     HINSTANCE prevInstance,
-                     LPSTR commandLine,
-                     int showCode)
+// int CALLBACK WinMain(HINSTANCE instance,
+//                      HINSTANCE prevInstance,
+//                      LPSTR commandLine,
+//                      int showCode)
+// {
+    
+int main()
 {
     GameMemory gameMemory = {};
     InitializeArena(&gameMemory.permanentArena, Megabytes(1));
@@ -980,7 +988,7 @@ int CALLBACK WinMain(HINSTANCE instance,
     InitializeArena(&gameMemory.rootImageArena, Megabytes(50));
     InitializeArena(&gameMemory.canvasArena, Megabytes(500));
     InitializeArena(&gameMemory.mouseClickArena, Kilobytes(10));
-    InitializeArena(&gameMemory.circularScratchBuffer, Megabytes(10), true);
+    InitializeArena(&gameMemory.circularScratchBuffer, Megabytes(500), true);
     InitializeArena(&gameMemory.latestCompletedImageArena, Megabytes(100));
 
     InitializeArena(&gameMemory.twoFrameArenaModIndex0, Megabytes(10));
@@ -988,6 +996,8 @@ int CALLBACK WinMain(HINSTANCE instance,
     InitializeArena(&gameMemory.canvasRollbackArena, Megabytes(800));
 
     G_STRING_TEMP_MEM_ARENA = &gameMemory.temporaryArena;
+
+    HINSTANCE instance = GetModuleHandle(NULL);
 
     CrashHandler(instance, &gameMemory);
 

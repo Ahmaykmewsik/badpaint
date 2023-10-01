@@ -259,7 +259,9 @@ void PiratedSTB_EncodePngCompression(BpImage *bpImage, MemoryArena *arena)
     int dataSize = {};
 
     //TODO: break apart so we don't have another copy here
+    // Print("STARTING STB COMPRESSION");
     unsigned char *out = stbi_zlib_compress(filt, y * (x * n + 1), &dataSize, stbi_write_png_compression_level);
+    // Print("FINISHED STB COMPRESSION");
 
     bpImage->data = PushSize(arena, dataSize);
     memcpy(bpImage->data, out, dataSize);
@@ -550,6 +552,8 @@ void InitializeNewImage(const char *fileName, GameMemory *gameMemory, BpImage *r
 
 void UpdateBpImageOnThread(ProcessedImage *processedImage)
 {
+    // Print("Staring Work on thread " + IntToString(processedImage->index));
+
     MemoryArena *arena = &processedImage->workArena;
 
     BpImage *convertedImage = &processedImage->convertedImage;
@@ -601,8 +605,18 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
     }
 
     processedImage->finalProcessedBpImage = MakeBpImageCopy(convertedImage, arena);
+    // Print("Made copy of canvas edit on thead " + IntToString(processedImage->index));
 
-    ConvertToRawRGBA32IfNot(&processedImage->finalProcessedBpImage, arena);
+    // ConvertToRawRGBA32IfNot(&processedImage->finalProcessedBpImage, arena);
+    PiratedSTB_EncodePngCompression(&processedImage->finalProcessedBpImage, arena);
+
+    // Print("Encoded PNG COmpression on thread " + IntToString(processedImage->index));
+    PiratedSTB_EncodePngCRC(&processedImage->finalProcessedBpImage, arena);
+    // Print("Encoded PNG CRC on thread " + IntToString(processedImage->index));
+    DecodePng(&processedImage->finalProcessedBpImage, arena);
+    // Print("Decoded PNG on thread " + IntToString(processedImage->index));
+
+    // Print("Converted to final PNG on thead " + IntToString(processedImage->index));
 }
 
 void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas, MemoryArena *temporaryArena)
@@ -650,7 +664,7 @@ PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread)
 
     UpdateBpImageOnThread(processedImage);
     processedImage->frameFinished = G_CURRENT_FRAME;
-    // Print("Finished");
+    // Print("Finished on thread " + IntToString(processedImage->index));
 }
 
 void StartProcessedImageWork(Canvas *canvas, unsigned int threadCount, ProcessedImage *processedImage, PlatformWorkQueue *threadWorkQueue)
@@ -668,7 +682,7 @@ void StartProcessedImageWork(Canvas *canvas, unsigned int threadCount, Processed
     canvas->proccessAsap = false;
     canvas->oldDataPresent = false;
 
-    // Print("Starting Work");
+    // Print("Queueing Work on thread " + IntToString(processedImage->index));
     processedImage->frameStarted = G_CURRENT_FRAME;
     processedImage->active = true;
     PlatformAddThreadWorkEntry(threadWorkQueue, ProcessImageOnThread, (void *)processedImage);

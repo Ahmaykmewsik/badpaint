@@ -3,8 +3,10 @@
 
 void RunApp(GameMemory gameMemory)
 {
+    // *(int *)0 = 0;
+
     //TODO: move to platform layer
-    unsigned int threadCount = 8;
+    unsigned int threadCount = 1;
     PlatformWorkQueue *threadWorkQueue = SetupThreads(threadCount, &gameMemory);
 
     BpImage *rootBpImage = PushStruct(&gameMemory.permanentArena, BpImage);
@@ -26,6 +28,7 @@ void RunApp(GameMemory gameMemory)
     }
 
     G_STRING_TEMP_MEM_ARENA = &gameMemory.temporaryArena;
+    _G_CIRCULAR_ARENA_DONT_FUCKING_USE_THIS_EXCEPT_IN_A_MACRO = &gameMemory.circularScratchBuffer;
     G_UI_INPUTS = PushStruct(&gameMemory.permanentArena, UiInputs);
     G_UI_STATE = PushStruct(&gameMemory.permanentArena, UiState);
     G_UI_HASH_TAG_STRING = CreateStringOnArena("##", &gameMemory.permanentArena);
@@ -62,7 +65,7 @@ void RunApp(GameMemory gameMemory)
 
     G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE].key = KEY_E;
     G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE].key = KEY_R;
-    G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX].key = KEY_M;
+    G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX].key = KEY_A;
     G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT].key = KEY_S;
     G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM].key = KEY_N;
 
@@ -282,7 +285,7 @@ void RunApp(GameMemory gameMemory)
             }
             else
             {
-                // Print("no thread avaliabe");
+                Print("No thread avaliabe");
                 canvas->proccessAsap = true;
             }
 
@@ -340,7 +343,7 @@ void RunApp(GameMemory gameMemory)
             {
                 if (latestCompletedProcessedImage && (latestCompletedProcessedImage->frameStarted > processedImageOfIndex->frameStarted))
                 {
-                    // Print("Throwing away image");
+                    Print("Throwing away image from thread " + IntToString(latestCompletedProcessedImage->index));
                     ResetProcessedImage(processedImageOfIndex, canvas, &gameMemory.temporaryArena);
                 }
                 else
@@ -355,7 +358,7 @@ void RunApp(GameMemory gameMemory)
             if (latestCompletedProcessedImage->finalProcessedBpImage.data)
             {
                 UploadAndReplaceTexture(&latestCompletedProcessedImage->finalProcessedBpImage, &loadedTexture);
-                // Print("Uploading New Image");
+                // Print("Uploading New Image from thread " + IntToString(latestCompletedProcessedImage->index));
                 //TODO: put the latest uploaded image somewhere for safekeeping?
             }
             else
