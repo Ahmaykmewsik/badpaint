@@ -37,11 +37,11 @@ The jam version of the application (v0.0.1) is available for tinkering here. To 
 If the app crashes for any reason, a crash reporter will prompt you if you like to send a crash report via a discord webhook.
 
 ## What the heck is going on? 
-The editor is surprisingly simple. The bottom image displays the raw data from a PNG in the middle of it's encoding process. Each byte is represented by a pixel ranging from black to white (0-255) after the PNG has been filter by the selected filtering algorithm and before it is compressed. The pixels you insert via painting adds unintended arbitrary numbers into the data stream and are then compressed incorrectly by the PNG encoding algorithm, resulting in the striking colorful glitches you see in the final top image. 
+The editor is surprisingly simple. The bottom image displays the raw data from a PNG in the middle of it's encoding process. Each byte is represented by a pixel ranging from black to white (0-255). The data is the state of the PNG after the PNG has gone through algorythmic filtering and before it is compressed. The pixels you insert via painting adds unintended arbitrary bytes into the data stream which are then compressed incorrectly by the PNG encoding algorithm resulting in the striking colorful glitches you see in the final top image. 
 
 You can press 1-5 to toggle different PNG filter algorithms, the effects of which will be visible in both windows. Something I didn't expect from this project is that playing with the data gives you an intuitive view of how a PNG is encoded. 
 
-An overview on PNG encoding and corruption behaviours that I used as reference while making this tool can be found here: https://ucnv.github.io/pnglitch/
+Here's an overview on PNG encoding and corruption behaviours that I used as reference while making this tool: https://ucnv.github.io/pnglitch/
 
 ## Implementation details 
 
