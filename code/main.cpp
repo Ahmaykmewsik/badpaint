@@ -74,7 +74,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
     //NOTE: DEVELOPER HACK
     {
-        InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootBpImage, canvas, &loadedTexture, &currentBrush);
+        // InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootBpImage, canvas, &loadedTexture, &currentBrush);
     }
 
     while (!WindowShouldClose())
@@ -306,7 +306,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
             }
         }
 
-        if (canvas->proccessAsap)
+        if (canvas->texture.id && canvas->proccessAsap)
         {
             ProcessedImage *processedImage = GetFreeProcessedImage(processedImages, threadCount);
             if (processedImage)
@@ -324,7 +324,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
         if (IsKeyPressed(KEY_FIVE))
             stbi_write_force_png_filter = 5;
 
-        if (pngFilterLastFrame != stbi_write_force_png_filter)
+        if (canvas->texture.id && pngFilterLastFrame != stbi_write_force_png_filter)
             canvas->proccessAsap = true;
 
         ProcessedImage *latestCompletedProcessedImage = {};

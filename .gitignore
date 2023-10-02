@@ -47,3 +47,4 @@ lib/
 *.dmp
 /builds
 /includes
+/releases
