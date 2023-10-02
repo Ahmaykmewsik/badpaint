@@ -247,7 +247,6 @@ static String filenameString = {};
 
 const char *crashDirectory = "./crashdumps/";
 
-
 static float CRASH_REPORT_WINDOW_MARGIN = 10;
 
 static float CRASH_REPORT_DESC_HEIGHT = 175;
@@ -614,10 +613,10 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
             unsigned long long unixTime = WINDOWS_FILETIME_TO_UNIXTIME(uli.QuadPart);
             filenameString = CreateString("BadpaintCrashDump_") + LongToString(unixTime) + ".dmp";
 
-            wchar_t *filenameStringW = ConvertToWideString(filenameString);
-
             // Create crash dump file
-            file = CreateFileW(filenameStringW, GENERIC_WRITE | GENERIC_READ, 0, nullptr,
+            String directoryToSaveFile = CreateString(crashDirectory) + "/" + filenameString;
+            wchar_t *directoryToSaveFileW = ConvertToWideString(directoryToSaveFile);
+            file = CreateFileW(directoryToSaveFileW, GENERIC_WRITE | GENERIC_READ, 0, nullptr,
                                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
             if (file == INVALID_HANDLE_VALUE)
             {

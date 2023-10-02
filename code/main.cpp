@@ -3,6 +3,7 @@
 
 void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned int threadCount)
 {
+    InvalidCodePath
     BpImage *rootBpImage = PushStruct(&gameMemory.permanentArena, BpImage);
     Canvas *canvas = PushStruct(&gameMemory.permanentArena, Canvas);
     // BpImage latestCompletedBpImage = {};
