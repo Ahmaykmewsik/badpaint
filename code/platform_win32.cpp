@@ -15,6 +15,8 @@
 #include "winhttp.h"
 #include "sysinfoapi.h"
 
+#include "nonRepo.h"
+
 struct WorkQueueEntry
 {
     void *data;
@@ -223,8 +225,6 @@ bool SendGodDammitErrorWindow(HWND hWnd, const char *error)
 
 static String filenameString = {};
 
-#define DISCORD_WEBHOOK_ENDPOINT "/api/webhooks/1128779890456539156/beJJyIYDF8z2KLUsZulyOyf5gklQRcF8OyYKa2qDr-qVJTE_vIWKO_lDG7eGgohuKzvA"
-
 #define CRASH_ERROR_TITLE "OH FISHSTICKS WE JUST CRASHED"
 #define CRASH_ERROR_TITLE_WIDE L"OH FISHSTICKS WE JUST CRASHED"
 
@@ -246,6 +246,7 @@ static String filenameString = {};
         MB_OK | MB_ICONERROR);
 
 const char *crashDirectory = "./crashdumps/";
+
 
 static float CRASH_REPORT_WINDOW_MARGIN = 10;
 
@@ -610,8 +611,8 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
             ULARGE_INTEGER uli;
             uli.LowPart = fileTime.dwLowDateTime;
             uli.HighPart = fileTime.dwHighDateTime;
-            unsigned long long utcTime = uli.QuadPart;
-            filenameString = crashDirectory + CreateString("CrashDump_") + (int)utcTime + ".dmp";
+            unsigned long long unixTime = WINDOWS_FILETIME_TO_UNIXTIME(uli.QuadPart);
+            filenameString = CreateString("BadpaintCrashDump_") + LongToString(unixTime) + ".dmp";
 
             wchar_t *filenameStringW = ConvertToWideString(filenameString);
 
@@ -903,6 +904,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
                 update_loading_bar(x += 0.1f);
 
                 // Begin POST request to the discord webhook endpoint
+                // NOTE: Discord webhook endpoint defined in noRepo.h and not in public repo so spammers won't see it!
                 HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST",
                                                         L"" DISCORD_WEBHOOK_ENDPOINT,
                                                         nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
@@ -979,8 +981,8 @@ int CALLBACK WinMain(HINSTANCE instance,
                      LPSTR commandLine,
                      int showCode)
 {
-// int main()
-// {
+    // int main()
+    // {
     GameMemory gameMemory = {};
     InitializeArena(&gameMemory.permanentArena, Megabytes(1));
     InitializeArena(&gameMemory.temporaryArena, Megabytes(400));

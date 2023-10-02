@@ -558,8 +558,17 @@ inline int StringToInt(String string)
 inline String IntToString(int i, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
 {
     //TODO: figure out how large this should be
-    String result = AllocateString(10, arena);
+    String result = AllocateString(30, arena);
     sprintf(result.chars, "%d", i);
+    result.length = CharArrayLength(result.chars);
+    return result;
+}
+
+inline String LongToString(unsigned long long i, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+{
+    //TODO: figure out how large this should be
+    String result = AllocateString(30, arena);
+    sprintf(result.chars, "%lld", i);
     result.length = CharArrayLength(result.chars);
     return result;
 }
