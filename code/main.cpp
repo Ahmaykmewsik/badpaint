@@ -25,7 +25,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
     _G_CIRCULAR_ARENA_DONT_FUCKING_USE_THIS_EXCEPT_IN_A_MACRO = &gameMemory.circularScratchBuffer;
     G_UI_INPUTS = PushStruct(&gameMemory.permanentArena, UiInputs);
     G_UI_STATE = PushStruct(&gameMemory.permanentArena, UiState);
-    G_UI_HASH_TAG_STRING = CreateStringOnArena("##", &gameMemory.permanentArena);
 
     SetTargetFPS(60);
 
@@ -463,7 +462,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
                     {
                         G_UI_INPUTS->texture = canvas->texture;
                         SetUiAxis({UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT}, {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT});
-                        CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE, G_UI_HASH_TAG_STRING + G_CANVAS_STRING_TAG_CHARS);
+                        CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE, CreateString(G_UI_HASH_TAG) + G_CANVAS_STRING_TAG_CHARS);
                     }
                 }
             }
@@ -471,9 +470,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
         float toolbarWidth = G_TOOLBOX_WIDTH_AND_HEIGHT * 2;
 
-        SetUiAxis({UI_SIZE_KIND_PIXELS, toolbarWidth}, {
-                                                           UI_SIZE_KIND_PIXELS,
-                                                       });
+        SetUiAxis({UI_SIZE_KIND_PIXELS, toolbarWidth}, {UI_SIZE_KIND_PIXELS});
         G_UI_INPUTS->relativePixelPosition = V2{0, (float)titleBarHeight};
         uiSettings->backColor = Color{191, 191, 191, 255};
         CreateUiBox(UI_FLAG_DRAW_BACKGROUND);
@@ -576,7 +573,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
             G_UI_INPUTS->value = value;
 
             SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT * 0.5f});
-            CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_INTERACTABLE | UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER, G_UI_HASH_TAG_STRING + stringKey);
+            CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_INTERACTABLE | UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER, G_UI_HASH_TAG + stringKey);
             UiParent()
             {
                 SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, value}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
@@ -633,13 +630,19 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
         SetUiAxis({UI_SIZE_KIND_PIXELS, 200}, {UI_SIZE_KIND_TEXT});
         G_UI_INPUTS->relativePixelPosition = V2{windowDim.x * 0.8f, 2};
-        label = CreateString("EXPORT IMAGE") + G_UI_HASH_TAG_STRING + "export";
+        label = CreateString("EXPORT IMAGE") + G_UI_HASH_TAG + "export";
         G_UI_INPUTS->command = COMMAND_EXPORT_IMAGE;
         ReactiveUiColorState uiColorState = {};
         uiColorState.nonActive.down = DARKGREEN;
         uiColorState.nonActive.hovered = Color{10, 238, 58, 255};
         uiColorState.nonActive.neutral = GREEN;
         CreateUiButton(label, uiColorState, false, false);
+
+        SetUiAxis({UI_SIZE_KIND_PIXELS, windowDim.x}, {UI_SIZE_KIND_TEXT});
+        G_UI_INPUTS->relativePixelPosition = V2{-5, windowDim.y - 20};
+        uiSettings->frontColor = DARKGRAY;
+        label = CreateString(VERSION_NUMBER);
+        CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, label);
 
         int uiBoxArrayIndexThisFrame = GetFrameModIndexThisFrame();
 

@@ -43,8 +43,7 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
     {
         uiBox->string = string;
 
-        Assert(G_UI_HASH_TAG_STRING.length);
-        stringSplitByHashTag = SplitStringOnceByTag(uiBox->string, G_UI_HASH_TAG_STRING, G_UI_STATE->twoFrameArenaThisFrame);
+        stringSplitByHashTag = SplitStringOnceByTag(uiBox->string, CreateString(G_UI_HASH_TAG), G_UI_STATE->twoFrameArenaThisFrame);
 
         if (stringSplitByHashTag.count == 2)
         {
@@ -373,7 +372,7 @@ String GetUiBoxKeyStringOfString(String string)
 {
     String result = {};
 
-    StringArray stringArray = SplitStringOnceByTag(string, G_UI_HASH_TAG_STRING);
+    StringArray stringArray = SplitStringOnceByTag(string, CreateString(G_UI_HASH_TAG));
 
     if (stringArray.count > 1)
         result = stringArray.strings[1];
@@ -554,7 +553,7 @@ static float G_TOOLBOX_WIDTH_AND_HEIGHT = 35;
 void CreateBrushEffectButton(BRUSH_EFFECT brushEffect, String string, Color baseColor, COMMAND command, Brush *currentBrush)
 {
     SetUiAxis({UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
-    String stringButton = string + G_UI_HASH_TAG_STRING + CreateString(brushEffect);
+    String stringButton = string + G_UI_HASH_TAG + CreateString(brushEffect);
     ReactiveUiColorState uiColorState = CreateButtonReactiveUiColorState(baseColor);
     bool active = currentBrush->brushEffect == brushEffect;
     G_UI_INPUTS->command = command;

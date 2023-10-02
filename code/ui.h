@@ -5,7 +5,7 @@
 #include "input.h"
 #endif
 
-static String G_UI_HASH_TAG_STRING = {};
+static const char *G_UI_HASH_TAG = "##";
 
 enum UI_SIZE_KIND
 {
