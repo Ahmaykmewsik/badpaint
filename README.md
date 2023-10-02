@@ -53,6 +53,10 @@ This app was codded in C-styled C++. [raylib](https://www.raylib.com) is used fo
 - zoom & resizing 
 - Optimization & performance improvements (SIMD, more GPU utilization, etc).
 
+### CHANGELOG 
+- **v0.0.2 (Jam Release Day 1 patch)**
+    - Removed webhook token from public repo (thank you for all the lovely crash reports whoever was spamming them every 15 seconds for 2 hours straight) and fixed a crash.
+
 ----------------------
 
 If you would like to contact me, I can be reached on discord at @Ahmaykmewsik. Or if transmitting messages via the m-a-i-l is more your thing: notfungamesdeveloper at the Gee of the maleness of Doot Cumberbatch
