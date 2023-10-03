@@ -78,6 +78,17 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
     while (!WindowShouldClose())
     {
+        //NOTE: For crashing the games (useful for testing crash handler)
+        if (IsKeyDown(KEY_C) &&
+            IsKeyDown(KEY_R) &&
+            IsKeyDown(KEY_A) &&
+            IsKeyDown(KEY_S) &&
+            IsKeyDown(KEY_H) &&
+            IsKeyDown(KEY_RIGHT_CONTROL))
+        {
+            __debugbreak();
+        }
+
         G_UI_STATE->twoFrameArenaLastFrame = GetTwoFrameArenaLastFrame(&gameMemory);
         G_UI_STATE->twoFrameArenaThisFrame = GetTwoFrameArenaThisFrame(&gameMemory);
         int uiBoxArrayIndex = GetFrameModIndexLastFrame();

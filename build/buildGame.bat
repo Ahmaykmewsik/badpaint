@@ -25,6 +25,7 @@ IF NOT EXIST "%DIRECTORY_NAME%" (
 )
 
 set FLAGS= -EHsc -Zi -O2 -DRELEASE_BUILD
+@REM set FLAGS= -EHsc -Zi -O2
 @REM set FLAGS= -EHsc -Zi -Od 
 set CODEPATHS= ..\code\platform_win32.cpp ..\code\main.cpp
 set INCLUDES= -I ..\includes\ 
