@@ -21,7 +21,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		processedImage->workArena = ArenaInit(MegaByte * 300);
     }
 
-	G_STRING_TEMP_MEM_ARENA = &gameMemory.temporaryArena;
     G_UI_INPUTS = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, UiInputs);
     G_UI_STATE = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, UiState);
 
@@ -111,17 +110,17 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
             if (rootBpImage->dataSize > 15000000)
             {
-                String notification = CreateString("...Are you serious?!? Ok be patient with me, this image is freaking huge. I'm not going to run well at all.");
+                String notification = STRING("...Are you serious?!? Ok be patient with me, this image is freaking huge. I'm not going to run well at all.");
                 InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
             }
             else if (rootBpImage->dataSize > 8000000)
             {
-                String notification = CreateString("Uh...I'm not really ready to edit images this big yet, but I can try. Don't blame me if I'm slow though. You asked for it.");
+                String notification = STRING("Uh...I'm not really ready to edit images this big yet, but I can try. Don't blame me if I'm slow though. You asked for it.");
                 InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
             }
             else if (rootBpImage->dataSize > 5000000)
             {
-                String notification = CreateString("Woah, this image is kind of large!. I'll try my best...");
+                String notification = STRING("Woah, this image is kind of large!. I'll try my best...");
                 InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
             }
             UnloadDroppedFiles(droppedFiles);
@@ -174,8 +173,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
                     if (uiBox->pressed && uiBox->keyString.length)
                     {
-                        draggedUiStringKey = uiBox->keyString;
-                        MoveStringToArena(&draggedUiStringKey, &gameMemory.mouseClickArena);
+                        draggedUiStringKey = ReallocString(uiBox->keyString, &gameMemory.mouseClickArena);
                     }
                 }
 
@@ -207,32 +205,31 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
             if (loadedTexture.height && loadedTexture.width)
             {
                 String filePath = AllocateString(256, &gameMemory.temporaryArena);
-                unsigned int filepathLength;
-                bool success = GetPngImageFilePathFromUser(filePath.chars, filePath.length, &filepathLength);
+                u32 filepathLength;
+                b32 success = GetPngImageFilePathFromUser(filePath.chars, filePath.length, &filepathLength);
                 filePath.length = filepathLength;
                 if (success && filePath.length)
                 {
                     Image exportImgae = LoadImageFromTexture(loadedTexture);
                     ExportImage(exportImgae, filePath);
 
-                    String notification = CreateString("You have given new life to: ") + filePath;
+                    String notification = STRING("You have given new life to: ") + filePath;
                     InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
                 }
                 else
                 {
-                    String notification = CreateString("Sorry the save failed. You fail too. You suck. Sorry.");
+                    String notification = STRING("Sorry the save failed. You fail too. You suck. Sorry.");
                     InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
                 }
             }
             else
             {
-                String notification = CreateString("Bruh.");
+                String notification = STRING("Bruh.");
                 InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
             }
         }
 
-        String canvasStringKey = CreateString(G_CANVAS_STRING_TAG_CHARS);
-        UiBox *canvasUiBox = GetUiBoxLastFrameOfStringKey(canvasStringKey);
+        UiBox *canvasUiBox = GetUiBoxLastFrameOfStringKey(G_CANVAS_STRING_TAG_CHARS);
         if (canvasUiBox && canvasUiBox->down && !imageIsBroken)
         {
             if (canvasUiBox->pressed)
@@ -310,7 +307,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
             }
             else
             {
-                String notification = CreateString("The past is no more. You must now live with your mistakes. You've run out of undos!");
+                String notification = STRING("The past is no more. You must now live with your mistakes. You've run out of undos!");
                 InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
             }
         }
@@ -452,14 +449,14 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
                         }
                         else
                         {
-                            String string = CreateString("Congulations! You broke the image. (undo with Ctrl-Z)");
+                            String string = STRING("Congulations! You broke the image. (undo with Ctrl-Z)");
                             SetUiAxis({UI_SIZE_KIND_TEXT, 1}, {UI_SIZE_KIND_TEXT, 1});
                             CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_CENTER_IN_PARENT, string);
                         }
                     }
                     else
                     {
-                        String string = CreateString("Drop any image into the window for editing.");
+                        String string = STRING("Drop any image into the window for editing.");
                         SetUiAxis({UI_SIZE_KIND_TEXT, 1}, {UI_SIZE_KIND_TEXT, 1});
                         CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_CENTER_IN_PARENT, string);
                     }
@@ -472,7 +469,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
                     {
                         G_UI_INPUTS->texture = canvas->texture;
                         SetUiAxis({UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT}, {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT});
-                        CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE, CreateString(G_UI_HASH_TAG) + G_CANVAS_STRING_TAG_CHARS);
+                        CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE, STRING(G_UI_HASH_TAG) + G_CANVAS_STRING_TAG_CHARS);
                     }
                 }
             }
@@ -539,21 +536,21 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
             CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
             UiParent()
             {
-                CreateBrushEffectButton(BRUSH_EFFECT_ERASE_EFFECT, CreateString("Ers"), Color{245, 245, 245, 255}, COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE, &currentBrush);
-                CreateBrushEffectButton(BRUSH_EFFECT_REMOVE, CreateString("Rmv"), G_BRUSH_EFFECT_COLORS[BRUSH_EFFECT_REMOVE], COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE, &currentBrush);
+                CreateBrushEffectButton(BRUSH_EFFECT_ERASE_EFFECT, STRING("Ers"), Color{245, 245, 245, 255}, COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE, &currentBrush);
+                CreateBrushEffectButton(BRUSH_EFFECT_REMOVE, STRING("Rmv"), G_BRUSH_EFFECT_COLORS[BRUSH_EFFECT_REMOVE], COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE, &currentBrush);
             }
             SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
             CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
             UiParent()
             {
-                CreateBrushEffectButton(BRUSH_EFFECT_MAX, CreateString("Max"), G_BRUSH_EFFECT_COLORS[BRUSH_EFFECT_MAX], COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX, &currentBrush);
-                CreateBrushEffectButton(BRUSH_EFFECT_SHIFT, CreateString("Sft"), G_BRUSH_EFFECT_COLORS[BRUSH_EFFECT_SHIFT], COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT, &currentBrush);
+                CreateBrushEffectButton(BRUSH_EFFECT_MAX, STRING("Max"), G_BRUSH_EFFECT_COLORS[BRUSH_EFFECT_MAX], COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX, &currentBrush);
+                CreateBrushEffectButton(BRUSH_EFFECT_SHIFT, STRING("Sft"), G_BRUSH_EFFECT_COLORS[BRUSH_EFFECT_SHIFT], COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT, &currentBrush);
             }
             SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
             CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
             UiParent()
             {
-                CreateBrushEffectButton(BRUSH_EFFECT_RANDOM, CreateString("Rnd"), G_BRUSH_EFFECT_COLORS[BRUSH_EFFECT_RANDOM], COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM, &currentBrush);
+                CreateBrushEffectButton(BRUSH_EFFECT_RANDOM, STRING("Rnd"), G_BRUSH_EFFECT_COLORS[BRUSH_EFFECT_RANDOM], COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM, &currentBrush);
             }
 
             // SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
@@ -567,13 +564,13 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
             uiSettings->backColor = Color{191, 191, 191, 255};
             SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_TEXT});
-            CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED, IntToString(currentBrush.size));
+            CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED, U32ToString(currentBrush.size, StringArena()));
 
             ReactiveUiColor uiColorParent = {};
             uiColorParent.down = Color{220, 220, 220, 255};
             uiColorParent.hovered = Color{200, 200, 200, 255};
             uiColorParent.neutral = Color{180, 180, 180, 255};
-            String stringKey = CreateString("brushSizeSlider");
+            String stringKey = STRING("brushSizeSlider");
             UiBox *sliderUiBox = GetUiBoxLastFrameOfStringKey(stringKey);
             uiSettings->backColor = GetReactiveColor(sliderUiBox, uiColorParent, false);
             G_UI_INPUTS->sliderAction = SLIDER_ACTION_BRUSH_SIZE;
@@ -622,25 +619,25 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
         SetUiAxis({UI_SIZE_KIND_TEXT}, {UI_SIZE_KIND_TEXT});
         uiSettings->frontColor = BLACK;
-        int fps = GetFPS();
-        String fpsString = CreateString("FPS: ") + IntToString(fps);
+        u32 fps = GetFPS();
+        String fpsString = STRING("FPS: ") + U32ToString(fps, StringArena());
         if (fps < 60)
             uiSettings->frontColor = RED;
         CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, fpsString);
 
         uiSettings->frontColor = DARKGRAY;
         G_UI_INPUTS->relativePixelPosition = V2{windowDim.x * 0.07f, 2};
-        String label = CreateString("Use 1-5 to toggle differnet PNG filter algorythms");
+        String label = STRING("Use 1-5 to toggle differnet PNG filter algorythms");
         CreateUiBox(UI_FLAG_DRAW_TEXT, label);
 
         uiSettings->frontColor = BLACK;
         G_UI_INPUTS->relativePixelPosition = V2{windowDim.x * 0.45f, 2};
-        label = CreateString("PNG Filter: ") + G_PNG_FILTER_NAMES[stbi_write_force_png_filter];
+        label = STRING("PNG Filter: ") + G_PNG_FILTER_NAMES[stbi_write_force_png_filter];
         CreateUiBox(UI_FLAG_DRAW_TEXT, label);
 
         SetUiAxis({UI_SIZE_KIND_PIXELS, 200}, {UI_SIZE_KIND_TEXT});
         G_UI_INPUTS->relativePixelPosition = V2{windowDim.x * 0.8f, 2};
-        label = CreateString("EXPORT IMAGE") + G_UI_HASH_TAG + "export";
+        label = STRING("EXPORT IMAGE") + G_UI_HASH_TAG + "export";
         G_UI_INPUTS->command = COMMAND_EXPORT_IMAGE;
         ReactiveUiColorState uiColorState = {};
         uiColorState.nonActive.down = DARKGREEN;
@@ -651,7 +648,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
         SetUiAxis({UI_SIZE_KIND_PIXELS, windowDim.x}, {UI_SIZE_KIND_TEXT});
         G_UI_INPUTS->relativePixelPosition = V2{-5, windowDim.y - 20};
         uiSettings->frontColor = DARKGRAY;
-        label = CreateString(VERSION_NUMBER);
+        label = STRING(VERSION_NUMBER);
         CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, label);
 
         int uiBoxArrayIndexThisFrame = GetFrameModIndexThisFrame();

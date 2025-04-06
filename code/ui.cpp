@@ -43,7 +43,7 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
     {
         uiBox->string = string;
 
-        stringSplitByHashTag = SplitStringOnceByTag(uiBox->string, CreateString(G_UI_HASH_TAG), G_UI_STATE->twoFrameArenaThisFrame);
+        stringSplitByHashTag = SplitStringOnceByTag(uiBox->string, STRING(G_UI_HASH_TAG), G_UI_STATE->twoFrameArenaThisFrame);
 
         if (stringSplitByHashTag.count == 2)
         {
@@ -52,7 +52,7 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
         }
         else if (stringSplitByHashTag.count == 1)
         {
-            MoveStringToArena(&uiBox->string, G_UI_STATE->twoFrameArenaThisFrame);
+        	uiBox->string = ReallocString(uiBox->string, G_UI_STATE->twoFrameArenaThisFrame);
         }
         else
         {
@@ -60,7 +60,7 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
         }
 
         ASSERT(uiBox->uiSettings.font.baseSize);
-        Vector2 textDim = MeasureTextEx(uiBox->uiSettings.font, uiBox->string.chars, uiBox->uiSettings.font.baseSize, 1);
+        Vector2 textDim = MeasureTextEx(uiBox->uiSettings.font, C_STRING_NULL_TERMINATED(uiBox->string), uiBox->uiSettings.font.baseSize, 1);
         uiBox->textDim = RayVectorToV2(textDim);
     }
 
@@ -72,7 +72,7 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
         String keyString = stringSplitByHashTag.strings[1];
         if (keyString.length)
         {
-            unsigned int hashValue = Murmur3String(keyString.chars, 0);
+            unsigned int hashValue = Murmur3String(C_STRING_NULL_TERMINATED(keyString), 0);
 
             for (int i = 0;
                  i < keyString.length;
@@ -105,12 +105,6 @@ void CreateUiTextWithBackground(String string, unsigned int flags = 0)
     {
         CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_DRAW_BACKGROUND | flags, string);
     }
-}
-
-void CreateUiText(const char *c)
-{
-    String string = CreateString(c);
-    CreateUiText(string);
 }
 
 void SetUiAxis(UiSize uiSize1, UiSize uiSize2)
@@ -372,7 +366,7 @@ String GetUiBoxKeyStringOfString(String string)
 {
     String result = {};
 
-    StringArray stringArray = SplitStringOnceByTag(string, CreateString(G_UI_HASH_TAG));
+    StringArray stringArray = SplitStringOnceByTag(string, STRING(G_UI_HASH_TAG), StringArena());
 
     if (stringArray.count > 1)
         result = stringArray.strings[1];
@@ -386,7 +380,7 @@ UiBox *GetUiBoxOfStringKeyLastFrame(String stringKey)
 
     if (stringKey.length)
     {
-        unsigned int hashvalue = Murmur3String(stringKey.chars, 0);
+        unsigned int hashvalue = Murmur3String(C_STRING_NULL_TERMINATED(stringKey), 0);
 
         for (int i = 0;
              i < stringKey.length;
@@ -414,7 +408,7 @@ UiBox *GetUiBoxOfStringLastFrame(String string)
 
 String CreateScriptStringKey(unsigned int scriptLineNumber)
 {
-    String result = CreateString("scriptEditor_line") + scriptLineNumber;
+    String result = STRING("scriptEditor_line") + U32ToString(scriptLineNumber, StringArena());
     return result;
 }
 
@@ -473,7 +467,7 @@ void RenderUiEntries(UiBox *uiBox, V2 windowPixelDim, int uiDepth = 0)
             else if (IsFlag(uiBox, UI_FLAG_ALIGN_TEXT_RIGHT))
                 pos.x += uiBox->rect.dim.x - uiBox->textDim.x;
 
-            DrawTextPro(uiBox->uiSettings.font, uiBox->string.chars, V2ToRayVector(pos), {}, 0, uiBox->uiSettings.font.baseSize, 1, uiBox->uiSettings.frontColor);
+            DrawTextPro(uiBox->uiSettings.font, C_STRING_NULL_TERMINATED(uiBox->string), V2ToRayVector(pos), {}, 0, uiBox->uiSettings.font.baseSize, 1, uiBox->uiSettings.frontColor);
         }
 
         if (IsFlag(uiBox, UI_FLAG_DRAW_TEXTURE))
@@ -553,7 +547,7 @@ static float G_TOOLBOX_WIDTH_AND_HEIGHT = 35;
 void CreateBrushEffectButton(BRUSH_EFFECT brushEffect, String string, Color baseColor, COMMAND command, Brush *currentBrush)
 {
     SetUiAxis({UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
-    String stringButton = string + G_UI_HASH_TAG + CreateString(brushEffect);
+    String stringButton = string + G_UI_HASH_TAG + U32ToString(brushEffect, StringArena());
     ReactiveUiColorState uiColorState = CreateButtonReactiveUiColorState(baseColor);
     bool active = currentBrush->brushEffect == brushEffect;
     G_UI_INPUTS->command = command;

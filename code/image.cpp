@@ -162,13 +162,13 @@ BpImage LoadDataIntoRawBpImage(const char *filePath, GameMemory *gameMemory)
                 }
                 else
                 {
-                    String notification = CreateString("Geez!!! I am NOT touching that! That's WAY too big! I would crash!!!");
+                    String notification = STRING("Geez!!! I am NOT touching that! That's WAY too big! I would crash!!!");
                     InitNotificationMessage(notification, &gameMemory->circularScratchBuffer);
                 }
             }
             else
             {
-                String notification = CreateString("I don't recognize that as an image. In the future you'll be able to load arbitrary data, but not yet.");
+                String notification = STRING("I don't recognize that as an image. In the future you'll be able to load arbitrary data, but not yet.");
                 InitNotificationMessage(notification, &gameMemory->circularScratchBuffer);
             }
 
@@ -894,32 +894,37 @@ bool ExportImage(Image image, String filepath)
 
     //HACK: append png if there's no file path lol
     //TODO: the platform layer should handle this not the game
-    String fileExtention = CreateString(GetFileExtension(filepath.chars));
+    //TODO: Do this ourselves so we don't have to play hot potato with string null termination
+    String fileExtention = STRING(GetFileExtension(C_STRING_NULL_TERMINATED(filepath)));
     if (!fileExtention.length)
+	{
         filepath += ".png";
+	}
 
-    fileExtention = CreateString(GetFileExtension(filepath.chars));
+    fileExtention = STRING(GetFileExtension(C_STRING_NULL_TERMINATED(filepath)));
+
+	char *filepathChars = C_STRING_NULL_TERMINATED(filepath);
 
     if (fileExtention == ".png")
     {
         int dataSize = 0;
         unsigned char *fileData = stbi_write_png_to_mem((const unsigned char *)image.data, image.width * channels, image.width, image.height, channels, &dataSize);
-        result = SaveFileData(filepath.chars, fileData, dataSize);
+        result = SaveFileData(filepathChars, fileData, dataSize);
         RL_FREE(fileData);
     }
     else if (fileExtention == ".bmp")
     {
-        result = stbi_write_bmp(filepath.chars, image.width, image.height, channels, image.data);
+        result = stbi_write_bmp(filepathChars, image.width, image.height, channels, image.data);
     }
     else if (fileExtention == ".jpg" || fileExtention == ".jpeg")
     {
-        result = stbi_write_jpg(filepath.chars, image.width, image.height, channels, image.data, 100); // JPG quality: between 1 and 100
+        result = stbi_write_jpg(filepathChars, image.width, image.height, channels, image.data, 100); // JPG quality: between 1 and 100
     }
     else
     {
         // Export raw pixel data (without header)
         // NOTE: It's up to the user to track image parameters
-        result = SaveFileData(filepath.chars, image.data, GetPixelDataSize(image.width, image.height, image.format));
+        result = SaveFileData(filepathChars, image.data, GetPixelDataSize(image.width, image.height, image.format));
     }
 
     return result;

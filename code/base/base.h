@@ -1,6 +1,7 @@
 #pragma once
 #include <macros.h>
 #include <base/memory.h>
+#include <base/vn_string.h>
 
 #include <stdio.h>
 #include <stdint.h>

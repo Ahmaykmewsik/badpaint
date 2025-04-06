@@ -42,7 +42,7 @@ static Color G_BRUSH_EFFECT_COLORS[] = {BLANK, BLANK, RED, YELLOW, BLUE, PURPLE}
 struct Brush
 {
     BRUSH_EFFECT brushEffect;
-    unsigned int size;
+    u32 size;
 };
 
 enum SLIDER_ACTION

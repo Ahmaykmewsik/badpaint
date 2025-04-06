@@ -1,7 +1,6 @@
 
 #include "base.h"
 #include "vn_math.h"
-#include "vn_string.h"
 #include "platform_win32.h"
 #include "main.h"
 
@@ -10,7 +9,6 @@
 #include <minwinbase.h>
 #include <minwindef.h>
 #include <shobjidl.h>
-// #include <string.h>
 #include "minidumpapiset.h"
 #include "winhttp.h"
 #include "sysinfoapi.h"
@@ -18,6 +16,7 @@
 #include "nonRepo.h"
 
 #include <base/memory.cpp>
+#include <base/vn_string.cpp>
 
 struct WorkQueueEntry
 {
@@ -196,15 +195,15 @@ bool CreateDirectoryIfNotExists(const char *path)
 
 inline wchar_t *ConvertToWideString(String s)
 {
-    wchar_t *result = ARENA_PUSH_ARRAY(G_STRING_TEMP_MEM_ARENA, s.length, wchar_t);
+    wchar_t *result = ARENA_PUSH_ARRAY(StringArena(), s.length, wchar_t);
     MultiByteToWideChar(CP_UTF8, 0, s.chars, -1, result, s.length);
 
     return result;
 }
 
-bool SendGodDammitErrorWindow(HWND hWnd, const char *error)
+bool SendGodDammitErrorWindow(HWND hWnd, String error)
 {
-    String string = CreateString("...oops, that didn't work. ") + error + " Try again?";
+    String string = STRING("...oops, that didn't work. ") + error + " Try again?";
     wchar_t *stringW = ConvertToWideString(string);
 
     int windowsResult = MessageBoxW(hWnd, stringW, L"OH NO THAT DIDN'T WORK AAAAAAAAAAAAAAAAAAAAAAAAAAAA", MB_RETRYCANCEL | MB_ICONWARNING | MB_SYSTEMMODAL);
@@ -613,10 +612,10 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
             uli.LowPart = fileTime.dwLowDateTime;
             uli.HighPart = fileTime.dwHighDateTime;
             unsigned long long unixTime = WINDOWS_FILETIME_TO_UNIXTIME(uli.QuadPart);
-            filenameString = CreateString("BadpaintCrashDump_") + LongToString(unixTime) + ".dmp";
+            filenameString = STRING("BadpaintCrashDump_") + U64ToString(unixTime, StringArena()) + ".dmp";
 
             // Create crash dump file
-            String directoryToSaveFile = CreateString(crashDirectory) + "/" + filenameString;
+            String directoryToSaveFile = STRING(crashDirectory) + "/" + filenameString;
             wchar_t *directoryToSaveFileW = ConvertToWideString(directoryToSaveFile);
             file = CreateFileW(directoryToSaveFileW, GENERIC_WRITE | GENERIC_READ, 0, nullptr,
                                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -833,24 +832,24 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
 
                 char *body = ARENA_PUSH_ARRAY(&gameMemory->temporaryArena, discordMaxLength, char);
 
-                String discordMessageContent = CreateString(":art: WE HAVE A CRASH REPORT from BADPAINT!! :art:") + "\\n `VERSION: " VERSION_NUMBER + "\\nBuild: " + buildDate + " " + buildTime + "` ";
-                String userMessage = CreateString(CRASH_USER_DETAILS_CHARS);
+                String discordMessageContent = STRING(":art: WE HAVE A CRASH REPORT from BADPAINT!! :art:") + "\\n `VERSION: " VERSION_NUMBER + "\\nBuild: " + buildDate + " " + buildTime + "` ";
+                String userMessage = STRING(CRASH_USER_DETAILS_CHARS);
                 if (userMessage.length)
-                    discordMessageContent += "```" + CleanStringForDiscord(userMessage) + "```";
+                    discordMessageContent += "```" + CleanStringForDiscord(userMessage, StringArena()) + "```";
 
-                String header = CreateString("--19024605111143684786787635207\r\n"
+                String header = STRING("--19024605111143684786787635207\r\n"
                                              "Content-Disposition: form-data; name=\"payload_json\"\r\n\r\n{\"content\":\"") +
                                 discordMessageContent +
                                 "\"}\r\n--19024605111143684786787635207\r\n"
                                 "Content-Disposition: form-data; name=\"files[0]\"; filename=\"" +
-                                filenameString.chars +
+                                filenameString +
                                 "\"\r\n"
                                 "Content-Type: application/octet-stream\r\n"
                                 "\r\n";
 
                 unsigned int headerLength = header.length;
 
-                String bodyPostfix = CreateString("\r\n--19024605111143684786787635207--\r\n");
+                String bodyPostfix = STRING("\r\n--19024605111143684786787635207--\r\n");
 
                 memcpy(body, header.chars, header.length);
 
@@ -861,21 +860,21 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
                 GetFileSizeEx(file, &fileSizeInt);
                 uint64_t fileSize = fileSizeInt.QuadPart;
                 if (fileSize >= discordMaxLength)
-                    SendGodDammitErrorWindowInLoop(hWnd, "The crash dump file is too big for discord!");
+                    SendGodDammitErrorWindowInLoop(hWnd, STRING("The crash dump file is too big for discord!"));
 
                 update_loading_bar(x += 0.1f);
 
                 // Seek file to start
                 if (SetFilePointer(file, 0, nullptr, FILE_BEGIN) != 0)
-                    SendGodDammitErrorWindowInLoop(hWnd, "Windows doesn't know how to handle files right now!");
+                    SendGodDammitErrorWindowInLoop(hWnd, STRING("Windows doesn't know how to handle files right now!"));
 
                 // Copy entire file into the space after the body infix
                 DWORD bytesRead = 0;
                 if (!ReadFile(file, body + headerLength, fileSize, &bytesRead, nullptr))
-                    SendGodDammitErrorWindowInLoop(hWnd, "Windows doens't know how to read files right now!");
+                    SendGodDammitErrorWindowInLoop(hWnd, STRING("Windows doens't know how to read files right now!"));
 
                 if (bytesRead != fileSize)
-                    SendGodDammitErrorWindowInLoop(hWnd, "Windows apparently thinks the crash dump is empty when it isn't!");
+                    SendGodDammitErrorWindowInLoop(hWnd, STRING("Windows apparently thinks the crash dump is empty when it isn't!"));
 
                 update_loading_bar(x += 0.1f);
 
@@ -891,7 +890,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
                 if (!hSession)
                 {
                     WinHttpCloseHandle(hSession);
-                    SendGodDammitErrorWindowInLoop(hWnd, "I couldn't connect to the discord webhook!");
+                    SendGodDammitErrorWindowInLoop(hWnd, STRING("I couldn't connect to the discord webhook!"));
                 };
                 update_loading_bar(x += 0.1f);
 
@@ -900,7 +899,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
                 if (!hConnect)
                 {
                     WinHttpCloseHandle(hConnect);
-                    SendGodDammitErrorWindowInLoop(hWnd, "I couldn't connect to discord!");
+                    SendGodDammitErrorWindowInLoop(hWnd, STRING("I couldn't connect to discord!"));
                 };
                 update_loading_bar(x += 0.1f);
 
@@ -912,7 +911,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
                 if (!hRequest)
                 {
                     WinHttpCloseHandle(hRequest);
-                    SendGodDammitErrorWindowInLoop(hWnd, "I couldn't open the HTTP request!");
+                    SendGodDammitErrorWindowInLoop(hWnd, STRING("I couldn't open the HTTP request!"));
                 };
                 update_loading_bar(x += 0.1f);
 
@@ -920,13 +919,13 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
                 const wchar_t ContentType[] = L"Content-Type: multipart/form-data; boundary=19024605111143684786787635207";
                 if (!WinHttpSendRequest(hRequest, ContentType, ARRAY_COUNT(ContentType), body, bodyTotalSize, bodyTotalSize, 0))
                 {
-                    SendGodDammitErrorWindowInLoop(hWnd, "I couldn't send the HTTP request!");
+                    SendGodDammitErrorWindowInLoop(hWnd, STRING("I couldn't send the HTTP request!"));
                 }
                 update_loading_bar(x += 0.1f);
 
                 // Wait for response
                 if (!WinHttpReceiveResponse(hRequest, nullptr))
-                    SendGodDammitErrorWindowInLoop(hWnd, "I sent the crash report to discord, but didn't get a response back!");
+                    SendGodDammitErrorWindowInLoop(hWnd, STRING("I sent the crash report to discord, but didn't get a response back!"));
 
                 update_loading_bar(x += 0.1f);
 
@@ -935,12 +934,12 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
                 if (!WinHttpQueryHeaders(hRequest,
                                          WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
                                          nullptr, &dwStatusCode, &dwSize, nullptr))
-                    SendGodDammitErrorWindowInLoop(hWnd, "Windows couldn't make any sense of what discord sent back to me for some reason!");
+                    SendGodDammitErrorWindowInLoop(hWnd, STRING("Windows couldn't make any sense of what discord sent back to me for some reason!"));
 
                 if (dwStatusCode != 200)
                 {
-                    String errorMsg = CreateString("Discord said it didn't like what we sent it! It sent this status code: ") + (int)dwStatusCode;
-                    SendGodDammitErrorWindowInLoop(hWnd, errorMsg.chars);
+                    String errorMsg = STRING("Discord said it didn't like what we sent it! It sent this status code: ") + U32ToString(dwStatusCode, StringArena());
+                    SendGodDammitErrorWindowInLoop(hWnd, errorMsg);
                 }
 
                 update_loading_bar(x += 0.1f);
@@ -998,8 +997,6 @@ int CALLBACK WinMain(HINSTANCE instance,
 	gameMemory.twoFrameArenaModIndex0 = ArenaInit(MegaByte * 10);
 	gameMemory.twoFrameArenaModIndex1 = ArenaInit(MegaByte * 10);
 	gameMemory.canvasRollbackArena = ArenaInit(MegaByte * 800);
-
-	G_STRING_TEMP_MEM_ARENA = &gameMemory.temporaryArena;
 
     // HINSTANCE instance = GetModuleHandle(NULL);
     CrashHandler(instance, &gameMemory);

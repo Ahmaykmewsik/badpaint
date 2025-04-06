@@ -1,7 +1,5 @@
 
 #if __clang__
-#include "vn_intrinsics.h"
-#include "vn_string.h"
 #include "vn_math.h"
 #include "platform_win32.h"
 #endif
