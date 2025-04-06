@@ -22,7 +22,7 @@ Arena ArenaInit(u64 size)
 	return result;
 }
 
-ArenaMarker PushArenaMarker(Arena *arena)
+ArenaMarker ArenaPushMarker(Arena *arena)
 {
 	ArenaMarker result;
 	result.arena = arena;
@@ -45,7 +45,7 @@ u8 *ArenaPushSize(Arena *arena, u64 size, ArenaMarker *arenaMarker)
 	ASSERT(arena->memory);
 	if (arenaMarker)
 	{
-		*arenaMarker = PushArenaMarker(arena);
+		*arenaMarker = ArenaPushMarker(arena);
 	}
 	if (size)
 	{

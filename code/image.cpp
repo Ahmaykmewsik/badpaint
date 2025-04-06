@@ -4,7 +4,7 @@
 #include "headers.h"
 #endif
 
-unsigned char *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, Arena *temporaryArena)
+unsigned char *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, Arena *arena)
 {
     unsigned char *data = NULL;
     *bytesRead = 0;
@@ -21,7 +21,7 @@ unsigned char *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, A
 
         if (size > 0)
         {
-            data = ARENA_PUSH_ARRAY(temporaryArena, size, unsigned char);
+            data = ARENA_PUSH_ARRAY(arena, size, unsigned char);
 
             // NOTE: fread() returns number of read elements instead of bytes, so we read [1 byte, size elements]
             unsigned int count = (unsigned int)fread(data, sizeof(unsigned char), size, file);
@@ -75,110 +75,114 @@ BpImage LoadDataIntoRawBpImage(const char *filePath, GameMemory *gameMemory)
 {
     BpImage result = {};
 
+	ArenaMarker loadMarker = ArenaPushMarker(&gameMemory->temporaryArena);
     unsigned int fileSize = {};
     unsigned char *fileData = LoadDataFromDisk(filePath, &fileSize, &gameMemory->temporaryArena);
     const char *getFileExtension = GetFileExtension(filePath);
 
+	int comp = 0;
+	int width = 0;
+	int height = 0;
+	void *outputData = {};
+
     if (fileData != NULL)
-    {
-        // NOTE: Using stb_image to load images (Supports multiple image formats)
-
-        if (fileData != NULL)
-        {
-            int comp = 0;
-            int width = 0;
-            int height = 0;
-            void *outputData = stbi_load_from_memory(fileData, fileSize, &width, &height, &comp, 0);
-
-            if (outputData != NULL)
-            {
-                int dataSize = GetSizeOfRawRGBA32(WidthHeightToV2(width, height));
-                if (dataSize < 30000000)
-                {
-                    ArenaReset(&gameMemory->rootImageArena);
-                    result.dim.x = width;
-                    result.dim.y = height;
-                    result.dataSize = dataSize;
-                    result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
-                    result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
-                    result.data = ArenaPushSize(&gameMemory->rootImageArena, result.dataSize, {});
-
-                    if (comp != 4)
-                    {
-                        V4 *pixels = ARENA_PUSH_ARRAY(&gameMemory->temporaryArena, width * height, V4);
-                        for (int i = 0, k = 0;
-                             i < result.dim.x * result.dim.y;
-                             i++)
-                        {
-                            switch (comp)
-                            {
-                            case 1:
-                            {
-                                //NOTE: PIXELFORMAT_UNCOMPRESSED_GRAYSCALE
-                                pixels[i].x = (float)((unsigned char *)outputData)[i] / 255.0f;
-                                pixels[i].y = (float)((unsigned char *)outputData)[i] / 255.0f;
-                                pixels[i].z = (float)((unsigned char *)outputData)[i] / 255.0f;
-                                pixels[i].w = 1.0f;
-                                break;
-                            }
-                            case 2:
-                            {
-                                //NOTE: PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA
-                                pixels[i].x = (float)((unsigned char *)outputData)[k] / 255.0f;
-                                pixels[i].y = (float)((unsigned char *)outputData)[k] / 255.0f;
-                                pixels[i].z = (float)((unsigned char *)outputData)[k] / 255.0f;
-                                pixels[i].w = (float)((unsigned char *)outputData)[k + 1] / 255.0f;
-                                k += 2;
-                                break;
-                            }
-                            case 3:
-                            {
-                                //NOTE: PIXELFORMAT_UNCOMPRESSED_R8G8B8
-                                pixels[i].x = (float)((unsigned char *)outputData)[k] / 255.0f;
-                                pixels[i].y = (float)((unsigned char *)outputData)[k + 1] / 255.0f;
-                                pixels[i].z = (float)((unsigned char *)outputData)[k + 2] / 255.0f;
-                                pixels[i].w = 1.0f;
-                                k += 3;
-                                break;
-                            }
-                                InvalidDefaultCase
-                            }
-                        }
-
-                        for (int i = 0, k = 0;
-                             i < result.dataSize;
-                             i += 4, k++)
-                        {
-                            ((unsigned char *)result.data)[i] = (unsigned char)(pixels[k].x * 255.0f);
-                            ((unsigned char *)result.data)[i + 1] = (unsigned char)(pixels[k].y * 255.0f);
-                            ((unsigned char *)result.data)[i + 2] = (unsigned char)(pixels[k].z * 255.0f);
-                            ((unsigned char *)result.data)[i + 3] = (unsigned char)(pixels[k].w * 255.0f);
-                        }
-                    }
-                    else
-                    {
-                        memcpy(result.data, outputData, result.dataSize);
-                    }
-                }
-                else
-                {
-                    String notification = STRING("Geez!!! I am NOT touching that! That's WAY too big! I would crash!!!");
-                    InitNotificationMessage(notification, &gameMemory->circularScratchBuffer);
-                }
-            }
-            else
-            {
-                String notification = STRING("I don't recognize that as an image. In the future you'll be able to load arbitrary data, but not yet.");
-                InitNotificationMessage(notification, &gameMemory->circularScratchBuffer);
-            }
-
-            stbi_image_free(outputData);
-        }
+	{
+		outputData = stbi_load_from_memory(fileData, fileSize, &width, &height, &comp, 0);
     }
     else
     {
-        //TODO: Logging
+		String notification = STRING("Oops! I failed to load that! Sorry! Guess you're out of luck pal. No badpaint for you today.");
+		InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
     }
+
+	ArenaPopMarker(loadMarker);
+
+	if (outputData != NULL)
+	{
+		int dataSize = GetSizeOfRawRGBA32(WidthHeightToV2(width, height));
+		if (dataSize < 30000000)
+		{
+			ArenaReset(&gameMemory->rootImageArena);
+			result.dim.x = width;
+			result.dim.y = height;
+			result.dataSize = dataSize;
+			result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
+			result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
+			result.data = ArenaPushSize(&gameMemory->rootImageArena, result.dataSize, {});
+
+			if (comp != 4)
+			{
+				ArenaMarker marker = {};
+				V4 *pixels = ARENA_PUSH_ARRAY_MARKER(&gameMemory->temporaryArena, width * height, V4, &marker);
+				for (int i = 0, k = 0;
+						i < result.dim.x * result.dim.y;
+						i++)
+				{
+					switch (comp)
+					{
+						case 1:
+							{
+								//NOTE: PIXELFORMAT_UNCOMPRESSED_GRAYSCALE
+								pixels[i].x = (float)((unsigned char *)outputData)[i] / 255.0f;
+								pixels[i].y = (float)((unsigned char *)outputData)[i] / 255.0f;
+								pixels[i].z = (float)((unsigned char *)outputData)[i] / 255.0f;
+								pixels[i].w = 1.0f;
+								break;
+							}
+						case 2:
+							{
+								//NOTE: PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA
+								pixels[i].x = (float)((unsigned char *)outputData)[k] / 255.0f;
+								pixels[i].y = (float)((unsigned char *)outputData)[k] / 255.0f;
+								pixels[i].z = (float)((unsigned char *)outputData)[k] / 255.0f;
+								pixels[i].w = (float)((unsigned char *)outputData)[k + 1] / 255.0f;
+								k += 2;
+								break;
+							}
+						case 3:
+							{
+								//NOTE: PIXELFORMAT_UNCOMPRESSED_R8G8B8
+								pixels[i].x = (float)((unsigned char *)outputData)[k] / 255.0f;
+								pixels[i].y = (float)((unsigned char *)outputData)[k + 1] / 255.0f;
+								pixels[i].z = (float)((unsigned char *)outputData)[k + 2] / 255.0f;
+								pixels[i].w = 1.0f;
+								k += 3;
+								break;
+							}
+							InvalidDefaultCase
+					}
+				}
+
+				for (int i = 0, k = 0;
+						i < result.dataSize;
+						i += 4, k++)
+				{
+					((unsigned char *)result.data)[i] = (unsigned char)(pixels[k].x * 255.0f);
+					((unsigned char *)result.data)[i + 1] = (unsigned char)(pixels[k].y * 255.0f);
+					((unsigned char *)result.data)[i + 2] = (unsigned char)(pixels[k].z * 255.0f);
+					((unsigned char *)result.data)[i + 3] = (unsigned char)(pixels[k].w * 255.0f);
+				}
+
+				ArenaPopMarker(marker);
+			}
+			else
+			{
+				memcpy(result.data, outputData, result.dataSize);
+			}
+		}
+		else
+		{
+			String notification = STRING("Geez!!! I am NOT touching that! That's WAY too big! I would crash!!!");
+			InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
+		}
+
+		stbi_image_free(outputData);
+	}
+	else
+	{
+		String notification = STRING("I don't recognize that as an image. In the future you'll be able to load arbitrary data, but not yet.");
+		InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
+	}
 
     return result;
 }
@@ -559,20 +563,20 @@ void ConvertToRawRGBA32IfNot(BpImage *bpImage, Arena *arena)
     ASSERT(bpImage->imageFormat == IMAGE_FORMAT_RAW_RGBA32);
 }
 
-void ConvertNewBpImage(BpImage *bpImage, IMAGE_FORMAT imageFormat, Arena *temporaryArena)
+void ConvertNewBpImage(BpImage *bpImage, IMAGE_FORMAT imageFormat, Arena *arena)
 {
     if (bpImage->imageFormat != imageFormat)
     {
         switch (imageFormat)
         {
         case IMAGE_FORMAT_PNG_FILTERED:
-            PiratedSTB_EncodePngFilters(bpImage, temporaryArena);
+            PiratedSTB_EncodePngFilters(bpImage, arena);
             break;
         case IMAGE_FORMAT_PNG_COMPRESSED:
-            PiratedSTB_EncodePngCompression(bpImage, temporaryArena);
+            PiratedSTB_EncodePngCompression(bpImage, arena);
             break;
         case IMAGE_FORMAT_PNG_FINAL:
-            PiratedSTB_EncodePng(bpImage, temporaryArena);
+            PiratedSTB_EncodePng(bpImage, arena);
             break;
         case IMAGE_FORMAT_RAW_RGBA32:
             //No conversion needed
@@ -813,7 +817,7 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
     // Print("Converted to final PNG on thead " + IntToString(processedImage->index));
 }
 
-void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas, Arena *temporaryArena)
+void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas)
 {
     ArenaReset(&processedImage->workArena);
     processedImage->active = false;

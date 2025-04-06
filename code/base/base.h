@@ -17,7 +17,7 @@ struct GameMemory
     Arena rootImageArena;
     Arena canvasArena;
     Arena mouseClickArena;
-    Arena circularScratchBuffer;
+    Arena circularNotificationBuffer;
     Arena canvasRollbackArena;
     Arena latestCompletedImageArena;
 

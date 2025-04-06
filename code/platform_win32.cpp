@@ -985,17 +985,16 @@ int CALLBACK WinMain(HINSTANCE instance,
     // {
     GameMemory gameMemory = {};
    	gameMemory.permanentArena = ArenaInit(MegaByte * 1);
-   	gameMemory.temporaryArena = ArenaInit(MegaByte * 400);
+   	gameMemory.temporaryArena = ArenaInit(MegaByte * 100);
 	gameMemory.rootImageArena = ArenaInit(MegaByte * 50);
 
 	gameMemory.canvasArena = ArenaInit(MegaByte * 500);
-	gameMemory.mouseClickArena = ArenaInit(MegaByte * 10);
-	gameMemory.circularScratchBuffer = ArenaInit(MegaByte * 500);
-	gameMemory.circularScratchBuffer.circular = true;
+	gameMemory.mouseClickArena = ArenaInit(MegaByte * 1);
+	gameMemory.circularNotificationBuffer = ArenaInit(MegaByte * 1);
+	gameMemory.circularNotificationBuffer.circular = true;
 
-	gameMemory.latestCompletedImageArena = ArenaInit(MegaByte * 100);
-	gameMemory.twoFrameArenaModIndex0 = ArenaInit(MegaByte * 10);
-	gameMemory.twoFrameArenaModIndex1 = ArenaInit(MegaByte * 10);
+	gameMemory.twoFrameArenaModIndex0 = ArenaInit(MegaByte * 5);
+	gameMemory.twoFrameArenaModIndex1 = ArenaInit(MegaByte * 5);
 	gameMemory.canvasRollbackArena = ArenaInit(MegaByte * 800);
 
     // HINSTANCE instance = GetModuleHandle(NULL);

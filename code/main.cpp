@@ -111,17 +111,17 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
             if (rootBpImage->dataSize > 15000000)
             {
                 String notification = STRING("...Are you serious?!? Ok be patient with me, this image is freaking huge. I'm not going to run well at all.");
-                InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
+                InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
             }
             else if (rootBpImage->dataSize > 8000000)
             {
                 String notification = STRING("Uh...I'm not really ready to edit images this big yet, but I can try. Don't blame me if I'm slow though. You asked for it.");
-                InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
+                InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
             }
             else if (rootBpImage->dataSize > 5000000)
             {
                 String notification = STRING("Woah, this image is kind of large!. I'll try my best...");
-                InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
+                InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
             }
             UnloadDroppedFiles(droppedFiles);
         }
@@ -204,6 +204,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
         {
             if (loadedTexture.height && loadedTexture.width)
             {
+				ArenaMarker arenaMarker = ArenaPushMarker(&gameMemory.temporaryArena);
                 String filePath = AllocateString(256, &gameMemory.temporaryArena);
                 u32 filepathLength;
                 b32 success = GetPngImageFilePathFromUser(filePath.chars, filePath.length, &filepathLength);
@@ -214,18 +215,19 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
                     ExportImage(exportImgae, filePath);
 
                     String notification = STRING("You have given new life to: ") + filePath;
-                    InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
+                    InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
                 }
                 else
                 {
                     String notification = STRING("Sorry the save failed. You fail too. You suck. Sorry.");
-                    InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
+                    InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
                 }
+				ArenaPopMarker(arenaMarker);
             }
             else
             {
                 String notification = STRING("Bruh.");
-                InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
+                InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
             }
         }
 
@@ -308,7 +310,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
             else
             {
                 String notification = STRING("The past is no more. You must now live with your mistakes. You've run out of undos!");
-                InitNotificationMessage(notification, &gameMemory.circularScratchBuffer);
+                InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
             }
         }
 
@@ -344,7 +346,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
                 if (latestCompletedProcessedImage && (latestCompletedProcessedImage->frameStarted > processedImageOfIndex->frameStarted))
                 {
                     // Print("Throwing away image from thread " + IntToString(latestCompletedProcessedImage->index));
-                    ResetProcessedImage(processedImageOfIndex, canvas, &gameMemory.temporaryArena);
+                    ResetProcessedImage(processedImageOfIndex, canvas);
                 }
                 else
                 {
@@ -368,7 +370,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
             ArenaReset(&gameMemory.latestCompletedImageArena);
             // latestCompletedBpImage = CreateDataImage(rootBpImage, latestCompletedProcessedImage->convertedImage, &gameMemory);
-            ResetProcessedImage(latestCompletedProcessedImage, canvas, &gameMemory.temporaryArena);
+            ResetProcessedImage(latestCompletedProcessedImage, canvas);
         }
 
         if (canvas->needsTextureUpload)
@@ -377,7 +379,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
             Image outputImage = {};
             V2 dim = WidthHeightToV2(canvas->filteredRootImage.width, canvas->filteredRootImage.height);
             unsigned int pixelCount = dim.x * dim.y;
-            Color *pixels = ARENA_PUSH_ARRAY(&gameMemory.temporaryArena, pixelCount, Color);
+			ArenaMarker marker;
+            Color *pixels = ARENA_PUSH_ARRAY_MARKER(&gameMemory.temporaryArena, pixelCount, Color, &marker);
 
             for (int i = 0;
                  i < pixelCount;
@@ -397,6 +400,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
             }
 
             UploadTexture(&canvas->texture, pixels, dim.x, dim.y);
+			ArenaPopMarker(marker);
         }
 
         //----------------------------------------------------
