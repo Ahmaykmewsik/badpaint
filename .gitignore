@@ -38,14 +38,11 @@
 *.ilk
 
 # Folders
-raylib-master/
 *.pdb
 build/vc140.pdb
 build/_build_cache.cmd
 .ccls-cache/
-lib/
 *.dmp
 /builds
-/includes
 /releases
 code/nonRepo.h
