@@ -199,7 +199,7 @@ void PiratedSTB_EncodePngFilters(BpImage *bpImage, Arena *arena)
     int stride_bytes = x * 4;
 
     unsigned char *pixels = (unsigned char *)bpImage->data;
-    unsigned int dataSize = (x * n + 1) * y;
+    unsigned int dataSize = (x * n) * y;
     unsigned char *filters = (unsigned char *)ArenaPushSize(arena, dataSize, {});
     signed char *line_buffer = (signed char *)ArenaPushSize(arena, x * n, {});
 
