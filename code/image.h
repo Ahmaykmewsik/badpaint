@@ -4,21 +4,33 @@
 #include "input.h"
 #endif
 
-enum IMAGE_FORMAT
+ // NOTE: (Ahmayk) RGBA32
+struct ImageRaw
 {
-    IMAGE_FORMAT_NULL,
-    IMAGE_FORMAT_RAW_RGBA32,
-    IMAGE_FORMAT_PNG_FILTERED,
-    IMAGE_FORMAT_PNG_COMPRESSED,
-    IMAGE_FORMAT_PNG_FINAL,
+    u8 *dataU8;
+    u32 dataSize;
+    V2 dim;
 };
 
-struct BpImage
+struct ImagePNGFiltered
 {
-    void *data;
-    unsigned int dataSize;
+    u8 *dataU8;
+    u32 dataSize;
     V2 dim;
-    IMAGE_FORMAT imageFormat;
+};
+
+struct ImagePNGCompressed
+{
+    u8 *dataU8;
+    u32 dataSize;
+    V2 dim;
+};
+
+struct ImagePNGChecksumed
+{
+    u8 *dataU8;
+    u32 dataSize;
+    V2 dim;
 };
 
 static const char *G_PNG_FILTER_NAMES[] = {"", "Sub", "Up", "Average", "Paeth", "Optimal"};
@@ -45,10 +57,9 @@ struct ProcessedImage
 {
     bool active;
     unsigned int index;
-    BpImage *rootBpImage;
+    ImageRaw *rootImageRaw;
     Canvas *canvas;
-    BpImage convertedImage;
-    BpImage finalProcessedBpImage;
+    ImageRaw finalProcessedImageRaw;
     Arena workArena;
     unsigned int frameStarted;
     unsigned int frameFinished;

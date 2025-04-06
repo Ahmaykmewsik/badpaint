@@ -55,25 +55,9 @@ unsigned int GetSizeOfRawRGBA32(unsigned int width, unsigned int height)
     return result;
 }
 
-BpImage CreateEmptyBpImage(V2 dim, IMAGE_FORMAT imageFormat)
+ImageRaw LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory)
 {
-    BpImage result = {};
-    result.dim = dim;
-    result.imageFormat = imageFormat;
-    return result;
-}
-
-BpImage MakeBpImageCopy(BpImage *bpImage, Arena *arena)
-{
-    BpImage result = *bpImage;
-    result.data = ArenaPushSize(arena, bpImage->dataSize, {});
-    memcpy(result.data, bpImage->data, bpImage->dataSize);
-    return result;
-}
-
-BpImage LoadDataIntoRawBpImage(const char *filePath, GameMemory *gameMemory)
-{
-    BpImage result = {};
+    ImageRaw result = {};
 
 	ArenaMarker loadMarker = ArenaPushMarker(&gameMemory->temporaryArena);
     unsigned int fileSize = {};
@@ -106,9 +90,7 @@ BpImage LoadDataIntoRawBpImage(const char *filePath, GameMemory *gameMemory)
 			result.dim.x = width;
 			result.dim.y = height;
 			result.dataSize = dataSize;
-			result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
-			result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
-			result.data = ArenaPushSize(&gameMemory->rootImageArena, result.dataSize, {});
+			result.dataU8 = (u8*) ArenaPushSize(&gameMemory->rootImageArena, result.dataSize, {});
 
 			if (comp != 4)
 			{
@@ -157,17 +139,17 @@ BpImage LoadDataIntoRawBpImage(const char *filePath, GameMemory *gameMemory)
 						i < result.dataSize;
 						i += 4, k++)
 				{
-					((unsigned char *)result.data)[i] = (unsigned char)(pixels[k].x * 255.0f);
-					((unsigned char *)result.data)[i + 1] = (unsigned char)(pixels[k].y * 255.0f);
-					((unsigned char *)result.data)[i + 2] = (unsigned char)(pixels[k].z * 255.0f);
-					((unsigned char *)result.data)[i + 3] = (unsigned char)(pixels[k].w * 255.0f);
+					result.dataU8[i] = (unsigned char)(pixels[k].x * 255.0f);
+					result.dataU8[i + 1] = (unsigned char)(pixels[k].y * 255.0f);
+					result.dataU8[i + 2] = (unsigned char)(pixels[k].z * 255.0f);
+					result.dataU8[i + 3] = (unsigned char)(pixels[k].w * 255.0f);
 				}
 
 				ArenaPopMarker(marker);
 			}
 			else
 			{
-				memcpy(result.data, outputData, result.dataSize);
+				memcpy(result.dataU8, outputData, result.dataSize);
 			}
 		}
 		else
@@ -187,25 +169,23 @@ BpImage LoadDataIntoRawBpImage(const char *filePath, GameMemory *gameMemory)
     return result;
 }
 
-void ConvertToRawRGBA32IfNot(BpImage *bpImage, Arena *arena);
-
-void PiratedSTB_EncodePngFilters(BpImage *bpImage, Arena *arena)
+ImagePNGFiltered PiratedSTB_EncodePngFilters(ImageRaw *imageRaw, Arena *arena)
 {
-    ConvertToRawRGBA32IfNot(bpImage, arena);
+	ImagePNGFiltered result = {};
+
+    int x = imageRaw->dim.x;
+    int y = imageRaw->dim.y;
+    int n = 4;
+    int stride_bytes = x * 4;
+
+	result.dataSize = (x * n) * y;
+	result.dim = imageRaw->dim;
+    u8 *filters = (u8 *)ArenaPushSize(arena, result.dataSize, {});
+    i8 *line_buffer = (signed char *)ArenaPushSize(arena, x * n, {});
 
     int force_filter = stbi_write_force_png_filter;
     if (force_filter >= 5)
         force_filter = -1;
-
-    int x = bpImage->dim.x;
-    int y = bpImage->dim.y;
-    int n = 4;
-    int stride_bytes = x * 4;
-
-    unsigned char *pixels = (unsigned char *)bpImage->data;
-    unsigned int dataSize = (x * n) * y;
-    unsigned char *filters = (unsigned char *)ArenaPushSize(arena, dataSize, {});
-    signed char *line_buffer = (signed char *)ArenaPushSize(arena, x * n, {});
 
     for (int j = 0; j < y; ++j)
     {
@@ -213,14 +193,14 @@ void PiratedSTB_EncodePngFilters(BpImage *bpImage, Arena *arena)
         if (force_filter > -1)
         {
             filter_type = force_filter;
-            stbiw__encode_png_line((unsigned char *)(pixels), stride_bytes, x, y, j, n, force_filter, line_buffer);
+            stbiw__encode_png_line(imageRaw->dataU8, stride_bytes, x, y, j, n, force_filter, line_buffer);
         }
         else
         { // Estimate the best filter by running through all of them:
             int best_filter = 0, best_filter_val = 0x7fffffff, est, i;
             for (filter_type = 0; filter_type < 5; filter_type++)
             {
-                stbiw__encode_png_line((unsigned char *)(pixels), stride_bytes, x, y, j, n, filter_type, line_buffer);
+                stbiw__encode_png_line(imageRaw->dataU8, stride_bytes, x, y, j, n, filter_type, line_buffer);
 
                 // Estimate the entropy of the line using this filter; the less, the better.
                 est = 0;
@@ -236,212 +216,26 @@ void PiratedSTB_EncodePngFilters(BpImage *bpImage, Arena *arena)
             }
             if (filter_type != best_filter)
             { // If the last iteration already got us the best filter, don't redo it
-                stbiw__encode_png_line((unsigned char *)(pixels), stride_bytes, x, y, j, n, best_filter, line_buffer);
+                stbiw__encode_png_line(imageRaw->dataU8, stride_bytes, x, y, j, n, best_filter, line_buffer);
                 filter_type = best_filter;
             }
         }
         // when we get here, filter_type contains the filter type, and line_buffer contains the data
-        filters[j * (x * n + 1)] = (unsigned char)filter_type;
+        filters[j * (x * n + 1)] = (u8) filter_type;
         STBIW_MEMMOVE(filters + j * (x * n + 1) + 1, line_buffer, x * n);
     }
+	result.dataU8 = filters;
 
-    bpImage->data = filters;
-    bpImage->dataSize = dataSize;
-    bpImage->imageFormat = IMAGE_FORMAT_PNG_FILTERED;
+	return result;
 }
 
-void PiratedSTB_EncodePngCompression(BpImage *bpImage, Arena *arena)
+ImagePNGChecksumed PiratedSTB_EncodePngCRC(ImagePNGCompressed *imagePNGCompressed, Arena *arena)
 {
-    if (bpImage->imageFormat != IMAGE_FORMAT_PNG_FILTERED)
-        PiratedSTB_EncodePngFilters(bpImage, arena);
+	ImagePNGChecksumed result = {};
 
-    int x = bpImage->dim.x;
-    int y = bpImage->dim.y;
-    // int n = 4;
-    unsigned char *filt = (unsigned char *)bpImage->data;
-
-    int dataSize = {};
-
-    unsigned char *data = filt;
-    int data_len = y * (x * 4 + 1);
-    int *out_len = &dataSize;
-    int quality = stbi_write_png_compression_level;
-
-    static unsigned short lengthc[] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 259};
-    static unsigned char lengtheb[] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0};
-    static unsigned short distc[] = {1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 32768};
-    static unsigned char disteb[] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
-    unsigned int bitbuf = 0;
-    int i, j, bitcount = 0;
-    unsigned char *out = NULL;
-
-    unsigned char ***hash_table = (unsigned char ***)ArenaPushSize(arena, stbiw__ZHASH * sizeof(unsigned char **), {});
-    // unsigned char ***hash_table = (unsigned char ***)STBIW_MALLOC(stbiw__ZHASH * sizeof(unsigned char **));
-
-    if (quality < 5)
-        quality = 5;
-
-    stbiw__sbpush(out, 0x78); // DEFLATE 32K window
-    stbiw__sbpush(out, 0x5e); // FLEVEL = 1
-    stbiw__zlib_add(1, 1);    // BFINAL = 1
-    stbiw__zlib_add(1, 2);    // BTYPE = 1 -- fixed huffman
-
-    for (i = 0; i < stbiw__ZHASH; ++i)
-        hash_table[i] = NULL;
-
-    //  Print("STB COMPRESSION -- START WHILE LOOP");
-    i = 0;
-    while (i < data_len - 3)
-    {
-        // hash next 3 bytes of data to be compressed
-        int h = stbiw__zhash(data + i) & (stbiw__ZHASH - 1), best = 3;
-        unsigned char *bestloc = 0;
-        unsigned char **hlist = hash_table[h];
-        int n = stbiw__sbcount(hlist);
-        for (j = 0; j < n; ++j)
-        {
-            if (hlist[j] - data > i - 32768)
-            { // if entry lies within window
-                int d = stbiw__zlib_countm(hlist[j], data + i, data_len - i);
-                if (d >= best)
-                {
-                    best = d;
-                    bestloc = hlist[j];
-                }
-            }
-        }
-        // when hash table entry is too long, delete half the entries
-        if (hash_table[h] && stbiw__sbn(hash_table[h]) == 2 * quality)
-        {
-            STBIW_MEMMOVE(hash_table[h], hash_table[h] + quality, sizeof(hash_table[h][0]) * quality);
-            stbiw__sbn(hash_table[h]) = quality;
-        }
-        stbiw__sbpush(hash_table[h], data + i);
-
-        if (bestloc)
-        {
-            // "lazy matching" - check match at *next* byte, and if it's better, do cur byte as literal
-            h = stbiw__zhash(data + i + 1) & (stbiw__ZHASH - 1);
-            hlist = hash_table[h];
-            n = stbiw__sbcount(hlist);
-            for (j = 0; j < n; ++j)
-            {
-                if (hlist[j] - data > i - 32767)
-                {
-                    int e = stbiw__zlib_countm(hlist[j], data + i + 1, data_len - i - 1);
-                    if (e > best)
-                    { // if next match is better, bail on current match
-                        bestloc = NULL;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (bestloc)
-        {
-            int d = (int)(data + i - bestloc); // distance back
-            STBIW_ASSERT(d <= 32767 && best <= 258);
-            for (j = 0; best > lengthc[j + 1] - 1; ++j)
-                ;
-            stbiw__zlib_huff(j + 257);
-            if (lengtheb[j])
-                stbiw__zlib_add(best - lengthc[j], lengtheb[j]);
-            for (j = 0; d > distc[j + 1] - 1; ++j)
-                ;
-            stbiw__zlib_add(stbiw__zlib_bitrev(j, 5), 5);
-            if (disteb[j])
-                stbiw__zlib_add(d - distc[j], disteb[j]);
-            i += best;
-        }
-        else
-        {
-            stbiw__zlib_huffb(data[i]);
-            ++i;
-        }
-    }
-
-    //  Print("STB COMPRESSION -- WRITE FINAL BYTES");
-    // write out final bytes
-    for (; i < data_len; ++i)
-        stbiw__zlib_huffb(data[i]);
-    stbiw__zlib_huff(256); // end of block
-    // pad with 0 bits to byte boundary
-    while (bitcount)
-        stbiw__zlib_add(0, 1);
-
-#if 0
-    for (i = 0; i < stbiw__ZHASH; ++i)
-        (void)stbiw__sbfree(hash_table[i]);
-    STBIW_FREE(hash_table);
-#endif
-
-    // store uncompressed instead if compression was worse
-    if (stbiw__sbn(out) > data_len + 2 + ((data_len + 32766) / 32767) * 5)
-    {
-        stbiw__sbn(out) = 2; // truncate to DEFLATE 32K window and FLEVEL = 1
-        for (j = 0; j < data_len;)
-        {
-            int blocklen = data_len - j;
-            if (blocklen > 32767)
-                blocklen = 32767;
-            stbiw__sbpush(out, data_len - j == blocklen); // BFINAL = ?, BTYPE = 0 -- no compression
-            stbiw__sbpush(out, STBIW_UCHAR(blocklen));    // LEN
-            stbiw__sbpush(out, STBIW_UCHAR(blocklen >> 8));
-            stbiw__sbpush(out, STBIW_UCHAR(~blocklen)); // NLEN
-            stbiw__sbpush(out, STBIW_UCHAR(~blocklen >> 8));
-            memcpy(out + stbiw__sbn(out), data + j, blocklen);
-            stbiw__sbn(out) += blocklen;
-            j += blocklen;
-        }
-    }
-
-    {
-        // compute adler32 on input
-        unsigned int s1 = 1, s2 = 0;
-        int blocklen = (int)(data_len % 5552);
-        j = 0;
-        while (j < data_len)
-        {
-            for (i = 0; i < blocklen; ++i)
-            {
-                s1 += data[j + i];
-                s2 += s1;
-            }
-            s1 %= 65521;
-            s2 %= 65521;
-            j += blocklen;
-            blocklen = 5552;
-        }
-        stbiw__sbpush(out, STBIW_UCHAR(s2 >> 8));
-        stbiw__sbpush(out, STBIW_UCHAR(s2));
-        stbiw__sbpush(out, STBIW_UCHAR(s1 >> 8));
-        stbiw__sbpush(out, STBIW_UCHAR(s1));
-    }
-    *out_len = stbiw__sbn(out);
-    // make returned pointer freeable
-    STBIW_MEMMOVE(stbiw__sbraw(out), out, *out_len);
-
-    unsigned char *dataOut = (unsigned char *)stbiw__sbraw(out);
-
-    // Print("FINISHED STB COMPRESSION");
-
-    // int dataSize = out_len;
-    bpImage->data = ArenaPushSize(arena, dataSize, {});
-    memcpy(bpImage->data, dataOut, dataSize);
-
-    bpImage->dataSize = dataSize;
-    bpImage->imageFormat = IMAGE_FORMAT_PNG_COMPRESSED;
-}
-
-void PiratedSTB_EncodePngCRC(BpImage *bpImage, Arena *arena)
-{
-    if (bpImage->imageFormat != IMAGE_FORMAT_PNG_COMPRESSED)
-        PiratedSTB_EncodePngCompression(bpImage, arena);
-
-    unsigned int zlen = bpImage->dataSize;
-    int x = bpImage->dim.x;
-    int y = bpImage->dim.y;
+    unsigned int zlen = imagePNGCompressed->dataSize;
+    int x = imagePNGCompressed->dim.x;
+    int y = imagePNGCompressed->dim.y;
 
     // each tag requires 12 bytes of overhead
     unsigned int outLength = 8 + 12 + 13 + 12 + zlen + 12;
@@ -465,7 +259,7 @@ void PiratedSTB_EncodePngCRC(BpImage *bpImage, Arena *arena)
 
     stbiw__wp32(o, zlen);
     stbiw__wptag(o, "IDAT");
-    STBIW_MEMMOVE(o, bpImage->data, zlen);
+    STBIW_MEMMOVE(o, imagePNGCompressed->dataU8, zlen);
     o += zlen;
     stbiw__wpcrc(&o, zlen);
 
@@ -475,21 +269,17 @@ void PiratedSTB_EncodePngCRC(BpImage *bpImage, Arena *arena)
 
     STBIW_ASSERT(o == out + outLength);
 
-    bpImage->data = out;
-    bpImage->dataSize = outLength;
-    bpImage->imageFormat = IMAGE_FORMAT_PNG_FINAL;
+    result.dataU8 = out;
+    result.dataSize = outLength;
+    result.dim = imagePNGCompressed->dim;
+
+	return result;
 }
 
-void PiratedSTB_EncodePng(BpImage *bpImage, Arena *arena)
+ImageRaw DecodePng(ImagePNGChecksumed *imagePNGChecksumed, Arena *arena)
 {
-    PiratedSTB_EncodePngFilters(bpImage, arena);
-    PiratedSTB_EncodePngCompression(bpImage, arena);
-    PiratedSTB_EncodePngCRC(bpImage, arena);
-}
+	ImageRaw result = {};
 
-void DecodePng(BpImage *bpImage, Arena *arena)
-{
-    ASSERT(bpImage->imageFormat == IMAGE_FORMAT_PNG_FINAL);
     LodePNGColorType colorType = LCT_RGBA;
     unsigned int bitdepth = 8;
 
@@ -504,102 +294,49 @@ void DecodePng(BpImage *bpImage, Arena *arena)
     state.decoder.zlibsettings.ignore_nlen = true;
 
     unsigned char *outData = {};
-    unsigned int width = bpImage->dim.x;
-    unsigned int height = bpImage->dim.y;
-    lodepng_decode(&outData, &width, &height, &state, (const unsigned char *)bpImage->data, (size_t)bpImage->dataSize);
+    unsigned int width = imagePNGChecksumed->dim.x;
+    unsigned int height = imagePNGChecksumed->dim.y;
+    lodepng_decode(&outData, &width, &height, &state, imagePNGChecksumed->dataU8, (size_t)imagePNGChecksumed->dataSize);
 
     if (!state.error)
     {
-        unsigned int rawRGBA32DataSize = GetSizeOfRawRGBA32(bpImage->dim);
+        unsigned int rawRGBA32DataSize = GetSizeOfRawRGBA32(imagePNGChecksumed->dim);
         if (outData)
         {
-            bpImage->dataSize = rawRGBA32DataSize;
-            bpImage->data = ArenaPushSize(arena, bpImage->dataSize, {});
-            memcpy(bpImage->data, outData, bpImage->dataSize);
+			result.dim = imagePNGChecksumed->dim;
+            result.dataSize = rawRGBA32DataSize;
+            result.dataU8 = (u8*) ArenaPushSize(arena, result.dataSize, {});
+			//TOOD: (Ahmayk) Use our own memory so there's no copying or freeing here
+            memcpy(result.dataU8, outData, imagePNGChecksumed->dataSize);
             lodepng_free(outData);
         }
     }
     else
     {
-        bpImage->dataSize = 0;
-        bpImage->data = {};
-        bpImage->dim = {};
         // Print(lodepng_error_text(state.error));
     }
 
-    bpImage->imageFormat = IMAGE_FORMAT_RAW_RGBA32;
-
     lodepng_state_cleanup(&state);
+
+	return result;
 }
 
-void ConvertToRawRGBA32IfNot(BpImage *bpImage, Arena *arena)
+void UploadAndReplaceTexture(ImageRaw *imageRaw, Texture *texture)
 {
-    if (bpImage->imageFormat != IMAGE_FORMAT_RAW_RGBA32)
-    {
-        switch (bpImage->imageFormat)
-        {
-        case IMAGE_FORMAT_PNG_FILTERED:
-        {
-            PiratedSTB_EncodePngCompression(bpImage, arena);
-            PiratedSTB_EncodePngCRC(bpImage, arena);
-            DecodePng(bpImage, arena);
-            break;
-        }
-        case IMAGE_FORMAT_PNG_COMPRESSED:
-        {
-            PiratedSTB_EncodePngCRC(bpImage, arena);
-            DecodePng(bpImage, arena);
-            break;
-        }
-        case IMAGE_FORMAT_PNG_FINAL:
-        {
-            DecodePng(bpImage, arena);
-            break;
-        }
-            InvalidDefaultCase
-        }
-    }
+    if (ASSERT(imageRaw->dataU8))
+	{
+		if (texture->id)
+		{
+			rlUnloadTexture(texture->id);
+		}
+		*texture = {};
 
-    ASSERT(bpImage->imageFormat == IMAGE_FORMAT_RAW_RGBA32);
-}
-
-void ConvertNewBpImage(BpImage *bpImage, IMAGE_FORMAT imageFormat, Arena *arena)
-{
-    if (bpImage->imageFormat != imageFormat)
-    {
-        switch (imageFormat)
-        {
-        case IMAGE_FORMAT_PNG_FILTERED:
-            PiratedSTB_EncodePngFilters(bpImage, arena);
-            break;
-        case IMAGE_FORMAT_PNG_COMPRESSED:
-            PiratedSTB_EncodePngCompression(bpImage, arena);
-            break;
-        case IMAGE_FORMAT_PNG_FINAL:
-            PiratedSTB_EncodePng(bpImage, arena);
-            break;
-        case IMAGE_FORMAT_RAW_RGBA32:
-            //No conversion needed
-            break;
-            InvalidDefaultCase
-        }
-    }
-}
-
-void UploadAndReplaceTexture(BpImage *bpImage, Texture *texture)
-{
-    ASSERT(bpImage->data);
-    ASSERT(bpImage->imageFormat == IMAGE_FORMAT_RAW_RGBA32);
-
-    if (texture->id)
-        rlUnloadTexture(texture->id);
-    *texture = {};
-
-    texture->id = rlLoadTexture(bpImage->data, bpImage->dim.x, bpImage->dim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
-    texture->width = bpImage->dim.x;
-    texture->height = bpImage->dim.y;
-    texture->mipmaps = 1;
-    texture->format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+		texture->id = rlLoadTexture(imageRaw->dataU8, imageRaw->dim.x, imageRaw->dim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
+		texture->width = imageRaw->dim.x;
+		texture->height = imageRaw->dim.y;
+		texture->mipmaps = 1;
+		texture->format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+	}
     // GenTextureMipmaps(texture);
 }
 
@@ -635,57 +372,19 @@ unsigned int GetCanvasDatasize(Canvas *canvas)
     return result;
 }
 
-BpImage CreateDataImage(BpImage *rootBpImage, BpImage finalImage, GameMemory *gameMemory)
-{
-    BpImage result = {};
-
-#if 0
-    if (!finalImage.data)
-    {
-        finalImage = MakeBpImageCopy(rootBpImage, &gameMemory->temporaryArena);
-        ConvertNewBpImage(&finalImage, IMAGE_FORMAT_PNG_FILTERED, &gameMemory->temporaryArena);
-    }
-
-    int pixelCount = rootBpImage->dataSize;
-    ArenaReset(&gameMemory->latestCompletedImageArena);
-    Color *pixelsRootImage = ARENA_PUSH_ARRAY(&gameMemory->latestCompletedImageArena, pixelCount, Color);
-
-    for (int i = 0;
-         i < pixelCount;
-         i++)
-    {
-        unsigned char value = ((unsigned char *)finalImage.data)[i];
-        pixelsRootImage[i] = Color{value, value, value, 255};
-    }
-
-    result.data = pixelsRootImage;
-    result.dim = V2{rootBpImage->dim.x * 4, rootBpImage->dim.y} + 1;
-    result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
-    result.dataSize = pixelCount * sizeof(Color); //NOTE: sizeof(unsigned char) * 4
-#endif
-
-    int pixelCount = rootBpImage->dataSize;
-    result.data = rootBpImage->data;
-    result.dim = V2{rootBpImage->dim.x * 4, rootBpImage->dim.y} + 1;
-    result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
-    result.dataSize = pixelCount * sizeof(Color); //NOTE: sizeof(unsigned char) * 4
-
-    return result;
-}
-
-void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, Brush *brush, GameMemory *gameMemory)
+void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, GameMemory *gameMemory)
 {
     if (canvas->texture.id)
         UnloadTexture(canvas->texture);
+
+    ImagePNGFiltered imagePNGFiltered = PiratedSTB_EncodePngFilters(rootImageRaw, &gameMemory->temporaryArena);
 
     float closestSquare = {};
 
     V2 canvsDim = {};
 
-    BpImage tempImage = MakeBpImageCopy(rootBpImage, &gameMemory->temporaryArena);
-    ConvertNewBpImage(&tempImage, IMAGE_FORMAT_PNG_FILTERED, &gameMemory->temporaryArena);
-    V2 canvasDim = V2{rootBpImage->dim.x * 4, rootBpImage->dim.y} + 1;
-    float pixelCount = rootBpImage->dataSize;
+    V2 canvasDim = V2{rootImageRaw->dim.x * 4, rootImageRaw->dim.y} + 1;
+    float pixelCount = rootImageRaw->dataSize;
 
     ArenaReset(&gameMemory->canvasArena);
     Color *pixelsDrawn = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, pixelCount, Color);
@@ -695,21 +394,22 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, Brush *brush, GameMe
     canvas->drawnImageData.height = canvasDim.y;
     canvas->drawnImageData.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
     canvas->drawnImageData.mipmaps = 1;
-
     canvas->filteredRootImage = canvas->drawnImageData;
     canvas->filteredRootImage.data = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, pixelCount, Color);
+
     for (int i = 0;
          i < pixelCount;
          i++)
     {
-        unsigned char value = ((unsigned char *)tempImage.data)[i];
+        u8 value = imagePNGFiltered.dataU8[i];
         ((Color *)(canvas->filteredRootImage.data))[i] = Color{value, value, value, 255};
     }
 
     if (canvas->texture.id)
+	{
         rlUnloadTexture(canvas->texture.id);
+	}
     canvas->texture = {};
-
     canvas->needsTextureUpload = true;
 
     ArenaReset(&gameMemory->canvasRollbackArena);
@@ -722,14 +422,14 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, Brush *brush, GameMe
     canvas->brush = brush;
 }
 
-void InitializeNewImage(const char *fileName, GameMemory *gameMemory, BpImage *rootBpImage, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush)
+void InitializeNewImage(const char *fileName, GameMemory *gameMemory, ImageRaw *rootImageRaw, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush)
 {
-    *rootBpImage = LoadDataIntoRawBpImage(fileName, gameMemory);
-    if (rootBpImage->data)
+    *rootImageRaw = LoadDataIntoRawImage(fileName, gameMemory);
+    if (rootImageRaw->dataU8)
     {
-        UploadAndReplaceTexture(rootBpImage, loadedTexture);
-        InitializeCanvas(canvas, rootBpImage, currentBrush, gameMemory);
-        // *latestCompletedBpImage = CreateDataImage(rootBpImage, {}, gameMemory);
+        UploadAndReplaceTexture(rootImageRaw, loadedTexture);
+        InitializeCanvas(canvas, rootImageRaw, currentBrush, gameMemory);
+        // *latestCompletedBpImage = CreateDataImage(rootImageRaw, {}, gameMemory);
     }
 }
 
@@ -739,17 +439,14 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 
     Arena *arena = &processedImage->workArena;
 
-    BpImage *convertedImage = &processedImage->convertedImage;
-    *convertedImage = MakeBpImageCopy(processedImage->rootBpImage, arena);
-
-    ConvertNewBpImage(&processedImage->convertedImage, IMAGE_FORMAT_PNG_FILTERED, arena);
+    ImagePNGFiltered imagePNGFiltered = PiratedSTB_EncodePngFilters(processedImage->rootImageRaw, arena);
 
     Canvas *canvas = processedImage->canvas;
 
     ASSERT(processedImage->canvas->drawnImageData.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
 
     for (int i = 0;
-         i < convertedImage->dataSize;
+         i < imagePNGFiltered.dataSize;
          i += 1)
     {
         Color canvasPixel = ((Color *)canvas->drawnImageData.data)[i];
@@ -760,24 +457,24 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
             {
             case BRUSH_EFFECT_REMOVE:
             {
-                ((unsigned char *)convertedImage->data)[i] = 0;
+                imagePNGFiltered.dataU8[i] = 0;
                 break;
             }
             case BRUSH_EFFECT_MAX:
             {
-                ((unsigned char *)convertedImage->data)[i] = 255;
+                imagePNGFiltered.dataU8[i] = 255;
                 break;
             }
             case BRUSH_EFFECT_SHIFT:
             {
                 int shiftAmount = 36;
-                if (i < convertedImage->dataSize - shiftAmount)
-                    ((unsigned char *)convertedImage->data)[i] = ((unsigned char *)convertedImage->data)[i + shiftAmount];
+                if (i < imagePNGFiltered.dataSize - shiftAmount)
+                    imagePNGFiltered.dataU8[i] = imagePNGFiltered.dataU8[i + shiftAmount];
                 break;
             }
             case BRUSH_EFFECT_RANDOM:
             {
-                ((unsigned char *)convertedImage->data)[i] = canvasPixel.g;
+                imagePNGFiltered.dataU8[i] = canvasPixel.g;
                 break;
             }
             case BRUSH_EFFECT_ERASE_EFFECT:
@@ -787,31 +484,20 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
         }
     }
 
-    processedImage->finalProcessedBpImage = MakeBpImageCopy(convertedImage, arena);
-    // Print("Made copy of canvas edit on thead " + IntToString(processedImage->index));
+	ImagePNGCompressed imagePNGCompressed = {};
+	imagePNGCompressed.dim = imagePNGFiltered.dim;
+	imagePNGCompressed.dataSize = imagePNGFiltered.dataSize;
 
-    // ConvertToRawRGBA32IfNot(&processedImage->finalProcessedBpImage, arena);
-    // PiratedSTB_EncodePngCompression(&processedImage->finalProcessedBpImage, arena);
+	imagePNGCompressed.dataU8 = (u8 *)ArenaPushSize(arena, imagePNGFiltered.dataSize, {});
+	fpng::pixel_deflate_dyn_4_rle_one_pass(imagePNGFiltered.dataU8,
+			imagePNGFiltered.dim.x,
+			imagePNGFiltered.dim.y,
+			imagePNGCompressed.dataU8, imagePNGCompressed.dataSize);
 
-    if (true)
-    {
-        unsigned char *tempData = (unsigned char *)ArenaPushSize(arena, processedImage->finalProcessedBpImage.dataSize, {});
-        fpng::pixel_deflate_dyn_4_rle_one_pass((const uint8_t *)processedImage->finalProcessedBpImage.data,
-                                               processedImage->finalProcessedBpImage.dim.x,
-                                               processedImage->finalProcessedBpImage.dim.y,
-                                               tempData, processedImage->finalProcessedBpImage.dataSize);
-        memcpy(processedImage->finalProcessedBpImage.data, tempData, processedImage->finalProcessedBpImage.dataSize);
-        processedImage->finalProcessedBpImage.imageFormat = IMAGE_FORMAT_PNG_COMPRESSED;
-    }
-    else
-    {
-        PiratedSTB_EncodePngCompression(&processedImage->finalProcessedBpImage, arena);
-    }
-
-    // Print("Encoded PNG COmpression on thread " + IntToString(processedImage->index));
-    PiratedSTB_EncodePngCRC(&processedImage->finalProcessedBpImage, arena);
+    // Print("Encoded PNG Compression on thread " + IntToString(processedImage->index));
+    ImagePNGChecksumed imagePNGChecksumed = PiratedSTB_EncodePngCRC(&imagePNGCompressed, arena);
     // Print("Encoded PNG CRC on thread " + IntToString(processedImage->index));
-    DecodePng(&processedImage->finalProcessedBpImage, arena);
+    processedImage->finalProcessedImageRaw = DecodePng(&imagePNGChecksumed, arena);
     // Print("Decoded PNG on thread " + IntToString(processedImage->index));
 
     // Print("Converted to final PNG on thead " + IntToString(processedImage->index));
@@ -823,7 +509,7 @@ void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas)
     processedImage->active = false;
     processedImage->frameStarted = 0;
     processedImage->frameFinished = 0;
-    processedImage->finalProcessedBpImage = {};
+    processedImage->finalProcessedImageRaw = {};
 
     unsigned int pixelCount = canvas->drawnImageData.width * canvas->drawnImageData.height;
 

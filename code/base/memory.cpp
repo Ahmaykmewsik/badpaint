@@ -65,8 +65,6 @@ u8 *ArenaPushSize(Arena *arena, u64 size, ArenaMarker *arenaMarker)
 
 		result = arena->used + arena->memory;
     	arena->used += size;
-
-		printf("Pushed: %lld bytes onto %b\n", size, arena->memory);
 	}
 
 	return result;

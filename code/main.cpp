@@ -3,9 +3,8 @@
 
 void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned int threadCount)
 {
-    BpImage *rootBpImage = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, BpImage);
+    ImageRaw *rootImageRaw = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, ImageRaw);
     Canvas *canvas = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, Canvas);
-    // BpImage latestCompletedBpImage = {};
 
     bool imageIsBroken = {};
 
@@ -15,7 +14,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
          i++)
     {
         ProcessedImage *processedImage = processedImages + i;
-        processedImage->rootBpImage = rootBpImage;
+        processedImage->rootImageRaw = rootImageRaw;
         processedImage->canvas = canvas;
         processedImage->index = i;
 		processedImage->workArena = ArenaInit(MegaByte * 300);
@@ -71,7 +70,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
     //NOTE: DEVELOPER HACK
     {
-		 InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootBpImage, canvas, &loadedTexture, &currentBrush);
+		 InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootImageRaw, canvas, &loadedTexture, &currentBrush);
     }
 
     while (!WindowShouldClose())
@@ -106,19 +105,19 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
         {
             FilePathList droppedFiles = LoadDroppedFiles();
             char *fileName = droppedFiles.paths[0];
-            InitializeNewImage(fileName, &gameMemory, rootBpImage, canvas, &loadedTexture, &currentBrush);
+            InitializeNewImage(fileName, &gameMemory, rootImageRaw, canvas, &loadedTexture, &currentBrush);
 
-            if (rootBpImage->dataSize > 15000000)
+            if (rootImageRaw->dataSize > 15000000)
             {
                 String notification = STRING("...Are you serious?!? Ok be patient with me, this image is freaking huge. I'm not going to run well at all.");
                 InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
             }
-            else if (rootBpImage->dataSize > 8000000)
+            else if (rootImageRaw->dataSize > 8000000)
             {
                 String notification = STRING("Uh...I'm not really ready to edit images this big yet, but I can try. Don't blame me if I'm slow though. You asked for it.");
                 InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
             }
-            else if (rootBpImage->dataSize > 5000000)
+            else if (rootImageRaw->dataSize > 5000000)
             {
                 String notification = STRING("Woah, this image is kind of large!. I'll try my best...");
                 InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
@@ -357,9 +356,9 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
         if (latestCompletedProcessedImage)
         {
-            if (latestCompletedProcessedImage->finalProcessedBpImage.data)
+            if (latestCompletedProcessedImage->finalProcessedImageRaw.dataU8)
             {
-                UploadAndReplaceTexture(&latestCompletedProcessedImage->finalProcessedBpImage, &loadedTexture);
+                UploadAndReplaceTexture(&latestCompletedProcessedImage->finalProcessedImageRaw, &loadedTexture);
                 // Print("Uploading New Image from thread " + IntToString(latestCompletedProcessedImage->index));
                 //TODO: put the latest uploaded image somewhere for safekeeping?
             }
@@ -369,7 +368,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
             }
 
             ArenaReset(&gameMemory.latestCompletedImageArena);
-            // latestCompletedBpImage = CreateDataImage(rootBpImage, latestCompletedProcessedImage->convertedImage, &gameMemory);
             ResetProcessedImage(latestCompletedProcessedImage, canvas);
         }
 
