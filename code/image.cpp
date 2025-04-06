@@ -4,7 +4,7 @@
 #include "headers.h"
 #endif
 
-unsigned char *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, MemoryArena *temporaryArena)
+unsigned char *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, Arena *temporaryArena)
 {
     unsigned char *data = NULL;
     *bytesRead = 0;
@@ -21,7 +21,7 @@ unsigned char *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, M
 
         if (size > 0)
         {
-            data = PushArray(temporaryArena, size, unsigned char);
+            data = ARENA_PUSH_ARRAY(temporaryArena, size, unsigned char);
 
             // NOTE: fread() returns number of read elements instead of bytes, so we read [1 byte, size elements]
             unsigned int count = (unsigned int)fread(data, sizeof(unsigned char), size, file);
@@ -63,10 +63,10 @@ BpImage CreateEmptyBpImage(V2 dim, IMAGE_FORMAT imageFormat)
     return result;
 }
 
-BpImage MakeBpImageCopy(BpImage *bpImage, MemoryArena *arena)
+BpImage MakeBpImageCopy(BpImage *bpImage, Arena *arena)
 {
     BpImage result = *bpImage;
-    result.data = PushSize(arena, bpImage->dataSize);
+    result.data = ArenaPushSize(arena, bpImage->dataSize, {});
     memcpy(result.data, bpImage->data, bpImage->dataSize);
     return result;
 }
@@ -95,17 +95,17 @@ BpImage LoadDataIntoRawBpImage(const char *filePath, GameMemory *gameMemory)
                 int dataSize = GetSizeOfRawRGBA32(WidthHeightToV2(width, height));
                 if (dataSize < 30000000)
                 {
-                    ResetMemoryArena(&gameMemory->rootImageArena);
+                    ArenaReset(&gameMemory->rootImageArena);
                     result.dim.x = width;
                     result.dim.y = height;
                     result.dataSize = dataSize;
                     result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
                     result.imageFormat = IMAGE_FORMAT_RAW_RGBA32;
-                    result.data = PushSize(&gameMemory->rootImageArena, result.dataSize);
+                    result.data = ArenaPushSize(&gameMemory->rootImageArena, result.dataSize, {});
 
                     if (comp != 4)
                     {
-                        V4 *pixels = PushArray(&gameMemory->temporaryArena, width * height, V4);
+                        V4 *pixels = ARENA_PUSH_ARRAY(&gameMemory->temporaryArena, width * height, V4);
                         for (int i = 0, k = 0;
                              i < result.dim.x * result.dim.y;
                              i++)
@@ -183,9 +183,9 @@ BpImage LoadDataIntoRawBpImage(const char *filePath, GameMemory *gameMemory)
     return result;
 }
 
-void ConvertToRawRGBA32IfNot(BpImage *bpImage, MemoryArena *arena);
+void ConvertToRawRGBA32IfNot(BpImage *bpImage, Arena *arena);
 
-void PiratedSTB_EncodePngFilters(BpImage *bpImage, MemoryArena *arena)
+void PiratedSTB_EncodePngFilters(BpImage *bpImage, Arena *arena)
 {
     ConvertToRawRGBA32IfNot(bpImage, arena);
 
@@ -200,8 +200,8 @@ void PiratedSTB_EncodePngFilters(BpImage *bpImage, MemoryArena *arena)
 
     unsigned char *pixels = (unsigned char *)bpImage->data;
     unsigned int dataSize = (x * n + 1) * y;
-    unsigned char *filters = (unsigned char *)PushSize(arena, dataSize);
-    signed char *line_buffer = (signed char *)PushSize(arena, x * n);
+    unsigned char *filters = (unsigned char *)ArenaPushSize(arena, dataSize, {});
+    signed char *line_buffer = (signed char *)ArenaPushSize(arena, x * n, {});
 
     for (int j = 0; j < y; ++j)
     {
@@ -246,7 +246,7 @@ void PiratedSTB_EncodePngFilters(BpImage *bpImage, MemoryArena *arena)
     bpImage->imageFormat = IMAGE_FORMAT_PNG_FILTERED;
 }
 
-void PiratedSTB_EncodePngCompression(BpImage *bpImage, MemoryArena *arena)
+void PiratedSTB_EncodePngCompression(BpImage *bpImage, Arena *arena)
 {
     if (bpImage->imageFormat != IMAGE_FORMAT_PNG_FILTERED)
         PiratedSTB_EncodePngFilters(bpImage, arena);
@@ -271,7 +271,7 @@ void PiratedSTB_EncodePngCompression(BpImage *bpImage, MemoryArena *arena)
     int i, j, bitcount = 0;
     unsigned char *out = NULL;
 
-    unsigned char ***hash_table = (unsigned char ***)PushSize(arena, stbiw__ZHASH * sizeof(unsigned char **));
+    unsigned char ***hash_table = (unsigned char ***)ArenaPushSize(arena, stbiw__ZHASH * sizeof(unsigned char **), {});
     // unsigned char ***hash_table = (unsigned char ***)STBIW_MALLOC(stbiw__ZHASH * sizeof(unsigned char **));
 
     if (quality < 5)
@@ -423,14 +423,14 @@ void PiratedSTB_EncodePngCompression(BpImage *bpImage, MemoryArena *arena)
     // Print("FINISHED STB COMPRESSION");
 
     // int dataSize = out_len;
-    bpImage->data = PushSize(arena, dataSize);
+    bpImage->data = ArenaPushSize(arena, dataSize, {});
     memcpy(bpImage->data, dataOut, dataSize);
 
     bpImage->dataSize = dataSize;
     bpImage->imageFormat = IMAGE_FORMAT_PNG_COMPRESSED;
 }
 
-void PiratedSTB_EncodePngCRC(BpImage *bpImage, MemoryArena *arena)
+void PiratedSTB_EncodePngCRC(BpImage *bpImage, Arena *arena)
 {
     if (bpImage->imageFormat != IMAGE_FORMAT_PNG_COMPRESSED)
         PiratedSTB_EncodePngCompression(bpImage, arena);
@@ -441,7 +441,7 @@ void PiratedSTB_EncodePngCRC(BpImage *bpImage, MemoryArena *arena)
 
     // each tag requires 12 bytes of overhead
     unsigned int outLength = 8 + 12 + 13 + 12 + zlen + 12;
-    unsigned char *out = (unsigned char *)PushSize(arena, outLength);
+    unsigned char *out = (unsigned char *)ArenaPushSize(arena, outLength, {});
 
     int ctype[5] = {-1, 0, 4, 2, 6};
     unsigned char sig[8] = {137, 80, 78, 71, 13, 10, 26, 10};
@@ -476,16 +476,16 @@ void PiratedSTB_EncodePngCRC(BpImage *bpImage, MemoryArena *arena)
     bpImage->imageFormat = IMAGE_FORMAT_PNG_FINAL;
 }
 
-void PiratedSTB_EncodePng(BpImage *bpImage, MemoryArena *arena)
+void PiratedSTB_EncodePng(BpImage *bpImage, Arena *arena)
 {
     PiratedSTB_EncodePngFilters(bpImage, arena);
     PiratedSTB_EncodePngCompression(bpImage, arena);
     PiratedSTB_EncodePngCRC(bpImage, arena);
 }
 
-void DecodePng(BpImage *bpImage, MemoryArena *arena)
+void DecodePng(BpImage *bpImage, Arena *arena)
 {
-    Assert(bpImage->imageFormat == IMAGE_FORMAT_PNG_FINAL);
+    ASSERT(bpImage->imageFormat == IMAGE_FORMAT_PNG_FINAL);
     LodePNGColorType colorType = LCT_RGBA;
     unsigned int bitdepth = 8;
 
@@ -510,7 +510,7 @@ void DecodePng(BpImage *bpImage, MemoryArena *arena)
         if (outData)
         {
             bpImage->dataSize = rawRGBA32DataSize;
-            bpImage->data = PushSize(arena, bpImage->dataSize);
+            bpImage->data = ArenaPushSize(arena, bpImage->dataSize, {});
             memcpy(bpImage->data, outData, bpImage->dataSize);
             lodepng_free(outData);
         }
@@ -528,7 +528,7 @@ void DecodePng(BpImage *bpImage, MemoryArena *arena)
     lodepng_state_cleanup(&state);
 }
 
-void ConvertToRawRGBA32IfNot(BpImage *bpImage, MemoryArena *arena)
+void ConvertToRawRGBA32IfNot(BpImage *bpImage, Arena *arena)
 {
     if (bpImage->imageFormat != IMAGE_FORMAT_RAW_RGBA32)
     {
@@ -556,10 +556,10 @@ void ConvertToRawRGBA32IfNot(BpImage *bpImage, MemoryArena *arena)
         }
     }
 
-    Assert(bpImage->imageFormat == IMAGE_FORMAT_RAW_RGBA32);
+    ASSERT(bpImage->imageFormat == IMAGE_FORMAT_RAW_RGBA32);
 }
 
-void ConvertNewBpImage(BpImage *bpImage, IMAGE_FORMAT imageFormat, MemoryArena *temporaryArena)
+void ConvertNewBpImage(BpImage *bpImage, IMAGE_FORMAT imageFormat, Arena *temporaryArena)
 {
     if (bpImage->imageFormat != imageFormat)
     {
@@ -584,8 +584,8 @@ void ConvertNewBpImage(BpImage *bpImage, IMAGE_FORMAT imageFormat, MemoryArena *
 
 void UploadAndReplaceTexture(BpImage *bpImage, Texture *texture)
 {
-    Assert(bpImage->data);
-    Assert(bpImage->imageFormat == IMAGE_FORMAT_RAW_RGBA32);
+    ASSERT(bpImage->data);
+    ASSERT(bpImage->imageFormat == IMAGE_FORMAT_RAW_RGBA32);
 
     if (texture->id)
         rlUnloadTexture(texture->id);
@@ -643,8 +643,8 @@ BpImage CreateDataImage(BpImage *rootBpImage, BpImage finalImage, GameMemory *ga
     }
 
     int pixelCount = rootBpImage->dataSize;
-    ResetMemoryArena(&gameMemory->latestCompletedImageArena);
-    Color *pixelsRootImage = PushArray(&gameMemory->latestCompletedImageArena, pixelCount, Color);
+    ArenaReset(&gameMemory->latestCompletedImageArena);
+    Color *pixelsRootImage = ARENA_PUSH_ARRAY(&gameMemory->latestCompletedImageArena, pixelCount, Color);
 
     for (int i = 0;
          i < pixelCount;
@@ -683,9 +683,9 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, Brush *brush, GameMe
     V2 canvasDim = V2{rootBpImage->dim.x * 4, rootBpImage->dim.y} + 1;
     float pixelCount = rootBpImage->dataSize;
 
-    ResetMemoryArena(&gameMemory->canvasArena);
-    Color *pixelsDrawn = PushArray(&gameMemory->canvasArena, pixelCount, Color);
-    ZeroArrayType(pixelsDrawn, pixelCount, Color);
+    ArenaReset(&gameMemory->canvasArena);
+    Color *pixelsDrawn = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, pixelCount, Color);
+	memset(pixelsDrawn, 0, sizeof(Color) * pixelCount);
     canvas->drawnImageData.data = pixelsDrawn;
     canvas->drawnImageData.width = canvasDim.x;
     canvas->drawnImageData.height = canvasDim.y;
@@ -693,7 +693,7 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, Brush *brush, GameMe
     canvas->drawnImageData.mipmaps = 1;
 
     canvas->filteredRootImage = canvas->drawnImageData;
-    canvas->filteredRootImage.data = PushArray(&gameMemory->canvasArena, pixelCount, Color);
+    canvas->filteredRootImage.data = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, pixelCount, Color);
     for (int i = 0;
          i < pixelCount;
          i++)
@@ -708,10 +708,10 @@ void InitializeCanvas(Canvas *canvas, BpImage *rootBpImage, Brush *brush, GameMe
 
     canvas->needsTextureUpload = true;
 
-    ResetMemoryArena(&gameMemory->canvasRollbackArena);
+    ArenaReset(&gameMemory->canvasRollbackArena);
     unsigned int canvasSize = GetCanvasDatasize(canvas);
     canvas->rollbackSizeCount = Floor((float)gameMemory->canvasRollbackArena.size / canvasSize) - 1;
-    canvas->rollbackImageData = PushArray(&gameMemory->canvasRollbackArena, canvas->rollbackSizeCount * canvasSize, unsigned char);
+    canvas->rollbackImageData = ARENA_PUSH_ARRAY(&gameMemory->canvasRollbackArena, canvas->rollbackSizeCount * canvasSize, unsigned char);
     canvas->rollbackIndexStart = 0;
     canvas->rollbackIndexNext = 0;
 
@@ -733,7 +733,7 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 {
     // Print("Staring Work on thread " + IntToString(processedImage->index));
 
-    MemoryArena *arena = &processedImage->workArena;
+    Arena *arena = &processedImage->workArena;
 
     BpImage *convertedImage = &processedImage->convertedImage;
     *convertedImage = MakeBpImageCopy(processedImage->rootBpImage, arena);
@@ -742,7 +742,7 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 
     Canvas *canvas = processedImage->canvas;
 
-    Assert(processedImage->canvas->drawnImageData.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+    ASSERT(processedImage->canvas->drawnImageData.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
 
     for (int i = 0;
          i < convertedImage->dataSize;
@@ -778,7 +778,7 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
             }
             case BRUSH_EFFECT_ERASE_EFFECT:
                 break;
-                InvalidDefaultCase
+				InvalidDefaultCase
             }
         }
     }
@@ -791,7 +791,7 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 
     if (true)
     {
-        unsigned char *tempData = (unsigned char *)PushSize(arena, processedImage->finalProcessedBpImage.dataSize);
+        unsigned char *tempData = (unsigned char *)ArenaPushSize(arena, processedImage->finalProcessedBpImage.dataSize, {});
         fpng::pixel_deflate_dyn_4_rle_one_pass((const uint8_t *)processedImage->finalProcessedBpImage.data,
                                                processedImage->finalProcessedBpImage.dim.x,
                                                processedImage->finalProcessedBpImage.dim.y,
@@ -813,9 +813,9 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
     // Print("Converted to final PNG on thead " + IntToString(processedImage->index));
 }
 
-void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas, MemoryArena *temporaryArena)
+void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas, Arena *temporaryArena)
 {
-    ResetMemoryArena(&processedImage->workArena);
+    ArenaReset(&processedImage->workArena);
     processedImage->active = false;
     processedImage->frameStarted = 0;
     processedImage->frameFinished = 0;
@@ -857,7 +857,7 @@ ProcessedImage *GetFreeProcessedImage(ProcessedImage *processedImages, unsigned 
 PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread)
 {
     ProcessedImage *processedImage = (ProcessedImage *)data;
-    Assert(processedImage);
+    ASSERT(processedImage);
 
     UpdateBpImageOnThread(processedImage);
     processedImage->frameFinished = G_CURRENT_FRAME;

@@ -16,7 +16,7 @@ bool IsCommandPressed(COMMAND command)
     return result;
 }
 
-void InitNotificationMessage(String string, MemoryArena *circularScratchBuffer)
+void InitNotificationMessage(String string, Arena *circularScratchBuffer)
 {
     G_NOTIFICATION_MESSAGE = string;
     MoveStringToArena(&G_NOTIFICATION_MESSAGE, circularScratchBuffer);

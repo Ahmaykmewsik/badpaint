@@ -9,8 +9,8 @@
 #endif
 
 // must be set ahead of time
-// Requires MemoryArena
-static MemoryArena *G_STRING_TEMP_MEM_ARENA;
+// Requires Arena
+static Arena *G_STRING_TEMP_MEM_ARENA;
 
 struct String
 {
@@ -130,14 +130,14 @@ inline unsigned int NullTerminatedCharLength(const char *chars)
 
 //-----String functions------
 
-inline String AllocateString(unsigned int length, MemoryArena *arena)
+inline String AllocateString(unsigned int length, Arena *arena)
 {
     String result;
 
     if (length)
     {
         result.length = length;
-        result.chars = PushArray(arena, length + 1, char);
+        result.chars = ARENA_PUSH_ARRAY(arena, length + 1, char);
         result.chars[length] = '\0';
     }
     else
@@ -148,24 +148,24 @@ inline String AllocateString(unsigned int length, MemoryArena *arena)
     return result;
 }
 
-inline String CreateStringOfLength(const char *sourceChars, unsigned int length, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline String CreateStringOfLength(const char *sourceChars, unsigned int length, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
-    Assert(length);
+    ASSERT(length);
     String result = AllocateString(length, arena);
     memcpy(result.chars, sourceChars, length);
     return result;
 }
 
-inline String CreateStringOnArena(const char *sourceChars, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA, int startIndex = 0, int endIndex = 0)
+inline String CreateStringOnArena(const char *sourceChars, Arena *arena = G_STRING_TEMP_MEM_ARENA, int startIndex = 0, int endIndex = 0)
 {
     String result = {};
-    Assert(!endIndex || (startIndex <= endIndex));
+    ASSERT(!endIndex || (startIndex <= endIndex));
 
     if (!endIndex || startIndex <= endIndex)
     {
         int sizeSource = NullTerminatedCharLength(sourceChars);
         int length = (endIndex) ? endIndex - startIndex : sizeSource;
-        Assert(length <= sizeSource);
+		//ASSERT(length <= sizeSource);
 
         if (length)
             result = CreateStringOfLength(sourceChars + startIndex, length, arena);
@@ -174,22 +174,22 @@ inline String CreateStringOnArena(const char *sourceChars, MemoryArena *arena = 
     return result;
 }
 
-inline String CreateStringOnArena(char *sourceChars, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA, int startIndex = 0, int endIndex = 0)
+inline String CreateStringOnArena(char *sourceChars, Arena *arena = G_STRING_TEMP_MEM_ARENA, int startIndex = 0, int endIndex = 0)
 {
     return CreateStringOnArena((const char *)sourceChars, arena, startIndex, endIndex);
 }
 
-inline String CreateString(char *chars, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline String CreateString(char *chars, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
     return CreateStringOnArena(chars, arena);
 }
 
-inline String CreateString(const char *chars, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline String CreateString(const char *chars, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
     return CreateStringOnArena(chars, arena);
 }
 
-inline String CreateString(char c, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline String CreateString(char c, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
     String result = AllocateString(1, arena);
     result.chars[0] = c;
@@ -201,7 +201,7 @@ inline String CreateString(String s)
     return s;
 }
 
-inline void MoveStringToArena(String *string, MemoryArena *arena)
+inline void MoveStringToArena(String *string, Arena *arena)
 {
     *string = CreateStringOnArena(string->chars, arena);
 }
@@ -228,12 +228,12 @@ inline bool StringCompare(String s1, String s2)
 inline void ValidateEditedStringLength(String string)
 {
     int nullTerminatedLength = NullTerminatedCharLength(string.chars);
-    Assert(nullTerminatedLength == string.length);
+    ASSERT(nullTerminatedLength == string.length);
 }
 
-inline String InsertString(String stringToEdit, String stringToInsert, unsigned int index, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline String InsertString(String stringToEdit, String stringToInsert, unsigned int index, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
-    Assert(index <= stringToEdit.length);
+    ASSERT(index <= stringToEdit.length);
 
     String result = AllocateString(stringToEdit.length + stringToInsert.length, arena);
     memcpy(result.chars, stringToEdit.chars, index);
@@ -245,15 +245,15 @@ inline String InsertString(String stringToEdit, String stringToInsert, unsigned 
     return result;
 }
 
-inline String RemoveRangeInString(String stringToEdit, unsigned int startIndex, unsigned int endIndex, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline String RemoveRangeInString(String stringToEdit, unsigned int startIndex, unsigned int endIndex, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
-    Assert(startIndex <= stringToEdit.length);
-    Assert(endIndex <= stringToEdit.length);
-    Assert(endIndex >= startIndex);
+    ASSERT(startIndex <= stringToEdit.length);
+    ASSERT(endIndex <= stringToEdit.length);
+    ASSERT(endIndex >= startIndex);
 
     unsigned int gapLength = (endIndex - startIndex);
     String result = AllocateString(stringToEdit.length - gapLength, arena);
-    Assert(result.chars != stringToEdit.chars);
+    ASSERT(result.chars != stringToEdit.chars);
 
     memcpy(result.chars, stringToEdit.chars, startIndex);
     memcpy(result.chars + startIndex, stringToEdit.chars + endIndex, stringToEdit.length + gapLength);
@@ -263,14 +263,14 @@ inline String RemoveRangeInString(String stringToEdit, unsigned int startIndex, 
     return result;
 }
 
-inline String RemoveIndexInString(String stringToEdit, unsigned int index, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline String RemoveIndexInString(String stringToEdit, unsigned int index, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
-    Assert(index <= stringToEdit.length);
+    ASSERT(index <= stringToEdit.length);
     String result = RemoveRangeInString(stringToEdit, index, index + 1, arena);
     return result;
 }
 
-inline StringArray SplitByChar(String string, char c, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline StringArray SplitByChar(String string, char c, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
     StringArray result = {};
     int numSplitsPrecalculated = 1;
@@ -281,7 +281,7 @@ inline StringArray SplitByChar(String string, char c, MemoryArena *arena = G_STR
         if (string.chars[i] == c)
             numSplitsPrecalculated++;
     }
-    result.strings = PushArray(arena, numSplitsPrecalculated, String);
+    result.strings = ARENA_PUSH_ARRAY(arena, numSplitsPrecalculated, String);
     int firstLetterOfSplitIndex = 0;
 
     for (int i = 0;
@@ -299,7 +299,7 @@ inline StringArray SplitByChar(String string, char c, MemoryArena *arena = G_STR
     return result;
 }
 
-inline StringArray SplitStringOnceByTag(String string, String tag, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline StringArray SplitStringOnceByTag(String string, String tag, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
     StringArray result = {};
 
@@ -319,7 +319,7 @@ inline StringArray SplitStringOnceByTag(String string, String tag, MemoryArena *
                 if (k == tag.length - 1)
                 {
                     result.count = 2;
-                    result.strings = PushArray(arena, result.count, String);
+                    result.strings = ARENA_PUSH_ARRAY(arena, result.count, String);
                     if (i)
                         result.strings[0] = CreateStringOnArena(string.chars, arena, 0, i);
                     else
@@ -337,14 +337,14 @@ inline StringArray SplitStringOnceByTag(String string, String tag, MemoryArena *
     if (!result.count)
     {
         result.count = 1;
-        result.strings = PushArray(arena, result.count, String);
+        result.strings = ARENA_PUSH_ARRAY(arena, result.count, String);
         result.strings[0] = CreateStringOnArena(string.chars, arena);
     }
 
     return result;
 }
 
-inline StringArray SplitByWords(String string, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline StringArray SplitByWords(String string, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
     return SplitByChar(string, ' ', arena);
 }
@@ -353,7 +353,7 @@ inline int IndexOfChar(String string, char c, int startIndex = 0)
 {
     int result = startIndex;
 
-    Assert(startIndex <= string.length);
+    ASSERT(startIndex <= string.length);
 
     for (;
          result < string.length;
@@ -365,11 +365,11 @@ inline int IndexOfChar(String string, char c, int startIndex = 0)
     return result;
 }
 
-inline String GetSlicedString(String string, int startIndex, int endIndex, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline String GetSlicedString(String string, int startIndex, int endIndex, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
     String result = {};
 
-    Assert(endIndex > startIndex);
+    ASSERT(endIndex > startIndex);
     if (string.length)
     {
         result = AllocateString(endIndex - startIndex, arena);
@@ -381,7 +381,7 @@ inline String GetSlicedString(String string, int startIndex, int endIndex, Memor
     return result;
 }
 
-inline String GetStringUpToChar(String string, int inputIndex, char tagEnd, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline String GetStringUpToChar(String string, int inputIndex, char tagEnd, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
     String result = {};
     if (string.length)
@@ -392,7 +392,7 @@ inline String GetStringUpToChar(String string, int inputIndex, char tagEnd, Memo
     return result;
 }
 
-inline String CopyJoinedCharsIntoString(const char *c1, unsigned int chars1Length, const char *c2, unsigned int chars2Length, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline String CopyJoinedCharsIntoString(const char *c1, unsigned int chars1Length, const char *c2, unsigned int chars2Length, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
     String result = AllocateString(chars1Length + chars2Length, arena);
 
@@ -403,7 +403,7 @@ inline String CopyJoinedCharsIntoString(const char *c1, unsigned int chars1Lengt
     return result;
 }
 
-inline String JoinStrings(String s1, String s2, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline String JoinStrings(String s1, String s2, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
     String result = {};
 
@@ -417,7 +417,7 @@ inline String JoinStrings(String s1, String s2, MemoryArena *arena = G_STRING_TE
     return result;
 }
 
-inline String AddCharToString(String s, char c, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline String AddCharToString(String s, char c, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
     String result = {};
 
@@ -431,7 +431,7 @@ inline String AddCharToString(String s, char c, MemoryArena *arena = G_STRING_TE
     return result;
 }
 
-inline String RemoveNumCharFromFront(String s, unsigned int n, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline String RemoveNumCharFromFront(String s, unsigned int n, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
     String result = AllocateString(s.length - n, arena);
 
@@ -549,13 +549,13 @@ inline int StringToInt(String string)
     int result = 0;
     if (string.length)
     {
-        Assert(StringIsInt(string));
+        ASSERT(StringIsInt(string));
         result = atoi(string.chars);
     }
     return result;
 }
 
-inline String IntToString(int i, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline String IntToString(int i, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
     //TODO: figure out how large this should be
     String result = AllocateString(30, arena);
@@ -564,7 +564,7 @@ inline String IntToString(int i, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
     return result;
 }
 
-inline String LongToString(unsigned long long i, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline String LongToString(unsigned long long i, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
     //TODO: figure out how large this should be
     String result = AllocateString(30, arena);
@@ -573,7 +573,7 @@ inline String LongToString(unsigned long long i, MemoryArena *arena = G_STRING_T
     return result;
 }
 
-inline String FloatToString(float f, MemoryArena *arena = G_STRING_TEMP_MEM_ARENA)
+inline String FloatToString(float f, Arena *arena = G_STRING_TEMP_MEM_ARENA)
 {
     //TODO: figure out how large this should be
     String result = AllocateString(10, arena);
@@ -831,9 +831,9 @@ inline unsigned int LevenshteinDistance(String s1, String s2)
     unsigned int m = s1.length;
     unsigned int n = s2.length;
 
-    unsigned int **dp = PushArray(G_STRING_TEMP_MEM_ARENA, m + 1, unsigned int *);
+    unsigned int **dp = ARENA_PUSH_ARRAY(G_STRING_TEMP_MEM_ARENA, m + 1, unsigned int *);
     for (unsigned int i = 0; i <= m; ++i)
-        dp[i] = PushArray(G_STRING_TEMP_MEM_ARENA, n + 1, unsigned int);
+        dp[i] = ARENA_PUSH_ARRAY(G_STRING_TEMP_MEM_ARENA, n + 1, unsigned int);
 
     for (int i = 0;
          i <= m;
@@ -884,7 +884,7 @@ inline String CleanStringForDiscord(String string)
 {
     String result = {};
 
-    result.chars = PushArray(G_STRING_TEMP_MEM_ARENA, string.length * 2 + 1, char);
+    result.chars = ARENA_PUSH_ARRAY(G_STRING_TEMP_MEM_ARENA, string.length * 2 + 1, char);
 
     for (int i = 0;
          i < string.length;

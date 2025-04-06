@@ -4,11 +4,11 @@
 
 void CreateUiBox(unsigned int flags = 0, String string = {})
 {
-    Assert(G_UI_INPUTS);
-    Assert(G_UI_STATE);
+    ASSERT(G_UI_INPUTS);
+    ASSERT(G_UI_STATE);
 
     int uiBoxArrayIndexThisFrame = GetFrameModIndexThisFrame();
-    Assert(G_UI_STATE->uiBoxCount < ArrayCount(G_UI_STATE->uiBoxes[uiBoxArrayIndexThisFrame]));
+    ASSERT(G_UI_STATE->uiBoxCount < ARRAY_COUNT(G_UI_STATE->uiBoxes[uiBoxArrayIndexThisFrame]));
 
     UiBox *uiBox = &G_UI_STATE->uiBoxes[uiBoxArrayIndexThisFrame][G_UI_STATE->uiBoxCount];
     *uiBox = {};
@@ -18,11 +18,11 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
     if (G_UI_STATE->parentStackCount)
     {
         uiBox->parent = G_UI_STATE->parentStack[G_UI_STATE->parentStackCount - 1];
-        Assert(uiBox->parent);
+        ASSERT(uiBox->parent);
 
         if (uiBox->parent->firstChild)
         {
-            Assert(uiBox->parent->lastChild);
+            ASSERT(uiBox->parent->lastChild);
             uiBox->prev = uiBox->parent->lastChild;
             uiBox->parent->lastChild->next = uiBox;
         }
@@ -56,10 +56,10 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
         }
         else
         {
-            InvalidCodePath
+            InvalidCodePath;
         }
 
-        Assert(uiBox->uiSettings.font.baseSize);
+        ASSERT(uiBox->uiSettings.font.baseSize);
         Vector2 textDim = MeasureTextEx(uiBox->uiSettings.font, uiBox->string.chars, uiBox->uiSettings.font.baseSize, 1);
         uiBox->textDim = RayVectorToV2(textDim);
     }
@@ -78,7 +78,7 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
                  i < keyString.length;
                  i++)
             {
-                unsigned int index = (hashValue + i) % ArrayCount(G_UI_STATE->uiHashEntries);
+                unsigned int index = (hashValue + i) % ARRAY_COUNT(G_UI_STATE->uiHashEntries);
                 UiHashEntry *uiHashEntry = &G_UI_STATE->uiHashEntries[index];
                 if (!uiHashEntry->uiBox || uiHashEntry->uiBox->frameRendered < G_CURRENT_FRAME)
                 {
@@ -155,7 +155,7 @@ unsigned int GetThisUiBoxIndex()
 
 void PushUiParent()
 {
-    Assert(G_UI_STATE->parentStackCount < ArrayCount(G_UI_STATE->parentStack));
+    ASSERT(G_UI_STATE->parentStackCount < ARRAY_COUNT(G_UI_STATE->parentStack));
 
     int uiBoxArrayIndexThisFrame = GetFrameModIndexThisFrame();
     G_UI_STATE->parentStack[G_UI_STATE->parentStackCount] = &G_UI_STATE->uiBoxes[uiBoxArrayIndexThisFrame][G_UI_STATE->uiBoxCount - 1];
@@ -164,7 +164,7 @@ void PushUiParent()
 
 void PopUiParent()
 {
-    Assert(G_UI_STATE->parentStackCount > 0);
+    ASSERT(G_UI_STATE->parentStackCount > 0);
     G_UI_STATE->parentStackCount--;
 }
 
@@ -181,8 +181,8 @@ void CalculateUiUpwardsDependentSizes(UiBox *uiBox)
         if (uiBox->uiSettings.uiSizes[0].kind == UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT ||
             uiBox->uiSettings.uiSizes[1].kind == UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT)
         {
-            Assert(uiBox->parent);
-            Assert(uiBox->uiInputs.texture.width && uiBox->uiInputs.texture.height);
+            ASSERT(uiBox->parent);
+            ASSERT(uiBox->uiInputs.texture.width && uiBox->uiInputs.texture.height);
             V2 textureDim = GetTextureDim(uiBox->uiInputs.texture);
 
             float scaleX = 1;
@@ -199,7 +199,7 @@ void CalculateUiUpwardsDependentSizes(UiBox *uiBox)
         else
         {
             for (int j = 0;
-                 j < ArrayCount(uiBox->uiSettings.uiSizes);
+                 j < ARRAY_COUNT(uiBox->uiSettings.uiSizes);
                  j++)
             {
                 UiSize uiSize = uiBox->uiSettings.uiSizes[j];
@@ -238,7 +238,7 @@ void CalculateUiDownwardsDependentSizes(UiBox *uiBox)
         bool isHorizontal = IsFlag(uiBox, UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
 
         for (int j = 0;
-             j < ArrayCount(uiBox->uiSettings.uiSizes);
+             j < ARRAY_COUNT(uiBox->uiSettings.uiSizes);
              j++)
         {
             UiSize uiSize = uiBox->uiSettings.uiSizes[j];
@@ -250,7 +250,7 @@ void CalculateUiDownwardsDependentSizes(UiBox *uiBox)
                 UiBox *child = uiBox->firstChild;
                 while (child)
                 {
-                    Assert(child != uiBox);
+                    ASSERT(child != uiBox);
 
                     ((j == 0 && isHorizontal) || (j == 1 && !isHorizontal))
                         ? sumOrMaxOfChildren += child->rect.dim.elements[j]
@@ -260,7 +260,7 @@ void CalculateUiDownwardsDependentSizes(UiBox *uiBox)
                 }
                 uiBox->rect.dim.elements[j] = sumOrMaxOfChildren;
 
-                if (j == ArrayCount(uiBox->uiSettings.uiSizes) - 1)
+                if (j == ARRAY_COUNT(uiBox->uiSettings.uiSizes) - 1)
                     CalculateUiUpwardsDependentSizes(uiBox->firstChild);
                 break;
             }
@@ -324,7 +324,7 @@ UiBox GetValidUiBoxOfIndexLastFrame(unsigned int index)
     if (index)
     {
         int uiBoxArrayIndexLastFrame = GetFrameModIndexLastFrame();
-        if (index < ArrayCount(G_UI_STATE->uiBoxes[uiBoxArrayIndexLastFrame]))
+        if (index < ARRAY_COUNT(G_UI_STATE->uiBoxes[uiBoxArrayIndexLastFrame]))
         {
             UiBox uiBox = G_UI_STATE->uiBoxes[uiBoxArrayIndexLastFrame][index];
             if (uiBox.frameRendered == G_CURRENT_FRAME - 1)
@@ -392,7 +392,7 @@ UiBox *GetUiBoxOfStringKeyLastFrame(String stringKey)
              i < stringKey.length;
              i++)
         {
-            unsigned int index = (hashvalue + i) % ArrayCount(G_UI_STATE->uiHashEntries);
+            unsigned int index = (hashvalue + i) % ARRAY_COUNT(G_UI_STATE->uiHashEntries);
             UiHashEntry *uiHashEntry = &G_UI_STATE->uiHashEntries[index];
             if (uiHashEntry->uiBox && uiHashEntry->keyString == stringKey && uiHashEntry->uiBox->frameRendered == G_CURRENT_FRAME - 1)
             {
@@ -425,7 +425,7 @@ UiBox *GetUiBoxLastFrameOfStringKey(String stringKey)
 
     int uiBoxArrayIndex = GetFrameModIndexLastFrame();
     for (int uiBoxIndex = 0;
-         uiBoxIndex < ArrayCount(G_UI_STATE->uiBoxes[uiBoxArrayIndex]);
+         uiBoxIndex < ARRAY_COUNT(G_UI_STATE->uiBoxes[uiBoxArrayIndex]);
          uiBoxIndex++)
     {
         UiBox *uiBox = &G_UI_STATE->uiBoxes[uiBoxArrayIndex][uiBoxIndex];
@@ -478,7 +478,7 @@ void RenderUiEntries(UiBox *uiBox, V2 windowPixelDim, int uiDepth = 0)
 
         if (IsFlag(uiBox, UI_FLAG_DRAW_TEXTURE))
         {
-            Assert(uiBox->uiInputs.texture.id);
+            ASSERT(uiBox->uiInputs.texture.id);
 
             float scale = uiBox->rect.dim.x / uiBox->uiInputs.texture.width;
             Texture texture = uiBox->uiInputs.texture;

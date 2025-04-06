@@ -49,7 +49,7 @@ struct ProcessedImage
     Canvas *canvas;
     BpImage convertedImage;
     BpImage finalProcessedBpImage;
-    MemoryArena workArena;
+    Arena workArena;
     unsigned int frameStarted;
     unsigned int frameFinished;
 };

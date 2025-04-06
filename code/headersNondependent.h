@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vn_intrinsics.h"
+#include "base/base.h"
 #include "vn_math.h"
 #include "vn_string.h"
 

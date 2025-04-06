@@ -1,5 +1,5 @@
 
-#include "vn_intrinsics.h"
+#include "base.h"
 #include "vn_math.h"
 #include "vn_string.h"
 #include "platform_win32.h"
@@ -16,6 +16,8 @@
 #include "sysinfoapi.h"
 
 #include "nonRepo.h"
+
+#include <base/memory.cpp>
 
 struct WorkQueueEntry
 {
@@ -40,8 +42,8 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
         unsigned int nextInQueueIndex = queue->nextInQueueIndex;
         if (queue->completionGoalIndex != nextInQueueIndex)
         {
-            Assert(queue->nextInQueueIndex < ArrayCount(queue->entries));
-            unsigned int newNextEntryToRead = (queue->nextInQueueIndex + 1) % ArrayCount(queue->entries);
+            ASSERT(queue->nextInQueueIndex < ARRAY_COUNT(queue->entries));
+            unsigned int newNextEntryToRead = (queue->nextInQueueIndex + 1) % ARRAY_COUNT(queue->entries);
             unsigned int index = InterlockedCompareExchange((LONG volatile *)&queue->nextInQueueIndex, newNextEntryToRead, nextInQueueIndex);
             if (index == nextInQueueIndex)
             {
@@ -59,15 +61,15 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 
 void PlatformAddThreadWorkEntry(PlatformWorkQueue *queue, PlatformWorkQueueCallback *callback, void *data)
 {
-    unsigned int countFoo = ArrayCount(queue->entries);
+    unsigned int countFoo = ARRAY_COUNT(queue->entries);
 
-    Assert(queue->nextInQueueIndex < ArrayCount(queue->entries));
+    ASSERT(queue->nextInQueueIndex < ARRAY_COUNT(queue->entries));
 
     WorkQueueEntry *entry = &queue->entries[queue->nextInQueueIndex];
     entry->data = data;
     entry->callback = callback;
 
-    ModNext(queue->completionGoalIndex, ArrayCount(queue->entries));
+    ModNext(queue->completionGoalIndex, ARRAY_COUNT(queue->entries));
 
     _WriteBarrier();
 
@@ -76,9 +78,9 @@ void PlatformAddThreadWorkEntry(PlatformWorkQueue *queue, PlatformWorkQueueCallb
 
 PlatformWorkQueue *SetupThreads(unsigned int threadCount, GameMemory *gameMemory)
 {
-    Assert(threadCount > 0);
+    ASSERT(threadCount > 0);
 
-    PlatformWorkQueue *result = PushStruct(&gameMemory->permanentArena, PlatformWorkQueue);
+    PlatformWorkQueue *result = ARENA_PUSH_STRUCT(&gameMemory->permanentArena, PlatformWorkQueue);
 
     unsigned int initialThreadCount = 0;
     result->semaphoreHandle = CreateSemaphoreExA(0, initialThreadCount, threadCount, 0, 0, SEMAPHORE_ALL_ACCESS);
@@ -194,7 +196,7 @@ bool CreateDirectoryIfNotExists(const char *path)
 
 inline wchar_t *ConvertToWideString(String s)
 {
-    wchar_t *result = PushArray(G_STRING_TEMP_MEM_ARENA, s.length, wchar_t);
+    wchar_t *result = ARENA_PUSH_ARRAY(G_STRING_TEMP_MEM_ARENA, s.length, wchar_t);
     MultiByteToWideChar(CP_UTF8, 0, s.chars, -1, result, s.length);
 
     return result;
@@ -450,7 +452,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
     const wchar_t *append = L" -no-crash-handler";
     int appendLen = GetWCharLength(append);
 
-    wchar_t *cmdNew = PushArray(&gameMemory->temporaryArena, commandLineLength + appendLen + 1, wchar_t);
+    wchar_t *cmdNew = ARENA_PUSH_ARRAY(&gameMemory->temporaryArena, commandLineLength + appendLen + 1, wchar_t);
     if (!cmdNew)
     {
         return; // Error: just run the app without a crash handler.
@@ -829,7 +831,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
                 // Build MIME multipart-form payload
                 unsigned int discordMaxLength = 8000000;
 
-                char *body = PushArray(&gameMemory->temporaryArena, discordMaxLength, char);
+                char *body = ARENA_PUSH_ARRAY(&gameMemory->temporaryArena, discordMaxLength, char);
 
                 String discordMessageContent = CreateString(":art: WE HAVE A CRASH REPORT from BADPAINT!! :art:") + "\\n `VERSION: " VERSION_NUMBER + "\\nBuild: " + buildDate + " " + buildTime + "` ";
                 String userMessage = CreateString(CRASH_USER_DETAILS_CHARS);
@@ -916,7 +918,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
 
                 // Send request once - don't handle auth challenge, credentials, reauth, redirects
                 const wchar_t ContentType[] = L"Content-Type: multipart/form-data; boundary=19024605111143684786787635207";
-                if (!WinHttpSendRequest(hRequest, ContentType, ArrayCount(ContentType), body, bodyTotalSize, bodyTotalSize, 0))
+                if (!WinHttpSendRequest(hRequest, ContentType, ARRAY_COUNT(ContentType), body, bodyTotalSize, bodyTotalSize, 0))
                 {
                     SendGodDammitErrorWindowInLoop(hWnd, "I couldn't send the HTTP request!");
                 }
@@ -983,26 +985,28 @@ int CALLBACK WinMain(HINSTANCE instance,
     // int main()
     // {
     GameMemory gameMemory = {};
-    InitializeArena(&gameMemory.permanentArena, Megabytes(1));
-    InitializeArena(&gameMemory.temporaryArena, Megabytes(400));
-    InitializeArena(&gameMemory.rootImageArena, Megabytes(50));
-    InitializeArena(&gameMemory.canvasArena, Megabytes(500));
-    InitializeArena(&gameMemory.mouseClickArena, Kilobytes(10));
-    InitializeArena(&gameMemory.circularScratchBuffer, Megabytes(500), true);
-    InitializeArena(&gameMemory.latestCompletedImageArena, Megabytes(100));
+   	gameMemory.permanentArena = ArenaInit(MegaByte * 1);
+   	gameMemory.temporaryArena = ArenaInit(MegaByte * 400);
+	gameMemory.rootImageArena = ArenaInit(MegaByte * 50);
 
-    InitializeArena(&gameMemory.twoFrameArenaModIndex0, Megabytes(10));
-    InitializeArena(&gameMemory.twoFrameArenaModIndex1, Megabytes(10));
-    InitializeArena(&gameMemory.canvasRollbackArena, Megabytes(800));
+	gameMemory.canvasArena = ArenaInit(MegaByte * 500);
+	gameMemory.mouseClickArena = ArenaInit(MegaByte * 10);
+	gameMemory.circularScratchBuffer = ArenaInit(MegaByte * 500);
+	gameMemory.circularScratchBuffer.circular = true;
 
-    G_STRING_TEMP_MEM_ARENA = &gameMemory.temporaryArena;
+	gameMemory.latestCompletedImageArena = ArenaInit(MegaByte * 100);
+	gameMemory.twoFrameArenaModIndex0 = ArenaInit(MegaByte * 10);
+	gameMemory.twoFrameArenaModIndex1 = ArenaInit(MegaByte * 10);
+	gameMemory.canvasRollbackArena = ArenaInit(MegaByte * 800);
+
+	G_STRING_TEMP_MEM_ARENA = &gameMemory.temporaryArena;
 
     // HINSTANCE instance = GetModuleHandle(NULL);
     CrashHandler(instance, &gameMemory);
 
     //NOTE: Thanks phillip and martins :D
     const char *string_or_null = getenv("_NO_DEBUG_HEAP");
-    Assert(string_or_null);
+    ASSERT(string_or_null);
 
     unsigned int threadCount = 8;
 

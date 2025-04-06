@@ -1,8 +1,7 @@
 #pragma once
 
-#include "stdint.h"
-#include "vn_intrinsics.h"
-#include <stdint.h>
+#include <base.h>
+
 #include "stdlib.h"
 #include <xmmintrin.h>
 #include <time.h>
@@ -62,7 +61,7 @@ inline V2 operator*(V2 a, V2 b)
 
 inline V2 operator/(V2 v1, V2 v2)
 {
-    Assert(v2.x && v2.y);
+    ASSERT(v2.x && v2.y);
     V2 result;
     if (v2.x)
         result.x = v1.x / v2.x;
@@ -132,7 +131,7 @@ inline V2 operator*(V2 v, int i)
 
 inline V2 operator/(V2 v, int i)
 {
-    Assert(i);
+    ASSERT(i);
     V2 result;
     if (i)
     {
@@ -145,7 +144,7 @@ inline V2 operator/(V2 v, int i)
 
 inline V2 operator/(int i, V2 v)
 {
-    Assert(v.x && v.y);
+    ASSERT(v.x && v.y);
 
     V2 result;
     if (!v.x || !v.y)
@@ -231,7 +230,7 @@ inline V2 operator*(float f, V2 v)
 
 inline V2 operator/(V2 v, float f)
 {
-    Assert(f);
+    ASSERT(f);
     V2 result;
     if (f)
     {
@@ -317,7 +316,7 @@ inline V3 operator*(V3 a, V3 b)
 
 inline V3 operator/(V3 v1, V3 v2)
 {
-    Assert(v2.x && v2.y && v2.z);
+    ASSERT(v2.x && v2.y && v2.z);
 
     V3 result = {};
 
@@ -400,7 +399,7 @@ inline V3 operator*(V3 v, int i)
 
 inline V3 operator/(V3 v, int i)
 {
-    Assert(i);
+    ASSERT(i);
     V3 result;
     if (i)
     {
@@ -469,7 +468,7 @@ inline V3 operator*(V3 v, float f)
 
 inline V3 operator/(V3 v, float f)
 {
-    Assert(f);
+    ASSERT(f);
     V3 result;
     if (f)
     {
@@ -1200,9 +1199,9 @@ inline void CenterV2(V2 *pos, V2 boxDim, V2 entityDim)
 
 inline float GetTargetFrameMs(float framerate)
 {
-    Assert(framerate);
+    ASSERT(framerate);
     float result = (1 / framerate) * 1000.0f;
-    Assert(result);
+    ASSERT(result);
     return result;
 }
 

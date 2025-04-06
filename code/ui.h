@@ -86,7 +86,7 @@ struct UiBox
     UiBox *prev;
     UiBox *parent;
 
-    Flags flags;
+    u64 flags;
     String string;
     String keyString;
     V2 textDim;
@@ -123,8 +123,8 @@ struct UiState
 
     UiSettings uiSettings;
 
-    MemoryArena *twoFrameArenaLastFrame;
-    MemoryArena *twoFrameArenaThisFrame;
+    Arena *twoFrameArenaLastFrame;
+    Arena *twoFrameArenaThisFrame;
 };
 
 static UiState *G_UI_STATE = {};

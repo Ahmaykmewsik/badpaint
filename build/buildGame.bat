@@ -24,11 +24,11 @@ IF NOT EXIST "%DIRECTORY_NAME%" (
     mkdir "%DIRECTORY_NAME%"
 )
 
-set FLAGS= -EHsc -Zi -O2 -DRELEASE_BUILD
-@REM set FLAGS= -EHsc -Zi -O2
-@REM set FLAGS= -EHsc -Zi -Od 
+@REM set FLAGS= -EHsc -Zi -O2 -DOS_WINDOWS -DRELEASE_BUILD
+REM set FLAGS= -EHsc -Zi -O2 -DOS_WINDOWS
+set FLAGS= -EHsc -Zi -Od -DOS_WINDOWS
 set CODEPATHS= ..\code\platform_win32.cpp ..\code\main.cpp
-set INCLUDES= -I ..\includes\ 
+set INCLUDES= -I ..\includes\ -I ..\code -I ..\code\base
 set LIBRARIES= .\libraries\builtLibraries.lib user32.lib shell32.lib gdi32.lib winmm.lib kernel32.lib Ole32.lib winhttp.lib dbghelp.lib comctl32.lib
 
 @REM Uncomment when you want to update the application icon
@@ -53,13 +53,11 @@ for /f "tokens=1* delims=:" %%i in ('type temp_output.txt ^| findstr /n "^"') do
 )
 
 if %build_status% equ 0 (
-  printf "\n\033[0;32mBuild Complete :)"
+  printf "\nBuild Complete :)"
 ) else (
-  printf "\n\033[0;31mBuild Failed. Try again^!" 
+  printf "\nBuild Failed. Try again^!" 
 )
 
 del temp_output.txt
 
 popd
-
-pause>nul

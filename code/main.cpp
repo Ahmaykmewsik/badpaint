@@ -3,13 +3,13 @@
 
 void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned int threadCount)
 {
-    BpImage *rootBpImage = PushStruct(&gameMemory.permanentArena, BpImage);
-    Canvas *canvas = PushStruct(&gameMemory.permanentArena, Canvas);
+    BpImage *rootBpImage = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, BpImage);
+    Canvas *canvas = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, Canvas);
     // BpImage latestCompletedBpImage = {};
 
     bool imageIsBroken = {};
 
-    ProcessedImage *processedImages = PushArray(&gameMemory.permanentArena, threadCount, ProcessedImage);
+    ProcessedImage *processedImages = ARENA_PUSH_ARRAY(&gameMemory.permanentArena, threadCount, ProcessedImage);
     for (int i = 0;
          i < threadCount;
          i++)
@@ -18,17 +18,16 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
         processedImage->rootBpImage = rootBpImage;
         processedImage->canvas = canvas;
         processedImage->index = i;
-        InitializeArena(&processedImage->workArena, Megabytes(300));
+		processedImage->workArena = ArenaInit(MegaByte * 300);
     }
 
-    G_STRING_TEMP_MEM_ARENA = &gameMemory.temporaryArena;
-    _G_CIRCULAR_ARENA_DONT_FUCKING_USE_THIS_EXCEPT_IN_A_MACRO = &gameMemory.circularScratchBuffer;
-    G_UI_INPUTS = PushStruct(&gameMemory.permanentArena, UiInputs);
-    G_UI_STATE = PushStruct(&gameMemory.permanentArena, UiState);
+	G_STRING_TEMP_MEM_ARENA = &gameMemory.temporaryArena;
+    G_UI_INPUTS = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, UiInputs);
+    G_UI_STATE = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, UiState);
 
-    SetTargetFPS(60);
+	SetTargetFPS(60);
 
-    SetTraceLogLevel(RL_LOG_NONE);
+	SetTraceLogLevel(RL_LOG_NONE);
 
     InitWindow(200, 200, "badpaint");
 
@@ -73,7 +72,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
     //NOTE: DEVELOPER HACK
     {
-        // InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootBpImage, canvas, &loadedTexture, &currentBrush);
+		 InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootBpImage, canvas, &loadedTexture, &currentBrush);
     }
 
     while (!WindowShouldClose())
@@ -97,7 +96,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
         V2 mousePixelPos = V2{(float)GetMouseX(), (float)GetMouseY()};
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
         {
-            ResetMemoryArena(&gameMemory.mouseClickArena);
+            ArenaReset(&gameMemory.mouseClickArena);
             draggedUiStringKey = {};
 
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
@@ -370,7 +369,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
                 imageIsBroken = true;
             }
 
-            ResetMemoryArena(&gameMemory.latestCompletedImageArena);
+            ArenaReset(&gameMemory.latestCompletedImageArena);
             // latestCompletedBpImage = CreateDataImage(rootBpImage, latestCompletedProcessedImage->convertedImage, &gameMemory);
             ResetProcessedImage(latestCompletedProcessedImage, canvas, &gameMemory.temporaryArena);
         }
@@ -381,7 +380,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
             Image outputImage = {};
             V2 dim = WidthHeightToV2(canvas->filteredRootImage.width, canvas->filteredRootImage.height);
             unsigned int pixelCount = dim.x * dim.y;
-            Color *pixels = PushArray(&gameMemory.temporaryArena, pixelCount, Color);
+            Color *pixels = ARENA_PUSH_ARRAY(&gameMemory.temporaryArena, pixelCount, Color);
 
             for (int i = 0;
                  i < pixelCount;
@@ -666,7 +665,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
                 UiBox *uiBox = &G_UI_STATE->uiBoxes[uiBoxArrayIndexThisFrame][i];
 
                 for (int j = 0;
-                     j < ArrayCount(uiBox->uiSettings.uiSizes);
+                     j < ARRAY_COUNT(uiBox->uiSettings.uiSizes);
                      j++)
                 {
                     UiSize uiSize = uiBox->uiSettings.uiSizes[j];
@@ -716,9 +715,9 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
         EndDrawing();
 
-        ResetMemoryArena(&gameMemory.temporaryArena);
-        MemoryArena *memoryArenaLastFrame = GetTwoFrameArenaLastFrame(&gameMemory);
-        ResetMemoryArena(memoryArenaLastFrame);
+        ArenaReset(&gameMemory.temporaryArena);
+        Arena *memoryArenaLastFrame = GetTwoFrameArenaLastFrame(&gameMemory);
+        ArenaReset(memoryArenaLastFrame);
 
         G_CURRENT_FRAME++;
         pngFilterLastFrame = stbi_write_force_png_filter;
