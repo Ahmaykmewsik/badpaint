@@ -23,6 +23,8 @@ struct GameMemory
 
     Arena twoFrameArenaModIndex0;
     Arena twoFrameArenaModIndex1;
+
+	ArenaGroup conversionArenaGroup;
 };
 
 static const char *buildDate = __DATE__;

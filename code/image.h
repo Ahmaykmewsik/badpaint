@@ -59,8 +59,8 @@ struct ProcessedImage
     unsigned int index;
     ImageRaw *rootImageRaw;
     Canvas *canvas;
+	ArenaPair arenaPair;
     ImageRaw finalProcessedImageRaw;
-    Arena workArena;
     unsigned int frameStarted;
     unsigned int frameFinished;
 };

@@ -17,7 +17,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
         processedImage->rootImageRaw = rootImageRaw;
         processedImage->canvas = canvas;
         processedImage->index = i;
-		processedImage->workArena = ArenaInit(MegaByte * 300);
     }
 
     G_UI_INPUTS = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, UiInputs);
@@ -280,11 +279,18 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
                 ImageDrawCircle(&canvas->drawnImageData, pos.x, pos.y, currentBrush.size, colorToPaint);
             }
 
+			ArenaPair arenaPair = {}; 
             if (processedImage)
             {
-                StartProcessedImageWork(canvas, threadCount, processedImage, threadWorkQueue);
+				arenaPair = ArenaPairAssign(&gameMemory.conversionArenaGroup);
             }
-            else
+
+			if (processedImage && arenaPair.arena1 && arenaPair.arena2)
+			{
+				processedImage->arenaPair = arenaPair;
+				StartProcessedImageWork(canvas, threadCount, processedImage, threadWorkQueue);
+			}
+			else
             {
                 // Print("No thread avaliabe");
                 canvas->proccessAsap = true;
@@ -317,7 +323,14 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
         {
             ProcessedImage *processedImage = GetFreeProcessedImage(processedImages, threadCount);
             if (processedImage)
-                StartProcessedImageWork(canvas, threadCount, processedImage, threadWorkQueue);
+			{
+				ArenaPair arenaPair = ArenaPairAssign(&gameMemory.conversionArenaGroup);
+				if (arenaPair.arena1 && arenaPair.arena2)
+				{
+					processedImage->arenaPair = arenaPair;
+					StartProcessedImageWork(canvas, threadCount, processedImage, threadWorkQueue);
+				}
+			}
         }
 
         if (IsKeyPressed(KEY_ONE))

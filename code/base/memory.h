@@ -8,6 +8,7 @@ struct Arena
 	u64 size;
 	u64 used;
 	b8 circular;
+	b8 readyForAssignment;
 };
 
 struct ArenaMarker
@@ -28,3 +29,24 @@ void ArenaReset(Arena *arena);
 
 #define ARENA_PUSH_STRUCT_MARKER(arena, type, marker) (type *)ArenaPushSize(arena, sizeof(type), marker)
 #define ARENA_PUSH_ARRAY_MARKER(arena, count, type, marker) (type *)ArenaPushSize(arena, count * sizeof(type), marker)
+
+struct ArenaGroup
+{
+    Arena masterArena;
+	Arena *arenas;
+	u32 count;
+};
+
+void FillArenaGroup(ArenaGroup *arenaGroup, u32 blockSize);
+
+struct ArenaPair 
+{
+	Arena *arena1;
+	Arena *arena2;
+	Arena *previouslyPoppedArena;
+};
+
+ArenaPair ArenaPairAssign(ArenaGroup *arenaGroup);
+Arena *ArenaPairPushOldest(ArenaPair *alternatingAreans, Arena *finishedArena);
+void ArenaPairFreeOldest(ArenaPair *alternatingAreans);
+void ArenaPairFreeAll(ArenaPair *alternatingAreans);

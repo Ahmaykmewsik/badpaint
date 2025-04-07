@@ -384,7 +384,7 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
     V2 canvsDim = {};
 
     V2 canvasDim = V2{rootImageRaw->dim.x * 4, rootImageRaw->dim.y} + 1;
-    float pixelCount = rootImageRaw->dataSize;
+    u32 pixelCount = rootImageRaw->dataSize;
 
     ArenaReset(&gameMemory->canvasArena);
     Color *pixelsDrawn = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, pixelCount, Color);
@@ -418,8 +418,9 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
     canvas->rollbackImageData = ARENA_PUSH_ARRAY(&gameMemory->canvasRollbackArena, canvas->rollbackSizeCount * canvasSize, unsigned char);
     canvas->rollbackIndexStart = 0;
     canvas->rollbackIndexNext = 0;
-
     canvas->brush = brush;
+
+	FillArenaGroup(&gameMemory->conversionArenaGroup, (u32) (pixelCount * 1.2));
 }
 
 void InitializeNewImage(const char *fileName, GameMemory *gameMemory, ImageRaw *rootImageRaw, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush)
@@ -437,9 +438,8 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 {
     // Print("Staring Work on thread " + IntToString(processedImage->index));
 
-    Arena *arena = &processedImage->workArena;
-
-    ImagePNGFiltered imagePNGFiltered = PiratedSTB_EncodePngFilters(processedImage->rootImageRaw, arena);
+	Arena *arenaFiltered = ArenaPairPushOldest(&processedImage->arenaPair, {});
+    ImagePNGFiltered imagePNGFiltered = PiratedSTB_EncodePngFilters(processedImage->rootImageRaw, arenaFiltered);
 
     Canvas *canvas = processedImage->canvas;
 
@@ -488,16 +488,24 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 	imagePNGCompressed.dim = imagePNGFiltered.dim;
 	imagePNGCompressed.dataSize = imagePNGFiltered.dataSize;
 
-	imagePNGCompressed.dataU8 = (u8 *)ArenaPushSize(arena, imagePNGFiltered.dataSize, {});
+	Arena *arenaCompressed = ArenaPairPushOldest(&processedImage->arenaPair, {});
+
+	imagePNGCompressed.dataU8 = (u8 *)ArenaPushSize(arenaCompressed, imagePNGFiltered.dataSize, {});
 	fpng::pixel_deflate_dyn_4_rle_one_pass(imagePNGFiltered.dataU8,
 			imagePNGFiltered.dim.x,
 			imagePNGFiltered.dim.y,
 			imagePNGCompressed.dataU8, imagePNGCompressed.dataSize);
 
+	Arena *arenaChecksumed = ArenaPairPushOldest(&processedImage->arenaPair, arenaFiltered);
+
     // Print("Encoded PNG Compression on thread " + IntToString(processedImage->index));
-    ImagePNGChecksumed imagePNGChecksumed = PiratedSTB_EncodePngCRC(&imagePNGCompressed, arena);
+    ImagePNGChecksumed imagePNGChecksumed = PiratedSTB_EncodePngCRC(&imagePNGCompressed, arenaChecksumed);
+
+	Arena *arenaFinalRaw = ArenaPairPushOldest(&processedImage->arenaPair, arenaCompressed);
     // Print("Encoded PNG CRC on thread " + IntToString(processedImage->index));
-    processedImage->finalProcessedImageRaw = DecodePng(&imagePNGChecksumed, arena);
+    processedImage->finalProcessedImageRaw = DecodePng(&imagePNGChecksumed, arenaFinalRaw);
+
+	ArenaPairFreeOldest(&processedImage->arenaPair);
     // Print("Decoded PNG on thread " + IntToString(processedImage->index));
 
     // Print("Converted to final PNG on thead " + IntToString(processedImage->index));
@@ -505,11 +513,11 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 
 void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas)
 {
-    ArenaReset(&processedImage->workArena);
     processedImage->active = false;
     processedImage->frameStarted = 0;
     processedImage->frameFinished = 0;
     processedImage->finalProcessedImageRaw = {};
+	ArenaPairFreeAll(&processedImage->arenaPair);
 
     unsigned int pixelCount = canvas->drawnImageData.width * canvas->drawnImageData.height;
 
@@ -529,7 +537,7 @@ void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas)
 
 ProcessedImage *GetFreeProcessedImage(ProcessedImage *processedImages, unsigned int threadCount)
 {
-    ProcessedImage *processedImage = {};
+    ProcessedImage *result = {};
     for (int i = 0;
          i < threadCount;
          i++)
@@ -537,11 +545,12 @@ ProcessedImage *GetFreeProcessedImage(ProcessedImage *processedImages, unsigned 
         ProcessedImage *processedImageOfIndex = processedImages + i;
         if (!processedImageOfIndex->active)
         {
-            processedImage = processedImageOfIndex;
+            result = processedImageOfIndex;
             break;
         }
     }
-    return processedImage;
+
+    return result;
 }
 
 PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread)
