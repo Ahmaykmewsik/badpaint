@@ -24,6 +24,8 @@ Arena ArenaInitFromArena(Arena *inputArena, u64 size);
 void ArenaPopMarker(ArenaMarker arenaMarker);
 void ArenaReset(Arena *arena);
 
+#define ALIGN_POW2(value, alignment) *value = ((*value + ((alignment) - 1)) & ~((alignment) - 1))
+
 #define ARENA_PUSH_STRUCT(arena, type) (type *)ArenaPushSize(arena, sizeof(type), {})
 #define ARENA_PUSH_ARRAY(arena, count, type) (type *)ArenaPushSize(arena, count * sizeof(type), {})
 
@@ -43,7 +45,7 @@ struct ArenaPair
 {
 	Arena *arena1;
 	Arena *arena2;
-	Arena *previouslyPoppedArena;
+	Arena *lastPushedArena;
 };
 
 ArenaPair ArenaPairAssign(ArenaGroup *arenaGroup);

@@ -34,9 +34,13 @@ typedef uint8_t b8;
 #define InvalidDefaultCase default: { InvalidCodePath; } break;
 #define ZeroArray(array) memset(array, 0, ARRAY_COUNT(array));
 
+#if DEBUG_MODE
 #if OS_WINDOWS
 #define ASSERT(expression) ((expression) || (__debugbreak(), 0))
 #elif OS_WEB
 #include "signal.h"
 #define ASSERT(expression) ((expression) || raise(SIGTRAP))
+#endif
+#else
+#define ASSERT(expression) (expression)
 #endif

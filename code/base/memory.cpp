@@ -15,9 +15,26 @@ Arena ArenaInit(u64 size)
     result.memory = (u8*) VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
 #elif OS_WEB
     result.memory = (u8*) malloc(size);
+#else
+	InvalidCodePath
 #endif
 
+	ASSERT(result.memory);
+
     result.size = size;
+	return result;
+}
+
+u64 GetPageSize()
+{
+	u64 result = 0;
+#if OS_WINDOWS
+    SYSTEM_INFO systemInfo;
+    GetSystemInfo(&systemInfo);
+    result = systemInfo.dwPageSize;
+#else
+	InvalidCodePath
+#endif
 	return result;
 }
 
@@ -28,11 +45,6 @@ ArenaMarker ArenaPushMarker(Arena *arena)
 	result.used = arena->used;
 	return result;
 }
-
-#define AlignPow2(value, alignment) *value = ((*value + ((alignment) - 1)) & ~((alignment) - 1))
-#define Align4(value) AlignPow2(value, 4)
-#define Align8(value) AlignPow2(value, 8)
-#define Align16(value) AlignPow2(value, 16)
 
 //TODO: (Marc) alignment input?
 //TODO: (Marc) snap sizes to page size?
@@ -48,8 +60,7 @@ u8 *ArenaPushSize(Arena *arena, u64 size, ArenaMarker *arenaMarker)
 		}
 		if (size)
 		{
-			// NOTE: We assume that the base value is already aligned
-			Align8(&arena->used);
+			ALIGN_POW2(&arena->used, 8);
 
 			if (arena->circular && arena->used + size >= arena->size)
 			{
@@ -59,7 +70,10 @@ u8 *ArenaPushSize(Arena *arena, u64 size, ArenaMarker *arenaMarker)
 			if (arena->used + size >= arena->size)
 			{
 				//TODO: (Marc) What to do when our arena runs out? Reallocate?
-				InvalidCodePath;
+				//Force crash for now, we don't want to continue!
+#if OS_WINDOWS
+				__debugbreak();
+#endif
 			}
 
 			result = arena->used + arena->memory;
@@ -91,32 +105,10 @@ void ArenaReset(Arena *arena)
 	arena->used = 0;
 }
 
-u64 GetPageSize()
-{
-	u64 result = 0;
-#if OS_WINDOWS
-    SYSTEM_INFO systemInfo;
-    GetSystemInfo(&systemInfo);
-    result = systemInfo.dwPageSize;
-#endif
-	return result;
-}
-
 ArenaGroup ArenaGroupInit(u64 size)
 {
 	ArenaGroup result = {};
 	result.masterArena = ArenaInit(size);
-	return result;
-}
-
-u64 RoundUpToMultipleU64(u64 n, u32 multiple)
-{
-	u64 result = n;
-	u32 remainder = n % multiple;
-	if (remainder > 0)
-	{
-		result = (result - remainder) + multiple;
-	}
 	return result;
 }
 
@@ -127,14 +119,22 @@ void FillArenaGroup(ArenaGroup *arenaGroup, u32 blockSize)
 		arenaGroup->count = 0;
 		arenaGroup->masterArena.used = 0;
 		u64 pageSize = GetPageSize();
-		u64 blockSizeRounded = RoundUpToMultipleU64(blockSize, pageSize);
-		u32 count = Floor(SafeDivide(arenaGroup->masterArena.size, blockSizeRounded));
+		ALIGN_POW2(&blockSize, pageSize);
+
+		u32 count = Floor(SafeDivide(arenaGroup->masterArena.size, blockSize));
 		arenaGroup->arenas = (Arena*) ARENA_PUSH_ARRAY(&arenaGroup->masterArena, count, Arena*);
-		arenaGroup->masterArena.used = RoundUpToMultipleU64(arenaGroup->masterArena.used, pageSize);
-		while (arenaGroup->masterArena.used + blockSizeRounded <= arenaGroup->masterArena.size)
+
+		u64 usedRounded = arenaGroup->masterArena.used;
+		ALIGN_POW2(&usedRounded, pageSize);
+		if (usedRounded <= arenaGroup->masterArena.size)
+		{
+			arenaGroup->masterArena.used = usedRounded;
+		}
+
+		while (arenaGroup->masterArena.used + blockSize <= arenaGroup->masterArena.size)
 		{
 			Arena *arena = &arenaGroup->arenas[arenaGroup->count++];
-			*arena = ArenaInitFromArena(&arenaGroup->masterArena, blockSizeRounded);
+			*arena = ArenaInitFromArena(&arenaGroup->masterArena, blockSize);
 			arena->readyForAssignment = true;
 		}
 	}
@@ -181,7 +181,7 @@ Arena *ArenaPairPushOldest(ArenaPair *alternatingAreans, Arena *finishedArena)
 
 	if (finishedArena)
 	{
-		ASSERT(alternatingAreans->previouslyPoppedArena != finishedArena);
+		ASSERT(alternatingAreans->lastPushedArena != finishedArena);
 		if (alternatingAreans->arena1 == finishedArena)
 		{
 			result = alternatingAreans->arena1;
@@ -206,7 +206,7 @@ Arena *ArenaPairPushOldest(ArenaPair *alternatingAreans, Arena *finishedArena)
 	if (ASSERT(result))
 	{
 		result->used = 0;
-		alternatingAreans->previouslyPoppedArena = result;
+		alternatingAreans->lastPushedArena = result;
 		ASSERT(!result->readyForAssignment);
 	}
 	else
@@ -220,15 +220,15 @@ Arena *ArenaPairPushOldest(ArenaPair *alternatingAreans, Arena *finishedArena)
 
 void ArenaPairFreeOldest(ArenaPair *arenaPair)
 {
-	if (arenaPair->previouslyPoppedArena)
+	if (arenaPair->lastPushedArena)
 	{
-		if (arenaPair->arena1 == arenaPair->previouslyPoppedArena && arenaPair->arena2)
+		if (arenaPair->arena1 == arenaPair->lastPushedArena && arenaPair->arena2)
 		{
 			arenaPair->arena2->used = 0;
 			arenaPair->arena2->readyForAssignment = true;
 			arenaPair->arena2 = {};
 		}
-		if (arenaPair->arena2 == arenaPair->previouslyPoppedArena && arenaPair->arena1)
+		if (arenaPair->arena2 == arenaPair->lastPushedArena && arenaPair->arena1)
 		{
 			arenaPair->arena1->used = 0;
 			arenaPair->arena1->readyForAssignment = true;
