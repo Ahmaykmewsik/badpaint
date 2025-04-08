@@ -16,34 +16,34 @@ enum PNG_FILTER_TYPE : i32
 
 static const char *G_PNG_FILTER_NAMES[] = {"None", "Sub", "Up", "Average", "Paeth", "Optimal"};
 
- // NOTE: (Ahmayk) RGBA32
+// NOTE: (Ahmayk) RGBA32
 struct ImageRaw
 {
-    u8 *dataU8;
-    u32 dataSize;
-    V2 dim;
+	u8 *dataU8;
+	u32 dataSize;
+	V2 dim;
 };
 
 struct ImagePNGFiltered
 {
-    u8 *dataU8;
-    u32 dataSize;
-    V2 dim;
+	u8 *dataU8;
+	u32 dataSize;
+	V2 dim;
 	PNG_FILTER_TYPE pngFilterType;
 };
 
 struct ImagePNGCompressed
 {
-    u8 *dataU8;
-    u32 dataSize;
-    V2 dim;
+	u8 *dataU8;
+	u32 dataSize;
+	V2 dim;
 };
 
 struct ImagePNGChecksumed
 {
-    u8 *dataU8;
-    u32 dataSize;
-    V2 dim;
+	u8 *dataU8;
+	u32 dataSize;
+	V2 dim;
 };
 
 
@@ -57,28 +57,28 @@ struct Canvas
 
 	Texture textureVisualizedFilteredRootImage;
 
-    Image drawnImageData;
-    Texture texture;
-    Brush *brush;
-    bool proccessAsap;
-    bool needsTextureUpload;
-    bool oldDataPresent;
+	Image drawnImageData;
+	Texture texture;
+	Brush *brush;
+	bool proccessAsap;
+	bool needsTextureUpload;
+	bool oldDataPresent;
 	PNG_FILTER_TYPE currentPNGFilterType;
 
-    unsigned char *rollbackImageData;
-    unsigned int rollbackSizeCount;
-    unsigned int rollbackIndexNext;
-    unsigned int rollbackIndexStart;
+	unsigned char *rollbackImageData;
+	unsigned int rollbackSizeCount;
+	unsigned int rollbackIndexNext;
+	unsigned int rollbackIndexStart;
 };
 
-struct ProcessedImage 
+struct ProcessedImage
 {
-    bool active;
-    unsigned int index;
-    ImageRaw *rootImageRaw;
-    Canvas *canvas;
+	bool active;
+	unsigned int index;
+	ImageRaw *rootImageRaw;
+	Canvas *canvas;
 	ArenaPair arenaPair;
-    ImageRaw finalProcessedImageRaw;
-    unsigned int frameStarted;
-    unsigned int frameFinished;
+	ImageRaw finalProcessedImageRaw;
+	unsigned int frameStarted;
+	unsigned int frameFinished;
 };

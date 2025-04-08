@@ -35,7 +35,7 @@ void ArenaReset(Arena *arena);
 
 struct ArenaGroup
 {
-    Arena masterArena;
+	Arena masterArena;
 	Arena *arenas;
 	u32 count;
 };

@@ -13,16 +13,16 @@
 //NOTE: (Ahmayk) Leftovers from vn_intrinsic.h
 struct GameMemory
 {
-    Arena permanentArena;
-    Arena temporaryArena;
-    Arena rootImageArena;
-    Arena canvasArena;
-    Arena mouseClickArena;
-    Arena circularNotificationBuffer;
-    Arena canvasRollbackArena;
+	Arena permanentArena;
+	Arena temporaryArena;
+	Arena rootImageArena;
+	Arena canvasArena;
+	Arena mouseClickArena;
+	Arena circularNotificationBuffer;
+	Arena canvasRollbackArena;
 
-    Arena twoFrameArenaModIndex0;
-    Arena twoFrameArenaModIndex1;
+	Arena twoFrameArenaModIndex0;
+	Arena twoFrameArenaModIndex1;
 
 	ArenaGroup conversionArenaGroup;
 };
@@ -34,18 +34,18 @@ static unsigned int G_CURRENT_FRAME = {};
 
 inline int GetFrameModIndexThisFrame()
 {
-    int result = G_CURRENT_FRAME % 2;
-    return result;
+	int result = G_CURRENT_FRAME % 2;
+	return result;
 }
 
 inline int GetFrameModIndexLastFrame()
 {
-    int result = {};
+	int result = {};
 
-    if (G_CURRENT_FRAME)
-        result = (G_CURRENT_FRAME - 1) % 2;
+	if (G_CURRENT_FRAME)
+		result = (G_CURRENT_FRAME - 1) % 2;
 
-    return result;
+	return result;
 }
 
 inline Arena *GetTwoFrameArenaThisFrame(GameMemory *gameMemory)
@@ -54,7 +54,7 @@ inline Arena *GetTwoFrameArenaThisFrame(GameMemory *gameMemory)
 		? &gameMemory->twoFrameArenaModIndex0
 		: &gameMemory->twoFrameArenaModIndex1;
 
-    return result;
+	return result;
 }
 
 inline Arena *GetTwoFrameArenaLastFrame(GameMemory *gameMemory)
@@ -63,5 +63,5 @@ inline Arena *GetTwoFrameArenaLastFrame(GameMemory *gameMemory)
 		? &gameMemory->twoFrameArenaModIndex1
 		: &gameMemory->twoFrameArenaModIndex0;
 
-    return result;
+	return result;
 }

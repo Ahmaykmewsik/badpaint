@@ -9,9 +9,9 @@
 u64 GetPageSize()
 {
 	u64 result = 0;
-    SYSTEM_INFO systemInfo;
-    GetSystemInfo(&systemInfo);
-    result = systemInfo.dwPageSize;
+	SYSTEM_INFO systemInfo;
+	GetSystemInfo(&systemInfo);
+	result = systemInfo.dwPageSize;
 	return result;
 }
 
@@ -20,9 +20,9 @@ void MemoryProtectWrite(void *memory, u64 size)
 {
 	if (size)
 	{
-        DWORD oldProtect;
-        ASSERT(VirtualProtect(memory, size, PAGE_READONLY, &oldProtect));
-    }
+		DWORD oldProtect;
+		ASSERT(VirtualProtect(memory, size, PAGE_READONLY, &oldProtect));
+	}
 }
 
 void MemoryProtectReadWrite(void *memory, u64 size)
@@ -52,13 +52,13 @@ Arena ArenaInit(u64 size)
 
 	Arena result = {};
 	//TODO: (Marc) Control for reserve or commit if you need it
-    result.memory = (u8*) VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
+	result.memory = (u8*) VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
 
 	if (ASSERT(result.memory))
 	{
 		//TODO: (Marc) What do we do when we fail?
 	}
-    result.size = size;
+	result.size = size;
 
 #if DEBUG_MODE
 	result.size -= GetPageSize();

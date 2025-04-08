@@ -7,14 +7,14 @@
 
 struct String
 {
-    char *chars;
-    u32 length;
+	char *chars;
+	u32 length;
 };
 
 struct StringArray
 {
-    String *strings;
-    u32 count;
+	String *strings;
+	u32 count;
 };
 
 bool CharIsSpace(char c);
@@ -54,37 +54,37 @@ void Print(long long unsigned int i);
 
 inline String operator+(String s1, String s2)
 {
-    return JoinStrings(s1, s2, StringArena());
+	return JoinStrings(s1, s2, StringArena());
 }
 
 inline String operator+(String s, const char *chars)
 {
-    return JoinStrings(s, STRING(chars), StringArena());
+	return JoinStrings(s, STRING(chars), StringArena());
 }
 
 inline String operator+(const char *chars, String s)
 {
-    return JoinStrings(STRING(chars), s, StringArena());
+	return JoinStrings(STRING(chars), s, StringArena());
 }
 
 inline String &operator+=(String &left, String right)
 {
-    return (left = left + right);
+	return (left = left + right);
 }
 
 inline String &operator+=(String &left, const char *right)
 {
-    return left = left + STRING(right); 
+	return left = left + STRING(right);
 }
 
 inline b32 operator==(String s1, String s2)
 {
-    return StringCompare(s1, s2);
+	return StringCompare(s1, s2);
 }
 
 inline b32 operator==(String s, const char *chars)
 {
-    return StringCompare(s, STRING(chars));
+	return StringCompare(s, STRING(chars));
 }
 
 String CleanStringForDiscord(String string, Arena *arena);
