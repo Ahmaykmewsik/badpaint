@@ -39,7 +39,8 @@ struct ArenaGroup
 	u32 count;
 };
 
-void FillArenaGroup(ArenaGroup *arenaGroup, u32 blockSize);
+void ArenaGroupFill(ArenaGroup *arenaGroup, u32 blockSize);
+Arena *ArenaGroupPushArena(ArenaGroup *arenaGroup);
 
 struct ArenaPair 
 {

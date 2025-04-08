@@ -112,7 +112,7 @@ ArenaGroup ArenaGroupInit(u64 size)
 	return result;
 }
 
-void FillArenaGroup(ArenaGroup *arenaGroup, u32 blockSize)
+void ArenaGroupFill(ArenaGroup *arenaGroup, u32 blockSize)
 {
 	if (ASSERT(arenaGroup->masterArena.size))
 	{
@@ -138,6 +138,24 @@ void FillArenaGroup(ArenaGroup *arenaGroup, u32 blockSize)
 			arena->readyForAssignment = true;
 		}
 	}
+}
+
+Arena *ArenaGroupPushArena(ArenaGroup *arenaGroup)
+{
+	Arena *result = {};
+	for (u32 i = 0; i < arenaGroup->count; i++)
+	{
+		if (arenaGroup->arenas[i].readyForAssignment)
+		{
+			result = &arenaGroup->arenas[i];
+			result->readyForAssignment = false;
+			break;
+		}
+	}
+
+	ASSERT(result);
+
+	return result;
 }
 
 ArenaPair ArenaPairAssign(ArenaGroup *arenaGroup)

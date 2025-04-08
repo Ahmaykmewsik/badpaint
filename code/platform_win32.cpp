@@ -17,6 +17,7 @@
 
 #include <base/memory.cpp>
 #include <base/vn_string.cpp>
+#include <base/multithreading.cpp>
 
 struct WorkQueueEntry
 {

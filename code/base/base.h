@@ -2,6 +2,7 @@
 #include <macros.h>
 #include <base/memory.h>
 #include <base/vn_string.h>
+#include <base/multithreading.h>
 
 #include <stdio.h>
 #include <stdint.h>

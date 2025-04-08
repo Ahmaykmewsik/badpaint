@@ -6,6 +6,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
     ImageRaw *rootImageRaw = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, ImageRaw);
     Canvas *canvas = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, Canvas);
 
+	canvas->currentPNGFilterType = PNG_FILTER_TYPE_OPTIMAL;
+
     bool imageIsBroken = {};
 
     ProcessedImage *processedImages = ARENA_PUSH_ARRAY(&gameMemory.permanentArena, threadCount, ProcessedImage);
@@ -255,7 +257,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
                 }
             }
 
-            float scale = Max(1, canvas->filteredRootImage.width / canvasUiBox->rect.dim.x);
+            float scale = Max(1, canvas->visualizedFilteredRootImage.width / canvasUiBox->rect.dim.x);
             V2 startPos = scale * (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos);
             V2 endPos = scale * (mousePixelPos - canvasUiBox->rect.pos);
             float distance = Max(1, DistanceV2(startPos, endPos));
@@ -319,6 +321,22 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
             }
         }
 
+        if (IsKeyPressed(KEY_ONE))
+            canvas->currentPNGFilterType = PNG_FILTER_TYPE_SUB;
+        if (IsKeyPressed(KEY_TWO))
+            canvas->currentPNGFilterType = PNG_FILTER_TYPE_UP;
+        if (IsKeyPressed(KEY_THREE))
+            canvas->currentPNGFilterType = PNG_FILTER_TYPE_AVERAGE;
+        if (IsKeyPressed(KEY_FOUR))
+            canvas->currentPNGFilterType = PNG_FILTER_TYPE_PAETH;
+        if (IsKeyPressed(KEY_FIVE))
+            canvas->currentPNGFilterType = PNG_FILTER_TYPE_OPTIMAL;
+
+		if (canvas->texture.id && canvas->imagePNGFiltered.pngFilterType != canvas->currentPNGFilterType)
+		{
+			canvas->proccessAsap = true;
+		}
+
         if (canvas->texture.id && canvas->proccessAsap)
         {
             ProcessedImage *processedImage = GetFreeProcessedImage(processedImages, threadCount);
@@ -332,20 +350,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				}
 			}
         }
-
-        if (IsKeyPressed(KEY_ONE))
-            stbi_write_force_png_filter = 1;
-        if (IsKeyPressed(KEY_TWO))
-            stbi_write_force_png_filter = 2;
-        if (IsKeyPressed(KEY_THREE))
-            stbi_write_force_png_filter = 3;
-        if (IsKeyPressed(KEY_FOUR))
-            stbi_write_force_png_filter = 4;
-        if (IsKeyPressed(KEY_FIVE))
-            stbi_write_force_png_filter = 5;
-
-        if (canvas->texture.id && pngFilterLastFrame != stbi_write_force_png_filter)
-            canvas->proccessAsap = true;
 
         ProcessedImage *latestCompletedProcessedImage = {};
         for (int i = 0;
@@ -388,7 +392,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
         {
             canvas->needsTextureUpload = false;
             Image outputImage = {};
-            V2 dim = WidthHeightToV2(canvas->filteredRootImage.width, canvas->filteredRootImage.height);
+            V2 dim = WidthHeightToV2(canvas->visualizedFilteredRootImage.width, canvas->visualizedFilteredRootImage.height);
             unsigned int pixelCount = dim.x * dim.y;
 			ArenaMarker marker;
             Color *pixels = ARENA_PUSH_ARRAY_MARKER(&gameMemory.temporaryArena, pixelCount, Color, &marker);
@@ -397,7 +401,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
                  i < pixelCount;
                  i++)
             {
-                Color rootPixel = ((Color *)canvas->filteredRootImage.data)[i];
+                Color rootPixel = ((Color *)canvas->visualizedFilteredRootImage.data)[i];
                 Color canvasPixel = ((Color *)canvas->drawnImageData.data)[i];
                 Color drawnPixel = G_BRUSH_EFFECT_COLORS[canvasPixel.r];
                 Color *outPixel = (pixels + i);
@@ -647,7 +651,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
         uiSettings->frontColor = BLACK;
         G_UI_INPUTS->relativePixelPosition = V2{windowDim.x * 0.45f, 2};
-        label = STRING("PNG Filter: ") + G_PNG_FILTER_NAMES[stbi_write_force_png_filter];
+        label = STRING("PNG Filter: ") + G_PNG_FILTER_NAMES[canvas->currentPNGFilterType];
         CreateUiBox(UI_FLAG_DRAW_TEXT, label);
 
         SetUiAxis({UI_SIZE_KIND_PIXELS, 200}, {UI_SIZE_KIND_TEXT});

@@ -4,6 +4,17 @@
 #include "input.h"
 #endif
 
+enum PNG_FILTER_TYPE : i32
+{
+	PNG_FILTER_TYPE_SUB = 1,
+	PNG_FILTER_TYPE_UP = 2,
+	PNG_FILTER_TYPE_AVERAGE = 3,
+	PNG_FILTER_TYPE_PAETH = 4,
+	PNG_FILTER_TYPE_OPTIMAL = 5,
+};
+
+static const char *G_PNG_FILTER_NAMES[] = {"", "Sub", "Up", "Average", "Paeth", "Optimal"};
+
  // NOTE: (Ahmayk) RGBA32
 struct ImageRaw
 {
@@ -17,6 +28,7 @@ struct ImagePNGFiltered
     u8 *dataU8;
     u32 dataSize;
     V2 dim;
+	PNG_FILTER_TYPE pngFilterType;
 };
 
 struct ImagePNGCompressed
@@ -33,19 +45,23 @@ struct ImagePNGChecksumed
     V2 dim;
 };
 
-static const char *G_PNG_FILTER_NAMES[] = {"", "Sub", "Up", "Average", "Paeth", "Optimal"};
 
 static String G_CANVAS_STRING_TAG_CHARS = STRING("canvas");
 
 struct Canvas
 {
-    Image filteredRootImage;
+	ImagePNGFiltered imagePNGFiltered;
+	Arena *arenaFilteredPNG;
+	b32 filterLock;
+
+    Image visualizedFilteredRootImage;
     Image drawnImageData;
     Texture texture;
     Brush *brush;
     bool proccessAsap;
     bool needsTextureUpload;
     bool oldDataPresent;
+	PNG_FILTER_TYPE currentPNGFilterType;
 
     unsigned char *rollbackImageData;
     unsigned int rollbackSizeCount;
