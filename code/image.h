@@ -6,6 +6,7 @@
 
 enum PNG_FILTER_TYPE : i32
 {
+	PNG_FILTER_TYPE_NONE = 0,
 	PNG_FILTER_TYPE_SUB = 1,
 	PNG_FILTER_TYPE_UP = 2,
 	PNG_FILTER_TYPE_AVERAGE = 3,
@@ -13,7 +14,7 @@ enum PNG_FILTER_TYPE : i32
 	PNG_FILTER_TYPE_OPTIMAL = 5,
 };
 
-static const char *G_PNG_FILTER_NAMES[] = {"", "Sub", "Up", "Average", "Paeth", "Optimal"};
+static const char *G_PNG_FILTER_NAMES[] = {"None", "Sub", "Up", "Average", "Paeth", "Optimal"};
 
  // NOTE: (Ahmayk) RGBA32
 struct ImageRaw

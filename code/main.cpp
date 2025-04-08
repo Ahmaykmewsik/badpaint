@@ -321,6 +321,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
             }
         }
 
+        if (IsKeyPressed(KEY_ZERO))
+            canvas->currentPNGFilterType = PNG_FILTER_TYPE_NONE;
         if (IsKeyPressed(KEY_ONE))
             canvas->currentPNGFilterType = PNG_FILTER_TYPE_SUB;
         if (IsKeyPressed(KEY_TWO))
@@ -646,7 +648,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
         uiSettings->frontColor = DARKGRAY;
         G_UI_INPUTS->relativePixelPosition = V2{windowDim.x * 0.07f, 2};
-        String label = STRING("Use 1-5 to toggle differnet PNG filter algorythms");
+        String label = STRING("Use 0-5 to toggle differnet PNG filter algorythms");
         CreateUiBox(UI_FLAG_DRAW_TEXT, label);
 
         uiSettings->frontColor = BLACK;
