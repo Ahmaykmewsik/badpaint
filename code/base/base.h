@@ -20,7 +20,6 @@ struct GameMemory
     Arena mouseClickArena;
     Arena circularNotificationBuffer;
     Arena canvasRollbackArena;
-    Arena latestCompletedImageArena;
 
     Arena twoFrameArenaModIndex0;
     Arena twoFrameArenaModIndex1;

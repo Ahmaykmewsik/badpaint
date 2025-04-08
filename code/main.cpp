@@ -257,7 +257,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
                 }
             }
 
-            float scale = Max(1, canvas->visualizedFilteredRootImage.width / canvasUiBox->rect.dim.x);
+            float scale = Max(1, canvas->drawnImageData.width / canvasUiBox->rect.dim.x);
             V2 startPos = scale * (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos);
             V2 endPos = scale * (mousePixelPos - canvasUiBox->rect.pos);
             float distance = Max(1, DistanceV2(startPos, endPos));
@@ -387,7 +387,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
                 imageIsBroken = true;
             }
 
-            ArenaReset(&gameMemory.latestCompletedImageArena);
             ResetProcessedImage(latestCompletedProcessedImage, canvas);
         }
 
@@ -395,27 +394,26 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
         {
             canvas->needsTextureUpload = false;
             Image outputImage = {};
-            V2 dim = WidthHeightToV2(canvas->visualizedFilteredRootImage.width, canvas->visualizedFilteredRootImage.height);
+            V2 dim = WidthHeightToV2(canvas->drawnImageData.width, canvas->drawnImageData.height);
             unsigned int pixelCount = dim.x * dim.y;
 			ArenaMarker marker;
             Color *pixels = ARENA_PUSH_ARRAY_MARKER(&gameMemory.temporaryArena, pixelCount, Color, &marker);
+			memset(pixels, 0, pixelCount * sizeof(Color));
 
-            for (int i = 0;
-                 i < pixelCount;
-                 i++)
-            {
-                Color rootPixel = ((Color *)canvas->visualizedFilteredRootImage.data)[i];
-                Color canvasPixel = ((Color *)canvas->drawnImageData.data)[i];
-                Color drawnPixel = G_BRUSH_EFFECT_COLORS[canvasPixel.r];
-                Color *outPixel = (pixels + i);
-
-                if (canvasPixel.a < 255)
-                    drawnPixel.a = 255 * 0.5;
-                *outPixel = drawnPixel;
-
-                if (!canvasPixel.r)
-                    *outPixel = rootPixel;
-            }
+			for (int i = 0; i < pixelCount; i++)
+			{
+				Color canvasPixel = ((Color *)canvas->drawnImageData.data)[i];
+				if (canvasPixel.r)
+				{
+					Color drawnPixel = G_BRUSH_EFFECT_COLORS[canvasPixel.r];
+					if (canvasPixel.a < 255)
+					{
+						drawnPixel.a = 255 * 0.5;
+					}
+					Color *outPixel = (pixels + i);
+					*outPixel = drawnPixel;
+				}
+			}
 
             UploadTexture(&canvas->texture, pixels, dim.x, dim.y);
 			ArenaPopMarker(marker);
@@ -487,6 +485,12 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
                 CreateUiBox(UI_FLAG_DRAW_BORDER);
                 UiParent()
                 {
+					if (canvas->textureVisualizedFilteredRootImage.id)
+					{
+						G_UI_INPUTS->texture = canvas->textureVisualizedFilteredRootImage;
+						SetUiAxis({UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT}, {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT});
+						CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT);
+					}
                     if (canvas->texture.id)
                     {
                         G_UI_INPUTS->texture = canvas->texture;

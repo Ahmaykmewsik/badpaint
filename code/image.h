@@ -55,8 +55,7 @@ struct Canvas
 	Arena arenaFilteredPNG;
 	b32 filterLock;
 
-    Image visualizedFilteredRootImage;
-	Arena arenaVisualizedFilteredRootImage;
+	Texture textureVisualizedFilteredRootImage;
 
     Image drawnImageData;
     Texture texture;

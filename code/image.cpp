@@ -389,22 +389,19 @@ void SetPNGFilterType(Canvas *canvas, ImageRaw *rootImageRaw, GameMemory *gameMe
     V2 canvasDim = V2{(rootImageRaw->dim.x * 4) + 1, rootImageRaw->dim.y};
 	u32 visualizedCanvasDataSize = canvasDim.x * canvasDim.y * sizeof(Color);
 
-	ArenaReset(&canvas->arenaVisualizedFilteredRootImage);
-    canvas->visualizedFilteredRootImage = canvas->drawnImageData;
-    canvas->visualizedFilteredRootImage.data = ArenaPushSize(&canvas->arenaVisualizedFilteredRootImage, visualizedCanvasDataSize, {});
-
+	ArenaMarker marker = {};
+    ImageRaw visualizedFilteredRootImage = {};
+	visualizedFilteredRootImage.dim = canvasDim;
+    visualizedFilteredRootImage.dataSize = visualizedCanvasDataSize; 
+    visualizedFilteredRootImage.dataU8 = (u8*) ArenaPushSize(&gameMemory->temporaryArena, visualizedCanvasDataSize, &marker);
     for (int i = 0; i < canvasDim.x * canvasDim.y; i++)
     {
         u8 value = canvas->imagePNGFiltered.dataU8[i];
-        ((Color *)(canvas->visualizedFilteredRootImage.data))[i] = Color{value, value, value, 255};
+        ((Color *)(visualizedFilteredRootImage.dataU8))[i] = Color{value, value, value, 255};
     }
-
-    if (canvas->texture.id)
-	{
-        rlUnloadTexture(canvas->texture.id);
-	}
-    canvas->texture = {};
-    canvas->needsTextureUpload = true;
+	UploadAndReplaceTexture(&visualizedFilteredRootImage, &canvas->textureVisualizedFilteredRootImage);
+	ArenaPopMarker(marker);
+	canvas->needsTextureUpload = true;
 }
 
 void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, GameMemory *gameMemory)
@@ -426,11 +423,16 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
 	ALIGN_POW2(&conversionArenaSize, 256);
 
 	canvas->arenaFilteredPNG = ArenaInitFromArena(&gameMemory->canvasArena, conversionArenaSize);
-	canvas->arenaVisualizedFilteredRootImage = ArenaInitFromArena(&gameMemory->canvasArena, visualizedCanvasDataSize);
 
 	ArenaGroupFill(&gameMemory->conversionArenaGroup, conversionArenaSize);
 
 	SetPNGFilterType(canvas, rootImageRaw, gameMemory);
+
+    if (canvas->texture.id)
+	{
+        rlUnloadTexture(canvas->texture.id);
+		canvas->texture = {};
+	}
 
     ArenaReset(&gameMemory->canvasRollbackArena);
     unsigned int canvasSize = GetCanvasDatasize(canvas);
