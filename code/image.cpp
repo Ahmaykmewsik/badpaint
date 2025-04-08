@@ -178,7 +178,7 @@ ImagePNGFiltered PiratedSTB_EncodePngFilters(ImageRaw *imageRaw, Arena *arena, P
     int n = 4;
     int stride_bytes = x * 4;
 
-	result.dataSize = (x * n) * y;
+	result.dataSize = (x * n + 1) * y;
 	result.dim = imageRaw->dim;
     u8 *filters = (u8 *)ArenaPushSize(arena, result.dataSize, {});
     i8 *line_buffer = (signed char *)ArenaPushSize(arena, x * n, {});
@@ -308,13 +308,14 @@ ImageRaw DecodePng(ImagePNGChecksumed *imagePNGChecksumed, Arena *arena)
             result.dataSize = rawRGBA32DataSize;
             result.dataU8 = (u8*) ArenaPushSize(arena, result.dataSize, {});
 			//TOOD: (Ahmayk) Use our own memory so there's no copying or freeing here
-            memcpy(result.dataU8, outData, imagePNGChecksumed->dataSize);
+            memcpy(result.dataU8, outData, result.dataSize);
             lodepng_free(outData);
         }
     }
     else
     {
         // Print(lodepng_error_text(state.error));
+		const char *error = lodepng_error_text(state.error);
     }
 
     lodepng_state_cleanup(&state);
@@ -373,34 +374,26 @@ unsigned int GetCanvasDatasize(Canvas *canvas)
     return result;
 }
 
-void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, GameMemory *gameMemory)
+void SetPNGFilterType(Canvas *canvas, ImageRaw *rootImageRaw, GameMemory *gameMemory)
 {
-    if (canvas->texture.id)
-        UnloadTexture(canvas->texture);
+	LockOnBool(&canvas->filterLock);
+	ArenaReset(&canvas->arenaFilteredPNG);
+	canvas->imagePNGFiltered = PiratedSTB_EncodePngFilters(rootImageRaw, &canvas->arenaFilteredPNG, canvas->currentPNGFilterType);
 
-    float closestSquare = {};
+#if DEBUG_MODE
+	MemoryProtectWrite(canvas->arenaFilteredPNG.memory, canvas->arenaFilteredPNG.used);
+#endif
 
-    V2 canvsDim = {};
+	UnlockOnBool(&canvas->filterLock);
 
-    V2 canvasDim = V2{rootImageRaw->dim.x * 4, rootImageRaw->dim.y} + 1;
-    u32 pixelCount = rootImageRaw->dataSize;
+    V2 canvasDim = V2{(rootImageRaw->dim.x * 4) + 1, rootImageRaw->dim.y};
+	u32 visualizedCanvasDataSize = canvasDim.x * canvasDim.y * sizeof(Color);
 
-    ArenaReset(&gameMemory->canvasArena);
-    Color *pixelsDrawn = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, pixelCount, Color);
-	memset(pixelsDrawn, 0, sizeof(Color) * pixelCount);
-
-    canvas->drawnImageData.data = pixelsDrawn;
-    canvas->drawnImageData.width = canvasDim.x;
-    canvas->drawnImageData.height = canvasDim.y;
-    canvas->drawnImageData.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
-    canvas->drawnImageData.mipmaps = 1;
+	ArenaReset(&canvas->arenaVisualizedFilteredRootImage);
     canvas->visualizedFilteredRootImage = canvas->drawnImageData;
-    canvas->visualizedFilteredRootImage.data = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, pixelCount, Color);
+    canvas->visualizedFilteredRootImage.data = ArenaPushSize(&canvas->arenaVisualizedFilteredRootImage, visualizedCanvasDataSize, {});
 
-    canvas->imagePNGFiltered = PiratedSTB_EncodePngFilters(rootImageRaw, &gameMemory->canvasArena, canvas->currentPNGFilterType);
-    for (int i = 0;
-         i < pixelCount;
-         i++)
+    for (int i = 0; i < canvasDim.x * canvasDim.y; i++)
     {
         u8 value = canvas->imagePNGFiltered.dataU8[i];
         ((Color *)(canvas->visualizedFilteredRootImage.data))[i] = Color{value, value, value, 255};
@@ -412,6 +405,32 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
 	}
     canvas->texture = {};
     canvas->needsTextureUpload = true;
+}
+
+void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, GameMemory *gameMemory)
+{
+    ArenaReset(&gameMemory->canvasArena);
+
+    V2 canvasDim = V2{(rootImageRaw->dim.x * 4) + 1, rootImageRaw->dim.y};
+	u32 visualizedCanvasDataSize = canvasDim.x * canvasDim.y * sizeof(Color);
+
+    canvas->drawnImageData.data = ArenaPushSize(&gameMemory->canvasArena, visualizedCanvasDataSize, {});
+    canvas->drawnImageData.width = canvasDim.x;
+    canvas->drawnImageData.height = canvasDim.y;
+    canvas->drawnImageData.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+    canvas->drawnImageData.mipmaps = 1;
+	memset(canvas->drawnImageData.data, 0, visualizedCanvasDataSize);
+
+	u32 conversionArenaSize = (canvasDim.x * canvasDim.y) + (rootImageRaw->dim.x * 4);
+	conversionArenaSize *= 1.2;
+	ALIGN_POW2(&conversionArenaSize, 256);
+
+	canvas->arenaFilteredPNG = ArenaInitFromArena(&gameMemory->canvasArena, conversionArenaSize);
+	canvas->arenaVisualizedFilteredRootImage = ArenaInitFromArena(&gameMemory->canvasArena, visualizedCanvasDataSize);
+
+	ArenaGroupFill(&gameMemory->conversionArenaGroup, conversionArenaSize);
+
+	SetPNGFilterType(canvas, rootImageRaw, gameMemory);
 
     ArenaReset(&gameMemory->canvasRollbackArena);
     unsigned int canvasSize = GetCanvasDatasize(canvas);
@@ -420,9 +439,6 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
     canvas->rollbackIndexStart = 0;
     canvas->rollbackIndexNext = 0;
     canvas->brush = brush;
-
-	ArenaGroupFill(&gameMemory->conversionArenaGroup, (u32) (pixelCount * 1.2));
-	canvas->arenaFilteredPNG = ArenaGroupPushArena(&gameMemory->conversionArenaGroup);
 }
 
 void InitializeNewImage(const char *fileName, GameMemory *gameMemory, ImageRaw *rootImageRaw, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush)
@@ -442,18 +458,13 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 
     Canvas *canvas = processedImage->canvas;
 
-	LockOnBool(&canvas->filterLock);
-	if (canvas->currentPNGFilterType != canvas->imagePNGFiltered.pngFilterType)
-	{
-		canvas->arenaFilteredPNG->used = 0;
-		canvas->imagePNGFiltered = PiratedSTB_EncodePngFilters(processedImage->rootImageRaw, canvas->arenaFilteredPNG, canvas->currentPNGFilterType);
-	}
-	UnlockOnBool(&canvas->filterLock);
-
-	ImagePNGFiltered imagePNGFiltered = canvas->imagePNGFiltered;
 	Arena *arenaFiltered = ArenaPairPushOldest(&processedImage->arenaPair, {});
+
+	LockOnBool(&canvas->filterLock);
+	ImagePNGFiltered imagePNGFiltered = canvas->imagePNGFiltered;
 	imagePNGFiltered.dataU8 = ArenaPushSize(arenaFiltered, imagePNGFiltered.dataSize, {});
 	memcpy(imagePNGFiltered.dataU8, canvas->imagePNGFiltered.dataU8, imagePNGFiltered.dataSize);
+	UnlockOnBool(&canvas->filterLock);
 
     ASSERT(processedImage->canvas->drawnImageData.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
 
@@ -502,12 +513,8 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 
 	Arena *arenaCompressed = ArenaPairPushOldest(&processedImage->arenaPair, {});
 
-	imagePNGCompressed.dataU8 = (u8 *)ArenaPushSize(arenaCompressed, imagePNGFiltered.dataSize, {});
-	fpng::pixel_deflate_dyn_4_rle_one_pass(imagePNGFiltered.dataU8,
-			imagePNGFiltered.dim.x,
-			imagePNGFiltered.dim.y,
-			imagePNGCompressed.dataU8, imagePNGCompressed.dataSize);
-
+	imagePNGCompressed.dataU8 = (u8 *)ArenaPushSize(arenaCompressed, arenaCompressed->size, {});
+	imagePNGCompressed.dataSize = fpng::pixel_deflate_dyn_4_rle_one_pass(imagePNGFiltered.dataU8, imagePNGFiltered.dim.x, imagePNGFiltered.dim.y, imagePNGCompressed.dataU8, arenaCompressed->size);
 	Arena *arenaChecksumed = ArenaPairPushOldest(&processedImage->arenaPair, arenaFiltered);
 
     // Print("Encoded PNG Compression on thread " + IntToString(processedImage->index));
@@ -535,7 +542,7 @@ void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas)
 
 #if 1
     for (int i = 0;
-         i <= pixelCount;
+         i < pixelCount;
          i++)
     {
         Color *drawnPixel = &((Color *)canvas->drawnImageData.data)[i];
@@ -580,7 +587,7 @@ void StartProcessedImageWork(Canvas *canvas, unsigned int threadCount, Processed
     unsigned int pixelCount = canvas->drawnImageData.width * canvas->drawnImageData.height;
 #if 1
     for (int i = 0;
-         i <= pixelCount;
+         i < pixelCount;
          i++)
     {
         Color *drawnPixel = &((Color *)canvas->drawnImageData.data)[i];

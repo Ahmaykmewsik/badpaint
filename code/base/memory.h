@@ -25,6 +25,7 @@ void ArenaPopMarker(ArenaMarker arenaMarker);
 void ArenaReset(Arena *arena);
 
 #define ALIGN_POW2(value, alignment) *value = ((*value + ((alignment) - 1)) & ~((alignment) - 1))
+#define ALIGN_POW2_LIMIT(value, alignment, limit) if ((*value + alignment) < limit) ALIGN_POW2(value, alignment)
 
 #define ARENA_PUSH_STRUCT(arena, type) (type *)ArenaPushSize(arena, sizeof(type), {})
 #define ARENA_PUSH_ARRAY(arena, count, type) (type *)ArenaPushSize(arena, count * sizeof(type), {})
@@ -39,6 +40,7 @@ struct ArenaGroup
 	u32 count;
 };
 
+ArenaGroup ArenaGroupInit(u64 size);
 void ArenaGroupFill(ArenaGroup *arenaGroup, u32 blockSize);
 Arena *ArenaGroupPushArena(ArenaGroup *arenaGroup);
 
@@ -53,3 +55,9 @@ ArenaPair ArenaPairAssign(ArenaGroup *arenaGroup);
 Arena *ArenaPairPushOldest(ArenaPair *alternatingAreans, Arena *finishedArena);
 void ArenaPairFreeOldest(ArenaPair *alternatingAreans);
 void ArenaPairFreeAll(ArenaPair *alternatingAreans);
+
+#if DEBUG_MODE
+void MemoryProtectReadWrite(void *memory, u64 size);
+void MemoryProtectWrite(void *memory, u64 size);
+void MemoryUnprotect(void *memory, u64 size);
+#endif

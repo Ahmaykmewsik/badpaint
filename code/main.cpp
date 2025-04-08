@@ -336,6 +336,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 		if (canvas->texture.id && canvas->imagePNGFiltered.pngFilterType != canvas->currentPNGFilterType)
 		{
+			SetPNGFilterType(canvas, rootImageRaw, &gameMemory);
 			canvas->proccessAsap = true;
 		}
 

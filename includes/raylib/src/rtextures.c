@@ -2992,6 +2992,7 @@ void ImageDrawRectangleRec(Image *dst, Rectangle rec, Color color)
     // Check if the rect is even inside the image
     if ((rec.x > dst->width) || (rec.y > dst->height)) return;
     if (((rec.x + rec.width) < 0) || (rec.y + rec.height < 0)) return;
+    if (!rec.width || !rec.height) return;
 
     int sy = (int)rec.y;
     int sx = (int)rec.x;

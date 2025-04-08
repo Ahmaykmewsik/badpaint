@@ -5,38 +5,69 @@
 #if OS_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #include "Windows.h"
-#endif
-
-Arena ArenaInit(u64 size)
-{
-	Arena result = {};
-	//TODO: (Marc) Control for reserve or commit if you need it
-#if OS_WINDOWS
-    result.memory = (u8*) VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
-#elif OS_WEB
-    result.memory = (u8*) malloc(size);
-#else
-	InvalidCodePath
-#endif
-
-	ASSERT(result.memory);
-
-    result.size = size;
-	return result;
-}
 
 u64 GetPageSize()
 {
 	u64 result = 0;
-#if OS_WINDOWS
     SYSTEM_INFO systemInfo;
     GetSystemInfo(&systemInfo);
     result = systemInfo.dwPageSize;
-#else
-	InvalidCodePath
-#endif
 	return result;
 }
+
+#if DEBUG_MODE
+void MemoryProtectWrite(void *memory, u64 size)
+{
+	if (size)
+	{
+        DWORD oldProtect;
+        ASSERT(VirtualProtect(memory, size, PAGE_READONLY, &oldProtect));
+    }
+}
+
+void MemoryProtectReadWrite(void *memory, u64 size)
+{
+	if (size)
+	{
+		DWORD oldProtect;
+		ASSERT(VirtualProtect(memory, size, PAGE_NOACCESS, &oldProtect));
+	}
+}
+
+void MemoryUnprotect(void *memory, u64 size)
+{
+	if (size)
+	{
+		DWORD oldProtect;
+		ASSERT(VirtualProtect(memory, size, PAGE_READWRITE, &oldProtect));
+	}
+}
+#endif
+
+Arena ArenaInit(u64 size)
+{
+#if DEBUG_MODE
+	size += GetPageSize();
+#endif
+
+	Arena result = {};
+	//TODO: (Marc) Control for reserve or commit if you need it
+    result.memory = (u8*) VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
+
+	if (ASSERT(result.memory))
+	{
+		//TODO: (Marc) What do we do when we fail?
+	}
+    result.size = size;
+
+#if DEBUG_MODE
+	result.size -= GetPageSize();
+	MemoryProtectReadWrite(result.memory + result.size, GetPageSize());
+#endif
+
+	return result;
+}
+#endif
 
 ArenaMarker ArenaPushMarker(Arena *arena)
 {
@@ -60,14 +91,14 @@ u8 *ArenaPushSize(Arena *arena, u64 size, ArenaMarker *arenaMarker)
 		}
 		if (size)
 		{
-			ALIGN_POW2(&arena->used, 8);
+			ALIGN_POW2_LIMIT(&arena->used, 16, arena->size);
 
-			if (arena->circular && arena->used + size >= arena->size)
+			if (arena->circular && arena->used + size > arena->size)
 			{
 				arena->used = 0;
 			}
 
-			if (arena->used + size >= arena->size)
+			if (arena->used + size > arena->size)
 			{
 				//TODO: (Marc) What to do when our arena runs out? Reallocate?
 				//Force crash for now, we don't want to continue!
@@ -78,6 +109,16 @@ u8 *ArenaPushSize(Arena *arena, u64 size, ArenaMarker *arenaMarker)
 
 			result = arena->used + arena->memory;
 			arena->used += size;
+
+#if DEBUG_MODE
+			u64 pageSize = GetPageSize();
+			ALIGN_POW2_LIMIT(&arena->used, pageSize, arena->size);
+			if (arena->used + pageSize < arena->size)
+			{
+				MemoryProtectReadWrite(arena->memory + arena->used, pageSize);
+				arena->used += pageSize;
+			}
+#endif
 		}
 	}
 
@@ -96,6 +137,10 @@ void ArenaPopMarker(ArenaMarker arenaMarker)
 {
 	if (arenaMarker.arena)
 	{
+#if DEBUG_MODE
+		ASSERT(arenaMarker.used <= arenaMarker.arena->used);
+		MemoryUnprotect(arenaMarker.arena->memory + arenaMarker.used, arenaMarker.arena->used - arenaMarker.used);
+#endif
 		arenaMarker.arena->used = arenaMarker.used;
 	}
 }
@@ -103,6 +148,9 @@ void ArenaPopMarker(ArenaMarker arenaMarker)
 void ArenaReset(Arena *arena)
 {
 	arena->used = 0;
+#if DEBUG_MODE
+	MemoryUnprotect(arena->memory, arena->size);
+#endif
 }
 
 ArenaGroup ArenaGroupInit(u64 size)
@@ -117,21 +165,15 @@ void ArenaGroupFill(ArenaGroup *arenaGroup, u32 blockSize)
 	if (ASSERT(arenaGroup->masterArena.size))
 	{
 		arenaGroup->count = 0;
-		arenaGroup->masterArena.used = 0;
+		ArenaReset(&arenaGroup->masterArena);
 		u64 pageSize = GetPageSize();
 		ALIGN_POW2(&blockSize, pageSize);
 
 		u32 count = Floor(SafeDivide(arenaGroup->masterArena.size, blockSize));
-		arenaGroup->arenas = (Arena*) ARENA_PUSH_ARRAY(&arenaGroup->masterArena, count, Arena*);
+		arenaGroup->arenas = ARENA_PUSH_ARRAY(&arenaGroup->masterArena, count, Arena);
 
-		u64 usedRounded = arenaGroup->masterArena.used;
-		ALIGN_POW2(&usedRounded, pageSize);
-		if (usedRounded <= arenaGroup->masterArena.size)
-		{
-			arenaGroup->masterArena.used = usedRounded;
-		}
-
-		while (arenaGroup->masterArena.used + blockSize <= arenaGroup->masterArena.size)
+		ALIGN_POW2_LIMIT(&arenaGroup->masterArena.used, pageSize, arenaGroup->masterArena.size);
+		while (arenaGroup->masterArena.used + blockSize + 16 <= arenaGroup->masterArena.size)
 		{
 			Arena *arena = &arenaGroup->arenas[arenaGroup->count++];
 			*arena = ArenaInitFromArena(&arenaGroup->masterArena, blockSize);
@@ -154,6 +196,7 @@ Arena *ArenaGroupPushArena(ArenaGroup *arenaGroup)
 	}
 
 	ASSERT(result);
+	ASSERT(result->used == 0);
 
 	return result;
 }
@@ -181,6 +224,8 @@ ArenaPair ArenaPairAssign(ArenaGroup *arenaGroup)
 	{
 		result.arena1->readyForAssignment = false;
 		result.arena2->readyForAssignment = false;
+		ASSERT(result.arena1->used == 0);
+		ASSERT(result.arena2->used == 0);
 	}
 	else
 	{
@@ -223,7 +268,6 @@ Arena *ArenaPairPushOldest(ArenaPair *alternatingAreans, Arena *finishedArena)
 
 	if (ASSERT(result))
 	{
-		result->used = 0;
 		alternatingAreans->lastPushedArena = result;
 		ASSERT(!result->readyForAssignment);
 	}
@@ -232,6 +276,7 @@ Arena *ArenaPairPushOldest(ArenaPair *alternatingAreans, Arena *finishedArena)
 		//TODO: (Ahmayk) Log that we fucked up
 		result = alternatingAreans->arena1;
 	}
+	ArenaReset(result);
 
 	return result;
 }
@@ -242,13 +287,13 @@ void ArenaPairFreeOldest(ArenaPair *arenaPair)
 	{
 		if (arenaPair->arena1 == arenaPair->lastPushedArena && arenaPair->arena2)
 		{
-			arenaPair->arena2->used = 0;
+			ArenaReset(arenaPair->arena2);
 			arenaPair->arena2->readyForAssignment = true;
 			arenaPair->arena2 = {};
 		}
 		if (arenaPair->arena2 == arenaPair->lastPushedArena && arenaPair->arena1)
 		{
-			arenaPair->arena1->used = 0;
+			ArenaReset(arenaPair->arena1);
 			arenaPair->arena1->readyForAssignment = true;
 			arenaPair->arena1 = {};
 		}
@@ -259,12 +304,12 @@ void ArenaPairFreeAll(ArenaPair *arenaPair)
 {
 	if (arenaPair->arena1)
 	{
-		arenaPair->arena1->used = 0;
+		ArenaReset(arenaPair->arena1);
 		arenaPair->arena1->readyForAssignment = true;
 	}
 	if (arenaPair->arena2)
 	{
-		arenaPair->arena2->used = 0;
+		ArenaReset(arenaPair->arena2);
 		arenaPair->arena2->readyForAssignment = true;
 	}
 	*arenaPair = {};
