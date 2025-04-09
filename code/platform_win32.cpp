@@ -1,6 +1,5 @@
 
 #include "base.h"
-#include "vn_math.h"
 #include "platform_win32.h"
 #include "main.h"
 
@@ -16,6 +15,7 @@
 #include "nonRepo.h"
 
 #include <base/memory.cpp>
+#include <base/vn_math.cpp>
 #include <base/vn_string.cpp>
 #include <base/multithreading.cpp>
 
@@ -69,7 +69,7 @@ void PlatformAddThreadWorkEntry(PlatformWorkQueue *queue, PlatformWorkQueueCallb
 	entry->data = data;
 	entry->callback = callback;
 
-	ModNext(queue->completionGoalIndex, ARRAY_COUNT(queue->entries));
+	queue->completionGoalIndex = ModNextU32(queue->completionGoalIndex, ARRAY_COUNT(queue->entries));
 
 	_WriteBarrier();
 
@@ -259,7 +259,7 @@ static float CRASH_REPORT_DESC_YPOS = CRASH_REPORT_WINDOW_MARGIN;
 static float CRASH_REPORT_INPUT_YPOS = CRASH_REPORT_DESC_YPOS + CRASH_REPORT_DESC_HEIGHT + CRASH_REPORT_WINDOW_MARGIN;
 static float CRASH_REPORT_BUTTON_YPOS = CRASH_REPORT_INPUT_YPOS + CRASH_REPORT_INPUT_HEIGHT + CRASH_REPORT_WINDOW_MARGIN;
 
-static V2 CRASH_REPORT_WINDOW_DIM = V2{600, 400};
+static v2 CRASH_REPORT_WINDOW_DIM = v2{600, 400};
 
 static char CRASH_USER_DETAILS_CHARS[1500] = {};
 
@@ -679,7 +679,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
 		int screenWidth = GetSystemMetrics(SM_CXSCREEN);
 		int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
-		V2 windowPosition = (V2{(float)screenWidth, (float)screenHeight} * 0.5f) - (CRASH_REPORT_WINDOW_DIM * 0.5f);
+		v2 windowPosition = (v2{(float)screenWidth, (float)screenHeight} * 0.5f) - (CRASH_REPORT_WINDOW_DIM * 0.5f);
 
 		// Create the window
 		HWND hwnd = CreateWindowEx(0,

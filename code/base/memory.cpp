@@ -195,7 +195,7 @@ void ArenaGroupResetAndFill(ArenaGroup *arenaGroup, u32 blockSize)
 		u64 pageSize = GetPageSize();
 		ALIGN_POW2(&blockSize, pageSize);
 
-		u32 count = Floor(SafeDivide(arenaGroup->masterArena.size, blockSize));
+		u32 count = FloorF32(SafeDivideF32(arenaGroup->masterArena.size, blockSize));
 		arenaGroup->arenas = ARENA_PUSH_ARRAY(&arenaGroup->masterArena, count, Arena);
 
 		ALIGN_POW2_LIMIT(&arenaGroup->masterArena.used, pageSize, arenaGroup->masterArena.size);

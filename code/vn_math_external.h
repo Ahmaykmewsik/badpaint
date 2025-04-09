@@ -4,39 +4,39 @@
 #include "headersNondependent.h"
 #endif
 
-inline Vector2 V2ToRayVector(V2 v)
+inline Vector2 V2ToRayVector(v2 v)
 {
 	return Vector2{v.x, v.y};
 }
 
-inline V2 RayVectorToV2(Vector2 v)
+inline v2 RayVectorToV2(Vector2 v)
 {
-	return V2{v.x, v.y};
+	return v2{v.x, v.y};
 }
 
-inline V3 RayVectorToV3(Vector3 v)
+inline v3 RayVectorToV3(Vector3 v)
 {
-	return V3{v.x, v.y, v.z};
+	return v3{v.x, v.y, v.z};
 }
 
-inline Vector3 V3ToRayVector(V3 v)
+inline Vector3 V3ToRayVector(v3 v)
 {
 	return Vector3{v.x, v.y, v.z};
 }
 
-inline Rectangle RectToRayRectangle(Rect r)
+inline Rectangle RectToRayRectangle(RectV2 r)
 {
 	return Rectangle{r.pos.x, r.pos.y, r.dim.x, r.dim.y};
 }
 
-inline Rect RayRectangleToRect(Rectangle r)
+inline RectV2 RayRectangleToRect(Rectangle r)
 {
-	return Rect{V2{r.x, r.y}, V2{r.width, r.height}};
+	return RectV2{v2{r.x, r.y}, v2{r.width, r.height}};
 }
 
-inline V4 ColorNormalizeV4(Color color)
+inline v4 ColorNormalizeV4(Color color)
 {
-	V4 result;
+	v4 result;
 
 	result.r = (float)color.r / 255.0f;
 	result.g = (float)color.g / 255.0f;
@@ -50,10 +50,10 @@ inline Color LerpColor(Color c1, float amount, Color c2)
 {
 	Color result;
 
-	result.r = Lerp(c1.r, amount, c2.r);
-	result.g = Lerp(c1.g, amount, c2.g);
-	result.b = Lerp(c1.b, amount, c2.b);
-	result.a = Lerp(c1.a, amount, c2.a);
+	result.r = LerpF32(c1.r, amount, c2.r);
+	result.g = LerpF32(c1.g, amount, c2.g);
+	result.b = LerpF32(c1.b, amount, c2.b);
+	result.a = LerpF32(c1.a, amount, c2.a);
 
 	return result;
 }
@@ -73,14 +73,14 @@ inline bool operator!=(Color a, Color b)
 	return result;
 }
 
-inline V2 WidthHeightToV2(int width, int height)
+inline v2 WidthHeightToV2(int width, int height)
 {
-	V2 result = V2{(float)width, (float)height};
+	v2 result = v2{(float)width, (float)height};
 	return result;
 }
 
-inline V2 GetTextureDim(Texture texture)
+inline v2 GetTextureDim(Texture texture)
 {
-	V2 result = WidthHeightToV2(texture.width, texture.height) ;
+	v2 result = WidthHeightToV2(texture.width, texture.height) ;
 	return result;
 }

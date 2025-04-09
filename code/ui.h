@@ -66,9 +66,9 @@ struct UiSettings
 struct UiInputs
 {
 	float value;
-	V2 relativePixelPosition;
+	v2 relativePixelPosition;
 	Texture texture;
-	V2 manualDim;
+	v2 manualDim;
 	COMMAND command;
 	SLIDER_ACTION sliderAction;
 };
@@ -89,7 +89,7 @@ struct UiBox
 	u64 flags;
 	String string;
 	String keyString;
-	V2 textDim;
+	v2 textDim;
 
 	UiInputs uiInputs;
 	UiSettings uiSettings;
@@ -97,10 +97,10 @@ struct UiBox
 	bool hovered;
 	bool pressed;
 	bool down;
-	V2 cursorRelativePixelPos;
+	v2 cursorRelativePixelPos;
 
-	V2 computedRelativePixelPos;
-	Rect rect;
+	v2 computedRelativePixelPos;
+	RectV2 rect;
 };
 
 struct UiHashEntry

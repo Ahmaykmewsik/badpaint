@@ -1,7 +1,6 @@
 #pragma once
 
 #include "base/base.h"
-#include "vn_math.h"
 
 #include "../includes/raylib/src/external/stb_image.h"
 

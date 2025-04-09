@@ -113,7 +113,7 @@ void SetUiAxis(UiSize uiSize1, UiSize uiSize2)
 	G_UI_STATE->uiSettings.uiSizes[1] = uiSize2;
 }
 
-void SetUiAxisToPixelDim(V2 pixelDim)
+void SetUiAxisToPixelDim(v2 pixelDim)
 {
 	SetUiAxis({UI_SIZE_KIND_PIXELS, pixelDim.x}, {UI_SIZE_KIND_PIXELS, pixelDim.y});
 }
@@ -124,7 +124,7 @@ void SetUiTimlineRowAxisPercentOfX(float percentOfParentX)
 	G_UI_STATE->uiSettings.uiSizes[1] = UiSize{UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 }
 
-void PushPixelSize(V2 pixelSize)
+void PushPixelSize(v2 pixelSize)
 {
 	G_UI_STATE->uiSettings.uiSizes[0] = {UI_SIZE_KIND_PIXELS, pixelSize.x};
 	G_UI_STATE->uiSettings.uiSizes[1] = {UI_SIZE_KIND_PIXELS, pixelSize.x};
@@ -177,7 +177,7 @@ void CalculateUiUpwardsDependentSizes(UiBox *uiBox)
 		{
 			ASSERT(uiBox->parent);
 			ASSERT(uiBox->uiInputs.texture.width && uiBox->uiInputs.texture.height);
-			V2 textureDim = GetTextureDim(uiBox->uiInputs.texture);
+			v2 textureDim = GetTextureDim(uiBox->uiInputs.texture);
 
 			float scaleX = 1;
 			float scaleY = 1;
@@ -186,7 +186,7 @@ void CalculateUiUpwardsDependentSizes(UiBox *uiBox)
 			if (uiBox->parent->rect.dim.y)
 				scaleY = uiBox->parent->rect.dim.y / textureDim.y;
 
-			float scale = Min(1, Min(scaleX, scaleY));
+			float scale = MinF32(1, MinF32(scaleX, scaleY));
 
 			uiBox->rect.dim = textureDim * scale;
 		}
@@ -248,7 +248,7 @@ void CalculateUiDownwardsDependentSizes(UiBox *uiBox)
 
 							((j == 0 && isHorizontal) || (j == 1 && !isHorizontal))
 								? sumOrMaxOfChildren += child->rect.dim.elements[j]
-								: sumOrMaxOfChildren = Max(child->rect.dim.elements[j], sumOrMaxOfChildren);
+								: sumOrMaxOfChildren = MaxF32(child->rect.dim.elements[j], sumOrMaxOfChildren);
 
 							child = child->next;
 						}
@@ -280,7 +280,7 @@ void CalculateUiRelativePositions(UiBox *uiBox)
 		}
 		else if (uiBox->parent && IsFlag(uiBox, UI_FLAG_CENTER_IN_PARENT))
 		{
-			uiBox->computedRelativePixelPos = PositionInCenter(uiBox->parent->rect.dim, uiBox->rect.dim);
+			uiBox->computedRelativePixelPos = PositionInCenterV2(uiBox->parent->rect.dim, uiBox->rect.dim);
 		}
 		else if (uiBox->prev)
 		{
@@ -436,15 +436,15 @@ UiBox *GetUiBoxLastFrameOfStringKey(String stringKey)
 	return result;
 }
 
-V2 GetCeneteredPosInRect(Rect rect, V2 dim)
+v2 GetCeneteredPosInRectV2(RectV2 rect, v2 dim)
 {
-	dim.x = Clamp(0, dim.x, rect.dim.x);
-	dim.y = Clamp(0, dim.y, rect.dim.y);
-	V2 result = (rect.dim * 0.5f) - (dim * 0.5f);
+	dim.x = ClampF32(0, dim.x, rect.dim.x);
+	dim.y = ClampF32(0, dim.y, rect.dim.y);
+	v2 result = (rect.dim * 0.5f) - (dim * 0.5f);
 	return result;
 }
 
-void RenderUiEntries(UiBox *uiBox, V2 windowPixelDim, int uiDepth = 0)
+void RenderUiEntries(UiBox *uiBox, v2 windowPixelDim, int uiDepth = 0)
 {
 	if (uiBox)
 	{
@@ -452,20 +452,24 @@ void RenderUiEntries(UiBox *uiBox, V2 windowPixelDim, int uiDepth = 0)
 
 		if (IsFlag(uiBox, UI_FLAG_DRAW_BACKGROUND) && uiBox->uiSettings.backColor.a)
 		{
-			uiBox->rect.dim.x = Clamp(0, uiBox->rect.dim.x, windowPixelDim.x);
-			uiBox->rect.dim.y = Clamp(0, uiBox->rect.dim.y, windowPixelDim.y);
+			uiBox->rect.dim.x = ClampF32(0, uiBox->rect.dim.x, windowPixelDim.x);
+			uiBox->rect.dim.y = ClampF32(0, uiBox->rect.dim.y, windowPixelDim.y);
 			Rectangle rect = RectToRayRectangle(uiBox->rect);
 			DrawRectangleRec(rect, uiBox->uiSettings.backColor);
 		}
 
 		if (IsFlag(uiBox, UI_FLAG_DRAW_TEXT))
 		{
-			V2 pos = uiBox->rect.pos;
+			v2 pos = uiBox->rect.pos;
 
 			if (IsFlag(uiBox, UI_FLAG_ALIGN_TEXT_CENTERED))
-				pos += GetCeneteredPosInRect(uiBox->rect, uiBox->textDim);
+			{
+				pos += GetCeneteredPosInRectV2(uiBox->rect, uiBox->textDim);
+			}
 			else if (IsFlag(uiBox, UI_FLAG_ALIGN_TEXT_RIGHT))
+			{
 				pos.x += uiBox->rect.dim.x - uiBox->textDim.x;
+			}
 
 			DrawTextPro(uiBox->uiSettings.font, C_STRING_NULL_TERMINATED(uiBox->string), V2ToRayVector(pos), {}, 0, uiBox->uiSettings.font.baseSize, 1, uiBox->uiSettings.frontColor);
 		}
@@ -481,8 +485,8 @@ void RenderUiEntries(UiBox *uiBox, V2 windowPixelDim, int uiDepth = 0)
 
 			if (IsFlag(uiBox, UI_FLAG_ALIGN_TEXTURE_CENTERED))
 			{
-				V2 dim = WidthHeightToV2(dest.width, dest.height);
-				V2 relativePos = GetCeneteredPosInRect(uiBox->rect, dim);
+				v2 dim = WidthHeightToV2(dest.width, dest.height);
+				v2 relativePos = GetCeneteredPosInRectV2(uiBox->rect, dim);
 				dest.x += relativePos.x;
 				dest.y += relativePos.y;
 			}
@@ -492,7 +496,7 @@ void RenderUiEntries(UiBox *uiBox, V2 windowPixelDim, int uiDepth = 0)
 
 		if (IsFlag(uiBox, UI_FLAG_DRAW_BORDER))
 		{
-			Rect rect = uiBox->rect;
+			RectV2 rect = uiBox->rect;
 			DrawRectangleLines(rect.pos.x, rect.pos.y, rect.dim.x, rect.dim.y, uiBox->uiSettings.borderColor);
 		}
 
@@ -522,9 +526,9 @@ Color AddConstantToColor(Color color, int constant)
 {
 	Color result = color;
 
-	result.r = Clamp(0, result.r + constant, 255);
-	result.g = Clamp(0, result.g + constant, 255);
-	result.b = Clamp(0, result.b + constant, 255);
+	result.r = ClampI32(0, result.r + constant, 255);
+	result.g = ClampI32(0, result.g + constant, 255);
+	result.b = ClampI32(0, result.b + constant, 255);
 
 	return result;
 }

@@ -1,6 +1,5 @@
 
 #if __clang__
-#include "vn_math.h"
 #include "platform_win32.h"
 #endif
 

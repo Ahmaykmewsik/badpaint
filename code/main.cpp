@@ -31,17 +31,17 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	u32 refreshRate = 0;
 	for (u32 i = 0; i < GetMonitorCount(); i++)
 	{
-		refreshRate = Max(refreshRate, GetMonitorRefreshRate(i));
+		refreshRate = MaxU32(refreshRate, GetMonitorRefreshRate(i));
 	}
 	SetTargetFPS(refreshRate);
 
 	SetWindowState(FLAG_WINDOW_RESIZABLE);
 
-	V2 screenDim = V2{(float)GetMonitorWidth(0), (float)GetMonitorHeight(0)};
+	v2 screenDim = v2{(float)GetMonitorWidth(0), (float)GetMonitorHeight(0)};
 
-	V2 windowDim = screenDim * 0.8f;
+	v2 windowDim = screenDim * 0.8f;
 
-	V2 windowPosMiddle = PositionInCenter(screenDim, windowDim);
+	v2 windowPosMiddle = PositionInCenterV2(screenDim, windowDim);
 	SetWindowPosition(windowPosMiddle.x, windowPosMiddle.y);
 	SetWindowSize(windowDim.x, windowDim.y);
 
@@ -65,7 +65,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT].key = KEY_S;
 	G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM].key = KEY_N;
 
-	V2 pressedMousePos = {};
+	v2 pressedMousePos = {};
 	String draggedUiStringKey = {};
 
 	Slider brushSizeSlider = {};
@@ -97,7 +97,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		int uiBoxArrayIndex = GetFrameModIndexLastFrame();
 		windowDim = WidthHeightToV2(GetScreenWidth(), GetScreenHeight());
 
-		V2 mousePixelPos = V2{(float)GetMouseX(), (float)GetMouseY()};
+		v2 mousePixelPos = v2{(float)GetMouseX(), (float)GetMouseY()};
 		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
 		{
 			ArenaReset(&gameMemory.mouseClickArena);
@@ -163,7 +163,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			{
 				uiBox->cursorRelativePixelPos = mousePixelPos - uiBox->rect.pos;
 
-				if (IsInRect2D(mousePixelPos, uiBox->rect))
+				if (IsInRectV2(mousePixelPos, uiBox->rect))
 				{
 					uiBox->hovered = true;
 					uiBox->pressed = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
@@ -186,10 +186,10 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				{
 					float normPressedPosInRect = (pressedMousePos.x - uiBox->rect.pos.x) / uiBox->rect.dim.x;
 					float normDifference = (pressedMousePos.x - mousePixelPos.x) / uiBox->rect.dim.x;
-					float normValue = Clamp(0, normPressedPosInRect - normDifference, 1);
+					float normValue = ClampF32(0, normPressedPosInRect - normDifference, 1);
 
 					//TODO: lookup slider
-					*brushSizeSlider.unsignedIntToChange = Lerp(brushSizeSlider.min, normValue, brushSizeSlider.max);
+					*brushSizeSlider.unsignedIntToChange = (u32) RoundF32(LerpF32(brushSizeSlider.min, normValue, brushSizeSlider.max));
 				}
 			}
 		}
@@ -243,10 +243,10 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			{
 				unsigned char *newRollbackImage = &canvas->rollbackImageData[(canvas->drawnImageData.dataSize * canvas->rollbackIndexNext)];
 				memcpy(newRollbackImage, canvas->drawnImageData.dataU8, canvas->drawnImageData.dataSize);
-				ModNext(canvas->rollbackIndexNext, canvas->rollbackSizeCount - 1);
+				canvas->rollbackIndexNext =	ModNextU32(canvas->rollbackIndexNext, canvas->rollbackSizeCount - 1);
 				if (canvas->rollbackIndexNext == canvas->rollbackIndexStart)
 				{
-					ModNext(canvas->rollbackIndexStart, canvas->rollbackSizeCount - 1);
+					canvas->rollbackIndexStart = ModNextU32(canvas->rollbackIndexStart, canvas->rollbackSizeCount - 1);
 				}
 			}
 
@@ -263,10 +263,10 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				}
 			}
 
-			float scale = Max(1, canvas->drawnImageData.dim.x / canvasUiBox->rect.dim.x);
-			V2 startPos = scale * (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos);
-			V2 endPos = scale * (mousePixelPos - canvasUiBox->rect.pos);
-			float distance = Max(1, DistanceV2(startPos, endPos));
+			f32 scale = MaxF32(1, canvas->drawnImageData.dim.x / canvasUiBox->rect.dim.x);
+			v2 startPos = (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos) * scale;
+			v2 endPos = (mousePixelPos - canvasUiBox->rect.pos) * scale;
+			f32 distance = MaxF32(1, DistanceV2(startPos, endPos));
 			Color colorToPaint = {};
 
 			if (currentBrush.brushEffect != BRUSH_EFFECT_ERASE_EFFECT)
@@ -275,7 +275,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					? processedImage->index
 					: threadCount + 1;
 				colorToPaint.r = currentBrush.brushEffect;
-				colorToPaint.g = RandomInRangeInt(0, 255);
+				colorToPaint.g = RandomInRangeI32(0, 255);
 				colorToPaint.a = processedImageIndex;
 			}
 
@@ -287,10 +287,10 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
             tempImage.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
             for (int i = 0; i < distance; i++)
 			{
-				V2 pos = Lerp(startPos, i / distance, endPos);
+				v2 pos = LerpV2(startPos, i / distance, endPos);
 				ImageDrawCircle(&tempImage, pos.x, pos.y, currentBrush.size, colorToPaint);
 
-				Rect updateArea;
+				RectV2 updateArea;
 				updateArea.dim.x = currentBrush.size * 2;
 				updateArea.dim.y = currentBrush.size * 2;
 				updateArea.pos = pos;
@@ -323,7 +323,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		{
 			if (canvas->rollbackIndexNext != canvas->rollbackIndexStart)
 			{
-				ModBack(canvas->rollbackIndexNext, canvas->rollbackSizeCount - 1);
+				ModBackU32(canvas->rollbackIndexNext, canvas->rollbackSizeCount - 1);
 				unsigned char *rollbackImage = &canvas->rollbackImageData[(canvas->drawnImageData.dataSize * canvas->rollbackIndexNext)];
 				memcpy(canvas->drawnImageData.dataU8, rollbackImage, canvas->drawnImageData.dataSize);
 				canvas->proccessAsap = true;
@@ -416,7 +416,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			{
 				if (canvas->drawingRectDirtyList[rectIndex])
 				{
-					Rect drawingRect = GetDrawingRectFromIndex(canvas, rectIndex);
+					RectV2 drawingRect = GetDrawingRectFromIndex(canvas, rectIndex);
 					u32 pixelCount = drawingRect.dim.x * drawingRect.dim.y;
 					ArenaMarker marker {};
 					Color *pixels = ARENA_PUSH_ARRAY_MARKER(&gameMemory.temporaryArena, pixelCount, Color, &marker);
@@ -442,7 +442,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 								Color *outPixel = (pixels + pixelIndex);
 								*outPixel = drawnPixel;
 							}
-#if 1
+#if 0
 							else
 							{
 								Color *outPixel = (pixels + pixelIndex);
@@ -450,7 +450,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 								outPixel->a = 100;
 							}
 #endif
-
 
 							pixelIndex++;
 						}
@@ -550,7 +549,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		float toolbarWidth = G_TOOLBOX_WIDTH_AND_HEIGHT * 2;
 
 		SetUiAxis({UI_SIZE_KIND_PIXELS, toolbarWidth}, {UI_SIZE_KIND_PIXELS});
-		G_UI_INPUTS->relativePixelPosition = V2{0, (float)titleBarHeight};
+		G_UI_INPUTS->relativePixelPosition = v2{0, (float)titleBarHeight};
 		uiSettings->backColor = Color{191, 191, 191, 255};
 		CreateUiBox(UI_FLAG_DRAW_BACKGROUND);
 		UiParent()
@@ -648,7 +647,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			G_UI_INPUTS->sliderAction = SLIDER_ACTION_BRUSH_SIZE;
 
 			Slider slider = brushSizeSlider;
-			float value = MapNormalize(*brushSizeSlider.unsignedIntToChange, brushSizeSlider.min, brushSizeSlider.max);
+			float value = MapNormalizeF32(brushSizeSlider.min, *brushSizeSlider.unsignedIntToChange, brushSizeSlider.max);
 			G_UI_INPUTS->value = value;
 
 			SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT * 0.5f});
@@ -678,7 +677,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			SetUiAxis({UI_SIZE_KIND_PIXELS, windowDim.x}, {UI_SIZE_KIND_TEXT});
 			uiSettings->frontColor = Color{255, 255, 255, (unsigned char)(G_NOTIFICATION_ALPHA * 255)};
 			uiSettings->backColor = Color{100, 100, 100, (unsigned char)(G_NOTIFICATION_ALPHA * 255)};
-			G_UI_INPUTS->relativePixelPosition = V2{0, titleBarHeight};
+			G_UI_INPUTS->relativePixelPosition = v2{0, titleBarHeight};
 			CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, G_NOTIFICATION_MESSAGE);
 
 			G_NOTIFICATION_ALPHA -= 0.001;
@@ -698,17 +697,17 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, fpsString);
 
 		uiSettings->frontColor = DARKGRAY;
-		G_UI_INPUTS->relativePixelPosition = V2{windowDim.x * 0.07f, 2};
+		G_UI_INPUTS->relativePixelPosition = v2{windowDim.x * 0.07f, 2};
 		String label = STRING("Use 0-5 to toggle differnet PNG filter algorythms");
 		CreateUiBox(UI_FLAG_DRAW_TEXT, label);
 
 		uiSettings->frontColor = BLACK;
-		G_UI_INPUTS->relativePixelPosition = V2{windowDim.x * 0.45f, 2};
+		G_UI_INPUTS->relativePixelPosition = v2{windowDim.x * 0.45f, 2};
 		label = STRING("PNG Filter: ") + G_PNG_FILTER_NAMES[canvas->currentPNGFilterType];
 		CreateUiBox(UI_FLAG_DRAW_TEXT, label);
 
 		SetUiAxis({UI_SIZE_KIND_PIXELS, 200}, {UI_SIZE_KIND_TEXT});
-		G_UI_INPUTS->relativePixelPosition = V2{windowDim.x * 0.8f, 2};
+		G_UI_INPUTS->relativePixelPosition = v2{windowDim.x * 0.8f, 2};
 		label = STRING("EXPORT IMAGE") + G_UI_HASH_TAG + "export";
 		G_UI_INPUTS->command = COMMAND_EXPORT_IMAGE;
 		ReactiveUiColorState uiColorState = {};
@@ -718,7 +717,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		CreateUiButton(label, uiColorState, false, false);
 
 		SetUiAxis({UI_SIZE_KIND_PIXELS, windowDim.x}, {UI_SIZE_KIND_TEXT});
-		G_UI_INPUTS->relativePixelPosition = V2{-5, windowDim.y - 20};
+		G_UI_INPUTS->relativePixelPosition = v2{-5, windowDim.y - 20};
 		uiSettings->frontColor = DARKGRAY;
 		label = STRING(VERSION_NUMBER);
 		CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, label);
@@ -742,7 +741,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					{
 						case UI_SIZE_KIND_TEXTURE:
 							{
-								V2 dim = GetTextureDim(uiBox->uiInputs.texture);
+								v2 dim = GetTextureDim(uiBox->uiInputs.texture);
 								uiBox->rect.dim.elements[j] = dim.elements[j];
 								break;
 							}
