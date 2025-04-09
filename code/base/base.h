@@ -15,16 +15,15 @@ struct GameMemory
 {
 	Arena permanentArena;
 	Arena temporaryArena;
-	Arena rootImageArena;
-	Arena canvasArena;
 	Arena mouseClickArena;
 	Arena circularNotificationBuffer;
-	Arena canvasRollbackArena;
-
 	Arena twoFrameArenaModIndex0;
 	Arena twoFrameArenaModIndex1;
 
+	Arena rootImageArena;
+	Arena canvasArena;
 	ArenaGroup conversionArenaGroup;
+	Arena canvasRollbackArena;
 };
 
 static const char *buildDate = __DATE__;

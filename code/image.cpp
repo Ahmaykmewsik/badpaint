@@ -84,9 +84,11 @@ ImageRaw LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory)
 	if (outputData != NULL)
 	{
 		int dataSize = GetSizeOfRawRGBA32(WidthHeightToV2(width, height));
-		if (dataSize < 30000000)
+		if (dataSize < MegaByte * 50)
 		{
-			ArenaReset(&gameMemory->rootImageArena);
+			ArenaFree(&gameMemory->rootImageArena);
+			gameMemory->rootImageArena = ArenaInit(dataSize);
+
 			result.dim.x = width;
 			result.dim.y = height;
 			result.dataSize = dataSize;
@@ -408,10 +410,22 @@ void SetPNGFilterType(Canvas *canvas, ImageRaw *rootImageRaw, GameMemory *gameMe
 
 void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, GameMemory *gameMemory)
 {
-	ArenaReset(&gameMemory->canvasArena);
+	//NOTE: (Ahmayk) free and reallocate temporary arena to reduce memory size
+	//to uncommit the memory there, will reduce our memory footprint
+	if (ASSERT(gameMemory->temporaryArena.used == 0))
+	{
+		u64 size = gameMemory->temporaryArena.size;
+		ArenaFree(&gameMemory->temporaryArena);
+		gameMemory->temporaryArena = ArenaInit(size);
+	}
+
+	ArenaFree(&gameMemory->canvasArena);
 
 	V2 canvasDim = V2{(rootImageRaw->dim.x * 4) + 1, rootImageRaw->dim.y};
 	u32 visualizedCanvasDataSize = canvasDim.x * canvasDim.y * sizeof(Color);
+
+	//NOTE: (Ahmayk) drawn image and visualized image
+	gameMemory->canvasArena = ArenaInit(visualizedCanvasDataSize * 2);
 
 	canvas->drawnImageData.data = ArenaPushSize(&gameMemory->canvasArena, visualizedCanvasDataSize, {});
 	canvas->drawnImageData.width = canvasDim.x;
@@ -426,7 +440,9 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
 
 	canvas->arenaFilteredPNG = ArenaInitFromArena(&gameMemory->canvasArena, conversionArenaSize);
 
-	ArenaGroupFill(&gameMemory->conversionArenaGroup, conversionArenaSize);
+	ArenaGroupFree(&gameMemory->conversionArenaGroup);
+	gameMemory->conversionArenaGroup = ArenaGroupInit(MegaByte * 400);
+	ArenaGroupResetAndFill(&gameMemory->conversionArenaGroup, conversionArenaSize);
 
 	SetPNGFilterType(canvas, rootImageRaw, gameMemory);
 
@@ -436,7 +452,8 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
 		canvas->texture = {};
 	}
 
-	ArenaReset(&gameMemory->canvasRollbackArena);
+	ArenaFree(&gameMemory->canvasRollbackArena);
+	gameMemory->canvasRollbackArena = ArenaInit(MegaByte * 800);
 	unsigned int canvasSize = GetCanvasDatasize(canvas);
 	canvas->rollbackSizeCount = Floor((float)gameMemory->canvasRollbackArena.size / canvasSize) - 1;
 	canvas->rollbackImageData = ARENA_PUSH_ARRAY(&gameMemory->canvasRollbackArena, canvas->rollbackSizeCount * canvasSize, unsigned char);

@@ -2,6 +2,15 @@
 
 #include <base/macros.h>
 
+#if DEBUG_MODE
+void MemoryProtectReadWrite(void *memory, u64 size);
+void MemoryProtectWrite(void *memory, u64 size);
+void MemoryUnprotect(void *memory, u64 size);
+#endif
+
+#define ALIGN_POW2(value, alignment) *value = ((*value + ((alignment) - 1)) & ~((alignment) - 1))
+#define ALIGN_POW2_LIMIT(value, alignment, limit) if ((*value + alignment) < limit) ALIGN_POW2(value, alignment)
+
 enum ARENA_FLAGS : u32
 {
 	ARENA_FLAG_IS_BASE              = 1 << 0,
@@ -17,27 +26,26 @@ struct Arena
 	u32 flags;
 };
 
+Arena ArenaInit(u64 size);
+void ArenaFree(Arena *arena); //NOTE: (Ahmayk) Can only free base arenas! Not arenas initialized from others
+Arena ArenaInitFromArena(Arena *inputArena, u64 size);
+void ArenaReset(Arena *arena);
+
 struct ArenaMarker
 {
 	Arena *arena;
 	u64 used;
 };
 
-Arena ArenaInit(u64 size);
-ArenaMarker ArenaPushMarker(Arena *arena);
-u8 *ArenaPushSize(Arena *arena, u64 size, ArenaMarker *arenaMarker);
-Arena ArenaInitFromArena(Arena *inputArena, u64 size);
-void ArenaPopMarker(ArenaMarker arenaMarker);
-void ArenaReset(Arena *arena);
-
-#define ALIGN_POW2(value, alignment) *value = ((*value + ((alignment) - 1)) & ~((alignment) - 1))
-#define ALIGN_POW2_LIMIT(value, alignment, limit) if ((*value + alignment) < limit) ALIGN_POW2(value, alignment)
-
 #define ARENA_PUSH_STRUCT(arena, type) (type *)ArenaPushSize(arena, sizeof(type), {})
 #define ARENA_PUSH_ARRAY(arena, count, type) (type *)ArenaPushSize(arena, count * sizeof(type), {})
 
 #define ARENA_PUSH_STRUCT_MARKER(arena, type, marker) (type *)ArenaPushSize(arena, sizeof(type), marker)
 #define ARENA_PUSH_ARRAY_MARKER(arena, count, type, marker) (type *)ArenaPushSize(arena, count * sizeof(type), marker)
+
+ArenaMarker ArenaPushMarker(Arena *arena);
+u8 *ArenaPushSize(Arena *arena, u64 size, ArenaMarker *arenaMarker);
+void ArenaPopMarker(ArenaMarker arenaMarker);
 
 struct ArenaGroup
 {
@@ -47,10 +55,12 @@ struct ArenaGroup
 };
 
 ArenaGroup ArenaGroupInit(u64 size);
-void ArenaGroupFill(ArenaGroup *arenaGroup, u32 blockSize);
+void ArenaGroupFree(ArenaGroup *arenaGroup);
+void ArenaGroupReset(ArenaGroup *arenaGroup);
+void ArenaGroupResetAndFill(ArenaGroup *arenaGroup, u32 blockSize);
 Arena *ArenaGroupPushArena(ArenaGroup *arenaGroup);
 
-struct ArenaPair 
+struct ArenaPair
 {
 	Arena *arena1;
 	Arena *arena2;
@@ -61,9 +71,3 @@ ArenaPair ArenaPairAssign(ArenaGroup *arenaGroup);
 Arena *ArenaPairPushOldest(ArenaPair *alternatingAreans, Arena *finishedArena);
 void ArenaPairFreeOldest(ArenaPair *alternatingAreans);
 void ArenaPairFreeAll(ArenaPair *alternatingAreans);
-
-#if DEBUG_MODE
-void MemoryProtectReadWrite(void *memory, u64 size);
-void MemoryProtectWrite(void *memory, u64 size);
-void MemoryUnprotect(void *memory, u64 size);
-#endif

@@ -985,20 +985,18 @@ int CALLBACK WinMain(HINSTANCE instance,
 	// int main()
 	// {
 	GameMemory gameMemory = {};
-	gameMemory.permanentArena = ArenaInit(MegaByte * 1);
-	gameMemory.temporaryArena = ArenaInit(MegaByte * 100);
-	gameMemory.rootImageArena = ArenaInit(MegaByte * 50);
-
-	gameMemory.canvasArena = ArenaInit(MegaByte * 200);
-	gameMemory.mouseClickArena = ArenaInit(MegaByte * 1);
-	gameMemory.circularNotificationBuffer = ArenaInit(MegaByte * 1);
+	gameMemory.permanentArena = ArenaInit(MegaByte * 15);
+	gameMemory.mouseClickArena = ArenaInitFromArena(&gameMemory.permanentArena, MegaByte * 1);
+	gameMemory.circularNotificationBuffer = ArenaInitFromArena(&gameMemory.permanentArena, MegaByte * 1);
 	gameMemory.circularNotificationBuffer.flags |= ARENA_FLAG_CIRCULAR;
+	gameMemory.twoFrameArenaModIndex0 = ArenaInitFromArena(&gameMemory.permanentArena, MegaByte * 5);
+	gameMemory.twoFrameArenaModIndex1 = ArenaInitFromArena(&gameMemory.permanentArena, MegaByte * 5);
 
-	gameMemory.twoFrameArenaModIndex0 = ArenaInit(MegaByte * 5);
-	gameMemory.twoFrameArenaModIndex1 = ArenaInit(MegaByte * 5);
-	gameMemory.canvasRollbackArena = ArenaInit(MegaByte * 800);
+	gameMemory.temporaryArena = ArenaInit(MegaByte * 500);
 
-	gameMemory.conversionArenaGroup = ArenaGroupInit(MegaByte * 400);
+	//NOTE: (Ahmayk) memory is allocated and freed elsewhere when image is loaded
+	//Memory allocated size is chosen based on size of image imported so that our memory
+	//usage scales with the size of the image we're editing (which could be very large)
 
 	// HINSTANCE instance = GetModuleHandle(NULL);
 	CrashHandler(instance, &gameMemory);

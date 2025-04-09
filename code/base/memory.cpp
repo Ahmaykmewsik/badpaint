@@ -1,7 +1,6 @@
 #include <base/macros.h>
 #include <base/memory.h>
 
-//TODO: (Marc) If OS_WINDOWS
 #if OS_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #include "Windows.h"
@@ -46,29 +45,41 @@ void MemoryUnprotect(void *memory, u64 size)
 
 Arena ArenaInit(u64 size)
 {
+	Arena result = {};
+
+	u64 pageSize = GetPageSize();
+	ALIGN_POW2(&size, pageSize);
+
 #if DEBUG_MODE
-	size += GetPageSize();
+	size += pageSize;
 #endif
 
-	Arena result = {};
 	//TODO: (Marc) Control for reserve or commit if you need it
 	result.memory = (u8*) VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
 
 	if (ASSERT(result.memory))
 	{
-		//TODO: (Marc) What do we do when we fail?
-	}
-	result.size = size;
-	result.flags |= ARENA_FLAG_IS_BASE;
-
+		result.size = size;
+		result.flags |= ARENA_FLAG_IS_BASE;
 #if DEBUG_MODE
-	result.size -= GetPageSize();
-	MemoryProtectReadWrite(result.memory + result.size, GetPageSize());
+		result.size -= pageSize;
+		MemoryProtectReadWrite(result.memory + result.size, pageSize);
 #endif
+	}
 
 	return result;
 }
-#else if
+
+void ArenaFree(Arena *arena)
+{
+	if (arena->memory && ASSERT(arena->flags & ARENA_FLAG_IS_BASE))
+	{
+		ASSERT(VirtualFree(arena->memory, 0, MEM_RELEASE));
+		*arena = {};
+	}
+}
+
+#else
 #error Platform not implemented in memory.cpp
 #endif
 
@@ -163,12 +174,24 @@ ArenaGroup ArenaGroupInit(u64 size)
 	return result;
 }
 
-void ArenaGroupFill(ArenaGroup *arenaGroup, u32 blockSize)
+void ArenaGroupReset(ArenaGroup *arenaGroup)
 {
-	if (ASSERT(arenaGroup->masterArena.size))
+	ArenaReset(&arenaGroup->masterArena);
+	arenaGroup->arenas = {};
+	arenaGroup->count = 0;
+}
+
+void ArenaGroupFree(ArenaGroup *arenaGroup)
+{
+	ArenaFree(&arenaGroup->masterArena);
+	*arenaGroup = {};
+}
+
+void ArenaGroupResetAndFill(ArenaGroup *arenaGroup, u32 blockSize)
+{
+	if (ASSERT(arenaGroup->masterArena.memory))
 	{
-		arenaGroup->count = 0;
-		ArenaReset(&arenaGroup->masterArena);
+		ArenaGroupReset(arenaGroup);
 		u64 pageSize = GetPageSize();
 		ALIGN_POW2(&blockSize, pageSize);
 
@@ -223,7 +246,7 @@ ArenaPair ArenaPairAssign(ArenaGroup *arenaGroup)
 		}
 	}
 
-	if (ASSERT(result.arena1 && result.arena2))
+	if (result.arena1 && result.arena2)
 	{
 		result.arena1->flags &= ~ARENA_FLAG_READY_FOR_ASSIGNMENT;
 		result.arena2->flags &= ~ARENA_FLAG_READY_FOR_ASSIGNMENT;
@@ -232,6 +255,7 @@ ArenaPair ArenaPairAssign(ArenaGroup *arenaGroup)
 	}
 	else
 	{
+		//NOTE: (Ahmayk) pair of areans not free, so no luck
 		result = {};
 	}
 
