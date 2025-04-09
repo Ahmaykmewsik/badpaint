@@ -24,11 +24,16 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	G_UI_INPUTS = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, UiInputs);
 	G_UI_STATE = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, UiState);
 
-	SetTargetFPS(60);
-
 	SetTraceLogLevel(RL_LOG_NONE);
 
 	InitWindow(200, 200, "badpaint");
+
+	u32 refreshRate = 0;
+	for (u32 i = 0; i < GetMonitorCount(); i++)
+	{
+		refreshRate = Max(refreshRate, GetMonitorRefreshRate(i));
+	}
+	SetTargetFPS(refreshRate);
 
 	SetWindowState(FLAG_WINDOW_RESIZABLE);
 
