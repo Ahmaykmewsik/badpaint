@@ -346,22 +346,11 @@ void UploadAndReplaceTexture(ImageRaw *imageRaw, Texture *texture)
 	// GenTextureMipmaps(texture);
 }
 
-void UploadTexture(Texture *texture, void *data, int width, int height)
+void UpdateRectInTexture(Texture *texture, void *data, Rect rect)
 {
 	if (data)
 	{
-		if (texture->id)
-		{
-			rlUpdateTexture(texture->id, 0, 0, width, height, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, data);
-		}
-		else
-		{
-			texture->id = rlLoadTexture(data, width, height, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
-			texture->width = width;
-			texture->height = height;
-			texture->mipmaps = 1;
-			texture->format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
-		}
+		rlUpdateTexture(texture->id, rect.pos.x, rect.pos.y, rect.dim.x, rect.dim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, data);
 		GenTextureMipmaps(texture);
 	}
 	else
@@ -369,13 +358,6 @@ void UploadTexture(Texture *texture, void *data, int width, int height)
 		//TODO: Log error
 		// Print("Empty image passed into texture uploader!");
 	}
-}
-
-unsigned int GetCanvasDatasize(Canvas *canvas)
-{
-	V2 dim = WidthHeightToV2(canvas->drawnImageData.width, canvas->drawnImageData.height);
-	unsigned int result = GetSizeOfRawRGBA32(dim);
-	return result;
 }
 
 void SetPNGFilterType(Canvas *canvas, ImageRaw *rootImageRaw, GameMemory *gameMemory)
@@ -427,12 +409,10 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
 	//NOTE: (Ahmayk) drawn image and visualized image
 	gameMemory->canvasArena = ArenaInit(visualizedCanvasDataSize * 2);
 
-	canvas->drawnImageData.data = ArenaPushSize(&gameMemory->canvasArena, visualizedCanvasDataSize, {});
-	canvas->drawnImageData.width = canvasDim.x;
-	canvas->drawnImageData.height = canvasDim.y;
-	canvas->drawnImageData.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
-	canvas->drawnImageData.mipmaps = 1;
-	memset(canvas->drawnImageData.data, 0, visualizedCanvasDataSize);
+	canvas->drawnImageData.dataU8 = ArenaPushSize(&gameMemory->canvasArena, visualizedCanvasDataSize, {});
+	canvas->drawnImageData.dim = canvasDim;
+	canvas->drawnImageData.dataSize = visualizedCanvasDataSize;
+	memset(canvas->drawnImageData.dataU8, 0, visualizedCanvasDataSize);
 
 	u32 conversionArenaSize = (canvasDim.x * canvasDim.y) + (rootImageRaw->dim.x * 4);
 	conversionArenaSize *= 1.2;
@@ -446,20 +426,27 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
 
 	SetPNGFilterType(canvas, rootImageRaw, gameMemory);
 
-	if (canvas->texture.id)
+	if (canvas->textureDrawing.id)
 	{
-		rlUnloadTexture(canvas->texture.id);
-		canvas->texture = {};
+		rlUnloadTexture(canvas->textureDrawing.id);
+		canvas->textureDrawing = {};
 	}
+
+	canvas->textureDrawing.id = rlLoadTexture(canvas->drawnImageData.dataU8, canvasDim.x, canvasDim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
+	canvas->textureDrawing.width = canvasDim.x;
+	canvas->textureDrawing.height = canvasDim.y;
+	canvas->textureDrawing.mipmaps = 1;
+	canvas->textureDrawing.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
 
 	ArenaFree(&gameMemory->canvasRollbackArena);
 	gameMemory->canvasRollbackArena = ArenaInit(MegaByte * 800);
-	unsigned int canvasSize = GetCanvasDatasize(canvas);
-	canvas->rollbackSizeCount = Floor((float)gameMemory->canvasRollbackArena.size / canvasSize) - 1;
-	canvas->rollbackImageData = ARENA_PUSH_ARRAY(&gameMemory->canvasRollbackArena, canvas->rollbackSizeCount * canvasSize, unsigned char);
+	canvas->rollbackSizeCount = Floor((float)gameMemory->canvasRollbackArena.size / visualizedCanvasDataSize) - 1;
+	canvas->rollbackImageData = ARENA_PUSH_ARRAY(&gameMemory->canvasRollbackArena, canvas->rollbackSizeCount * visualizedCanvasDataSize, u8);
 	canvas->rollbackIndexStart = 0;
 	canvas->rollbackIndexNext = 0;
 	canvas->brush = brush;
+
+	canvas->initialized = true;
 }
 
 void InitializeNewImage(const char *fileName, GameMemory *gameMemory, ImageRaw *rootImageRaw, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush)
@@ -487,13 +474,11 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 	memcpy(imagePNGFiltered.dataU8, canvas->imagePNGFiltered.dataU8, imagePNGFiltered.dataSize);
 	UnlockOnBool(&canvas->filterLock);
 
-	ASSERT(processedImage->canvas->drawnImageData.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
-
 	for (int i = 0;
 			i < imagePNGFiltered.dataSize;
 			i += 1)
 	{
-		Color canvasPixel = ((Color *)canvas->drawnImageData.data)[i];
+		Color canvasPixel = ((Color *)canvas->drawnImageData.dataU8)[i];
 
 		if (canvasPixel.r)
 		{
@@ -559,9 +544,8 @@ void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas)
 	processedImage->finalProcessedImageRaw = {};
 	ArenaPairFreeAll(&processedImage->arenaPair);
 
-	unsigned int pixelCount = canvas->drawnImageData.width * canvas->drawnImageData.height;
-
 #if 0
+	u32 pixelCount = canvas->drawnImageData.dim.x * canvas->drawnImageData.dim.y;
 	for (int i = 0;
 			i < pixelCount;
 			i++)
@@ -605,8 +589,8 @@ PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread)
 
 void StartProcessedImageWork(Canvas *canvas, unsigned int threadCount, ProcessedImage *processedImage, PlatformWorkQueue *threadWorkQueue)
 {
-	unsigned int pixelCount = canvas->drawnImageData.width * canvas->drawnImageData.height;
 #if 0
+	u32 pixelCount = canvas->drawnImageData.dim.x * canvas->drawnImageData.dim.y;
 	for (int i = 0;
 			i < pixelCount;
 			i++)

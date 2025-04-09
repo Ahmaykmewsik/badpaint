@@ -51,14 +51,15 @@ static String G_CANVAS_STRING_TAG_CHARS = STRING("canvas");
 
 struct Canvas
 {
+	b32 initialized;
 	ImagePNGFiltered imagePNGFiltered;
 	Arena arenaFilteredPNG;
 	b32 filterLock;
 
 	Texture textureVisualizedFilteredRootImage;
 
-	Image drawnImageData;
-	Texture texture;
+	ImageRaw drawnImageData;
+	Texture textureDrawing;
 	Brush *brush;
 	bool proccessAsap;
 	bool needsTextureUpload;

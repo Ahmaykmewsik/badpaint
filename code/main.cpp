@@ -236,12 +236,13 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		{
 			if (canvasUiBox->pressed)
 			{
-				unsigned int canvasSize = GetCanvasDatasize(canvas);
-				unsigned char *newRollbackImage = &canvas->rollbackImageData[(canvasSize * canvas->rollbackIndexNext)];
-				memcpy(newRollbackImage, canvas->drawnImageData.data, canvasSize);
+				unsigned char *newRollbackImage = &canvas->rollbackImageData[(canvas->drawnImageData.dataSize * canvas->rollbackIndexNext)];
+				memcpy(newRollbackImage, canvas->drawnImageData.dataU8, canvas->drawnImageData.dataSize);
 				ModNext(canvas->rollbackIndexNext, canvas->rollbackSizeCount - 1);
 				if (canvas->rollbackIndexNext == canvas->rollbackIndexStart)
+				{
 					ModNext(canvas->rollbackIndexStart, canvas->rollbackSizeCount - 1);
+				}
 			}
 
 			ProcessedImage *processedImage = {};
@@ -257,7 +258,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				}
 			}
 
-			float scale = Max(1, canvas->drawnImageData.width / canvasUiBox->rect.dim.x);
+			float scale = Max(1, canvas->drawnImageData.dim.x / canvasUiBox->rect.dim.x);
 			V2 startPos = scale * (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos);
 			V2 endPos = scale * (mousePixelPos - canvasUiBox->rect.pos);
 			float distance = Max(1, DistanceV2(startPos, endPos));
@@ -273,12 +274,16 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				colorToPaint.a = processedImageIndex;
 			}
 
-			for (int i = 0;
-					i <= distance;
-					i++)
+			Image tempImage = {};
+			tempImage.data = canvas->drawnImageData.dataU8;
+			tempImage.width = canvas->drawnImageData.dim.x;
+			tempImage.height = canvas->drawnImageData.dim.y;
+			tempImage.mipmaps = 1;
+            tempImage.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+            for (int i = 0; i <= distance; i++)
 			{
 				V2 pos = Lerp(startPos, i / distance, endPos);
-				ImageDrawCircle(&canvas->drawnImageData, pos.x, pos.y, currentBrush.size, colorToPaint);
+				ImageDrawCircle(&tempImage, pos.x, pos.y, currentBrush.size, colorToPaint);
 			}
 
 			ArenaPair arenaPair = {};
@@ -306,9 +311,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			if (canvas->rollbackIndexNext != canvas->rollbackIndexStart)
 			{
 				ModBack(canvas->rollbackIndexNext, canvas->rollbackSizeCount - 1);
-				unsigned int canvasSize = GetCanvasDatasize(canvas);
-				unsigned char *rollbackImage = &canvas->rollbackImageData[(canvasSize * canvas->rollbackIndexNext)];
-				memcpy(canvas->drawnImageData.data, rollbackImage, canvasSize);
+				unsigned char *rollbackImage = &canvas->rollbackImageData[(canvas->drawnImageData.dataSize * canvas->rollbackIndexNext)];
+				memcpy(canvas->drawnImageData.dataU8, rollbackImage, canvas->drawnImageData.dataSize);
 				canvas->proccessAsap = true;
 				canvas->needsTextureUpload = true;
 				canvas->oldDataPresent = true;
@@ -334,13 +338,13 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		if (IsKeyPressed(KEY_FIVE))
 			canvas->currentPNGFilterType = PNG_FILTER_TYPE_OPTIMAL;
 
-		if (canvas->texture.id && canvas->imagePNGFiltered.pngFilterType != canvas->currentPNGFilterType)
+		if (canvas->initialized && canvas->imagePNGFiltered.pngFilterType != canvas->currentPNGFilterType)
 		{
 			SetPNGFilterType(canvas, rootImageRaw, &gameMemory);
 			canvas->proccessAsap = true;
 		}
 
-		if (canvas->texture.id && canvas->proccessAsap)
+		if (canvas->initialized && canvas->proccessAsap)
 		{
 			ProcessedImage *processedImage = GetFreeProcessedImage(processedImages, threadCount);
 			if (processedImage)
@@ -394,15 +398,14 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		{
 			canvas->needsTextureUpload = false;
 			Image outputImage = {};
-			V2 dim = WidthHeightToV2(canvas->drawnImageData.width, canvas->drawnImageData.height);
-			unsigned int pixelCount = dim.x * dim.y;
+			unsigned int pixelCount = canvas->drawnImageData.dim.x * canvas->drawnImageData.dim.y;
 			ArenaMarker marker;
 			Color *pixels = ARENA_PUSH_ARRAY_MARKER(&gameMemory.temporaryArena, pixelCount, Color, &marker);
 			memset(pixels, 0, pixelCount * sizeof(Color));
 
 			for (int i = 0; i < pixelCount; i++)
 			{
-				Color canvasPixel = ((Color *)canvas->drawnImageData.data)[i];
+				Color canvasPixel = ((Color *)canvas->drawnImageData.dataU8)[i];
 				if (canvasPixel.r)
 				{
 					Color drawnPixel = G_BRUSH_EFFECT_COLORS[canvasPixel.r];
@@ -415,7 +418,9 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				}
 			}
 
-			UploadTexture(&canvas->texture, pixels, dim.x, dim.y);
+			Rect rect = {};
+			rect.dim = canvas->drawnImageData.dim;
+			UpdateRectInTexture(&canvas->textureDrawing, pixels, rect);
 			ArenaPopMarker(marker);
 		}
 
@@ -491,9 +496,9 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						SetUiAxis({UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT}, {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT});
 						CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT);
 					}
-					if (canvas->texture.id)
+					if (canvas->textureDrawing.id)
 					{
-						G_UI_INPUTS->texture = canvas->texture;
+						G_UI_INPUTS->texture = canvas->textureDrawing;
 						SetUiAxis({UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT}, {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT});
 						CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE, STRING(G_UI_HASH_TAG) + G_CANVAS_STRING_TAG_CHARS);
 					}
