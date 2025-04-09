@@ -43,15 +43,9 @@ unsigned char *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, A
 	return data;
 }
 
-unsigned int GetSizeOfRawRGBA32(v2 dim)
+unsigned int GetSizeOfRawRGBA32(iv2 dim)
 {
 	unsigned int result = dim.x * dim.y * 4 * sizeof(unsigned char);
-	return result;
-}
-
-unsigned int GetSizeOfRawRGBA32(unsigned int width, unsigned int height)
-{
-	unsigned int result = width * height * 4 * sizeof(unsigned char);
 	return result;
 }
 
@@ -83,7 +77,7 @@ ImageRaw LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory)
 
 	if (outputData != NULL)
 	{
-		int dataSize = GetSizeOfRawRGBA32(WidthHeightToV2(width, height));
+		int dataSize = GetSizeOfRawRGBA32(iv2{width, height});
 		if (dataSize < MegaByte * 50)
 		{
 			ArenaFree(&gameMemory->rootImageArena);
@@ -346,7 +340,7 @@ void UploadAndReplaceTexture(ImageRaw *imageRaw, Texture *texture)
 	// GenTextureMipmaps(texture);
 }
 
-void UpdateRectInTexture(Texture *texture, void *data, RectV2 rect)
+void UpdateRectInTexture(Texture *texture, void *data, RectIV2 rect)
 {
 	if (data)
 	{
@@ -371,7 +365,7 @@ void SetPNGFilterType(Canvas *canvas, ImageRaw *rootImageRaw, GameMemory *gameMe
 
 	UnlockOnBool(&canvas->filterLock);
 
-	v2 canvasDim = v2{(rootImageRaw->dim.x * 4) + 1, rootImageRaw->dim.y};
+	iv2 canvasDim = iv2{(rootImageRaw->dim.x * 4) + 1, rootImageRaw->dim.y};
 	u32 visualizedCanvasDataSize = canvasDim.x * canvasDim.y * sizeof(Color);
 
 	ArenaMarker marker = {};
@@ -389,9 +383,9 @@ void SetPNGFilterType(Canvas *canvas, ImageRaw *rootImageRaw, GameMemory *gameMe
 	canvas->needsTextureUpload = true;
 }
 
-RectV2 GetDrawingRectFromIndex(Canvas *canvas, u32 i)
+RectIV2 GetDrawingRectFromIndex(Canvas *canvas, u32 i)
 {
-	RectV2 result;
+	RectIV2 result;
 	result.dim = canvas->drawingRectDim;
 
 	u32 numX = CeilF32(canvas->drawnImageData.dim.x / canvas->drawingRectDim.x);
@@ -419,7 +413,7 @@ u32 GetDrawingRectCount(Canvas *canvas)
 	return result;
 }
 
-void CanvasSetDirtyRect(Canvas *canvas, RectV2 updateArea)
+void CanvasSetDirtyRect(Canvas *canvas, RectIV2 updateArea)
 {
 	u32 drawingRectCount = GetDrawingRectCount(canvas);
 	u32 numX = CeilF32(canvas->drawnImageData.dim.x / canvas->drawingRectDim.x);
@@ -427,7 +421,7 @@ void CanvasSetDirtyRect(Canvas *canvas, RectV2 updateArea)
 	u32 indexX = updateArea.pos.x / canvas->drawingRectDim.x;
 	u32 indexY = updateArea.pos.y / canvas->drawingRectDim.y;
 
-	RectV2 drawRect;
+	RectIV2 drawRect;
 	drawRect.dim = canvas->drawingRectDim;
 	for (f32 y = indexY; y < numY; y++)
 	{
@@ -436,7 +430,7 @@ void CanvasSetDirtyRect(Canvas *canvas, RectV2 updateArea)
 		for (f32 x = indexX; x < numX; x++)
 		{
 			drawRect.pos.x = x * canvas->drawingRectDim.x;
-			if (!IsInterceptRectV2(updateArea, drawRect))
+			if (!IsInterceptRectIV2(updateArea, drawRect))
 			{
 				break;
 			}
@@ -469,7 +463,7 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
 
 	ArenaFree(&gameMemory->canvasArena);
 
-	v2 canvasDim = v2{(rootImageRaw->dim.x * 4) + 1, rootImageRaw->dim.y};
+	iv2 canvasDim = iv2{(rootImageRaw->dim.x * 4) + 1, rootImageRaw->dim.y};
 	u32 visualizedCanvasDataSize = canvasDim.x * canvasDim.y * sizeof(Color);
 
 	//NOTE: (Ahmayk) drawn image, visualized image, drawingRects
@@ -513,7 +507,7 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
 	canvas->rollbackIndexNext = 0;
 	canvas->brush = brush;
 
-	canvas->drawingRectDim = v2{64, 64};
+	canvas->drawingRectDim = iv2{64, 64};
 	u32 drawingRectCount = GetDrawingRectCount(canvas);
 	canvas->drawingRectDirtyList = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, drawingRectCount, b32);
 	memset(canvas->drawingRectDirtyList, 0, drawingRectCount * sizeof(b32));

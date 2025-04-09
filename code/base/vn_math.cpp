@@ -880,6 +880,15 @@ b32 IsInterceptRectV2(RectV2 a, RectV2 b)
 	return result;
 }
 
+b32 IsInterceptRectIV2(RectIV2 a, RectIV2 b)
+{
+    bool result = (a.pos.x < b.pos.x + b.dim.x) &&
+           (a.pos.x + a.dim.x > b.pos.x) &&
+           (a.pos.y < b.pos.y + b.dim.y) &&
+           (a.pos.y + a.dim.y > b.pos.y);
+	return result;
+}
+
 u32 ModNextU32(u32 i, u32 size)
 {
 	return (i + 1) % size;

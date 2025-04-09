@@ -37,9 +37,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 	SetWindowState(FLAG_WINDOW_RESIZABLE);
 
-	v2 screenDim = v2{(float)GetMonitorWidth(0), (float)GetMonitorHeight(0)};
+	iv2 screenDim = iv2{GetMonitorWidth(0), GetMonitorHeight(0)};
 
-	v2 windowDim = screenDim * 0.8f;
+	iv2 windowDim;
+	windowDim.x = screenDim.x * 0.8f;
+	windowDim.y = screenDim.y * 0.8f;
 
 	v2 windowPosMiddle = PositionInCenterV2(screenDim, windowDim);
 	SetWindowPosition(windowPosMiddle.x, windowPosMiddle.y);
@@ -95,7 +97,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		G_UI_STATE->twoFrameArenaLastFrame = GetTwoFrameArenaLastFrame(&gameMemory);
 		G_UI_STATE->twoFrameArenaThisFrame = GetTwoFrameArenaThisFrame(&gameMemory);
 		int uiBoxArrayIndex = GetFrameModIndexLastFrame();
-		windowDim = WidthHeightToV2(GetScreenWidth(), GetScreenHeight());
+		windowDim.x = GetScreenWidth();
+		windowDim.y = GetScreenHeight();
 
 		v2 mousePixelPos = v2{(float)GetMouseX(), (float)GetMouseY()};
 		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
@@ -290,12 +293,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				v2 pos = LerpV2(startPos, i / distance, endPos);
 				ImageDrawCircle(&tempImage, pos.x, pos.y, currentBrush.size, colorToPaint);
 
-				RectV2 updateArea;
+				RectIV2 updateArea;
 				updateArea.dim.x = currentBrush.size * 2;
 				updateArea.dim.y = currentBrush.size * 2;
-				updateArea.pos = pos;
-				updateArea.pos.x -= currentBrush.size;
-				updateArea.pos.y -= currentBrush.size;
+				updateArea.pos.x = FloorF32(pos.x) - currentBrush.size;
+				updateArea.pos.y = FloorF32(pos.y) - currentBrush.size;
 				CanvasSetDirtyRect(canvas, updateArea);
 			}
 
@@ -416,7 +418,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			{
 				if (canvas->drawingRectDirtyList[rectIndex])
 				{
-					RectV2 drawingRect = GetDrawingRectFromIndex(canvas, rectIndex);
+					RectIV2 drawingRect = GetDrawingRectFromIndex(canvas, rectIndex);
 					u32 pixelCount = drawingRect.dim.x * drawingRect.dim.y;
 					ArenaMarker marker {};
 					Color *pixels = ARENA_PUSH_ARRAY_MARKER(&gameMemory.temporaryArena, pixelCount, Color, &marker);
@@ -427,8 +429,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					u32 endY = startY + drawingRect.dim.y;
 					for (int y = startY; y < endY; y++)
 					{
-						u32 startIndex = ((u32)canvas->drawnImageData.dim.x * y) + (u32) drawingRect.pos.x;
-						u32 endIndex = startIndex + (u32)drawingRect.dim.x;
+						u32 startIndex = (canvas->drawnImageData.dim.x * y) + drawingRect.pos.x;
+						u32 endIndex = startIndex + drawingRect.dim.x;
 						for (int i = startIndex; i < endIndex; i++)
 						{
 							Color canvasPixel = ((Color *)canvas->drawnImageData.dataU8)[i];
@@ -482,7 +484,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 		float titleBarHeight = 20;
 
-		SetUiAxis({UI_SIZE_KIND_PIXELS, windowDim.x}, {UI_SIZE_KIND_PIXELS, windowDim.y});
+		SetUiAxis({UI_SIZE_KIND_PIXELS, (f32) windowDim.x}, {UI_SIZE_KIND_PIXELS, (f32) windowDim.y});
 		CreateUiBox();
 		UiParent()
 		{
@@ -496,7 +498,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				//TODO: Menu
 			}
 
-			SetUiAxis({UI_SIZE_KIND_PIXELS, windowDim.x}, {UI_SIZE_KIND_PIXELS, windowDim.y - titleBarHeight});
+			SetUiAxis({UI_SIZE_KIND_PIXELS, (f32) windowDim.x}, {UI_SIZE_KIND_PIXELS, windowDim.y - titleBarHeight});
 			CreateUiBox();
 			UiParent()
 			{
@@ -674,7 +676,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 		if (G_NOTIFICATION_MESSAGE.length)
 		{
-			SetUiAxis({UI_SIZE_KIND_PIXELS, windowDim.x}, {UI_SIZE_KIND_TEXT});
+			SetUiAxis({UI_SIZE_KIND_PIXELS, (f32) windowDim.x}, {UI_SIZE_KIND_TEXT});
 			uiSettings->frontColor = Color{255, 255, 255, (unsigned char)(G_NOTIFICATION_ALPHA * 255)};
 			uiSettings->backColor = Color{100, 100, 100, (unsigned char)(G_NOTIFICATION_ALPHA * 255)};
 			G_UI_INPUTS->relativePixelPosition = v2{0, titleBarHeight};
@@ -716,8 +718,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		uiColorState.nonActive.neutral = GREEN;
 		CreateUiButton(label, uiColorState, false, false);
 
-		SetUiAxis({UI_SIZE_KIND_PIXELS, windowDim.x}, {UI_SIZE_KIND_TEXT});
-		G_UI_INPUTS->relativePixelPosition = v2{-5, windowDim.y - 20};
+		SetUiAxis({UI_SIZE_KIND_PIXELS, (f32) windowDim.x}, {UI_SIZE_KIND_TEXT});
+		G_UI_INPUTS->relativePixelPosition = v2{-5, (f32) windowDim.y - 20};
 		uiSettings->frontColor = DARKGRAY;
 		label = STRING(VERSION_NUMBER);
 		CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, label);

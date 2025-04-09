@@ -161,6 +161,12 @@ struct RectV2
 	v2 dim;
 };
 
+struct RectIV2
+{
+	iv2 pos;
+	iv2 dim;
+};
+
 struct V2Verticies
 {
 	v2 verticies[4];
@@ -240,6 +246,7 @@ v2 SnapToIntervalV2(v2 v, f32 interval);
 v3 SnapToIntervalV3(v3 v, f32 interval);
 b32 IsInRectV2(v2 pos, RectV2 rect);
 b32 IsInterceptRectV2(RectV2 a, RectV2 b);
+b32 IsInterceptRectIV2(RectIV2 a, RectIV2 b);
 v2 PositionInCenterV2(v2 parentDim, v2 childDim);
 
 u32 Murmur3U32(u32 key, u32 seed = 0, u32 prevHash = 0);

@@ -21,14 +21,14 @@ struct ImageRaw
 {
 	u8 *dataU8;
 	u32 dataSize;
-	v2 dim;
+	iv2 dim;
 };
 
 struct ImagePNGFiltered
 {
 	u8 *dataU8;
 	u32 dataSize;
-	v2 dim;
+	iv2 dim;
 	PNG_FILTER_TYPE pngFilterType;
 };
 
@@ -36,14 +36,14 @@ struct ImagePNGCompressed
 {
 	u8 *dataU8;
 	u32 dataSize;
-	v2 dim;
+	iv2 dim;
 };
 
 struct ImagePNGChecksumed
 {
 	u8 *dataU8;
 	u32 dataSize;
-	v2 dim;
+	iv2 dim;
 };
 
 
@@ -59,7 +59,7 @@ struct Canvas
 	Texture textureVisualizedFilteredRootImage;
 
 	ImageRaw drawnImageData;
-	v2 drawingRectDim;
+	iv2 drawingRectDim;
 	b32 *drawingRectDirtyList;
 	u32 drawingRectCount;
 	Texture textureDrawing;
