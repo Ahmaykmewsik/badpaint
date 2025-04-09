@@ -59,6 +59,7 @@ Arena ArenaInit(u64 size)
 		//TODO: (Marc) What do we do when we fail?
 	}
 	result.size = size;
+	result.flags |= ARENA_FLAG_IS_BASE;
 
 #if DEBUG_MODE
 	result.size -= GetPageSize();
@@ -67,6 +68,8 @@ Arena ArenaInit(u64 size)
 
 	return result;
 }
+#else if
+#error Platform not implemented in memory.cpp
 #endif
 
 ArenaMarker ArenaPushMarker(Arena *arena)
@@ -83,7 +86,7 @@ ArenaMarker ArenaPushMarker(Arena *arena)
 u8 *ArenaPushSize(Arena *arena, u64 size, ArenaMarker *arenaMarker)
 {
 	u8 *result = {};
-	if (ASSERT(arena) && ASSERT(!arena->readyForAssignment) && ASSERT(arena->memory))
+	if (ASSERT(arena) && ASSERT(!(arena->flags & ARENA_FLAG_READY_FOR_ASSIGNMENT)) && ASSERT(arena->memory))
 	{
 		if (arenaMarker)
 		{
@@ -93,7 +96,7 @@ u8 *ArenaPushSize(Arena *arena, u64 size, ArenaMarker *arenaMarker)
 		{
 			ALIGN_POW2_LIMIT(&arena->used, 16, arena->size);
 
-			if (arena->circular && arena->used + size > arena->size)
+			if ((arena->flags & ARENA_FLAG_CIRCULAR) && arena->used + size > arena->size)
 			{
 				arena->used = 0;
 			}
@@ -177,7 +180,7 @@ void ArenaGroupFill(ArenaGroup *arenaGroup, u32 blockSize)
 		{
 			Arena *arena = &arenaGroup->arenas[arenaGroup->count++];
 			*arena = ArenaInitFromArena(&arenaGroup->masterArena, blockSize);
-			arena->readyForAssignment = true;
+			arena->flags |= ARENA_FLAG_READY_FOR_ASSIGNMENT;
 		}
 	}
 }
@@ -187,10 +190,10 @@ Arena *ArenaGroupPushArena(ArenaGroup *arenaGroup)
 	Arena *result = {};
 	for (u32 i = 0; i < arenaGroup->count; i++)
 	{
-		if (arenaGroup->arenas[i].readyForAssignment)
+		if (arenaGroup->arenas[i].flags & ARENA_FLAG_READY_FOR_ASSIGNMENT)
 		{
 			result = &arenaGroup->arenas[i];
-			result->readyForAssignment = false;
+			result->flags |= ARENA_FLAG_READY_FOR_ASSIGNMENT;
 			break;
 		}
 	}
@@ -206,7 +209,7 @@ ArenaPair ArenaPairAssign(ArenaGroup *arenaGroup)
 	ArenaPair result = {};
 	for (u32 i = 0; i < arenaGroup->count; i++)
 	{
-		if (arenaGroup->arenas[i].readyForAssignment)
+		if (arenaGroup->arenas[i].flags & ARENA_FLAG_READY_FOR_ASSIGNMENT)
 		{
 			if (!result.arena1)
 			{
@@ -222,8 +225,8 @@ ArenaPair ArenaPairAssign(ArenaGroup *arenaGroup)
 
 	if (ASSERT(result.arena1 && result.arena2))
 	{
-		result.arena1->readyForAssignment = false;
-		result.arena2->readyForAssignment = false;
+		result.arena1->flags &= ~ARENA_FLAG_READY_FOR_ASSIGNMENT;
+		result.arena2->flags &= ~ARENA_FLAG_READY_FOR_ASSIGNMENT;
 		ASSERT(result.arena1->used == 0);
 		ASSERT(result.arena2->used == 0);
 	}
@@ -269,7 +272,7 @@ Arena *ArenaPairPushOldest(ArenaPair *alternatingAreans, Arena *finishedArena)
 	if (ASSERT(result))
 	{
 		alternatingAreans->lastPushedArena = result;
-		ASSERT(!result->readyForAssignment);
+		ASSERT(!(result->flags & ARENA_FLAG_READY_FOR_ASSIGNMENT));
 	}
 	else
 	{
@@ -288,13 +291,13 @@ void ArenaPairFreeOldest(ArenaPair *arenaPair)
 		if (arenaPair->arena1 == arenaPair->lastPushedArena && arenaPair->arena2)
 		{
 			ArenaReset(arenaPair->arena2);
-			arenaPair->arena2->readyForAssignment = true;
+			arenaPair->arena2->flags |= ARENA_FLAG_READY_FOR_ASSIGNMENT;
 			arenaPair->arena2 = {};
 		}
 		if (arenaPair->arena2 == arenaPair->lastPushedArena && arenaPair->arena1)
 		{
 			ArenaReset(arenaPair->arena1);
-			arenaPair->arena1->readyForAssignment = true;
+			arenaPair->arena2->flags |= ARENA_FLAG_READY_FOR_ASSIGNMENT;
 			arenaPair->arena1 = {};
 		}
 	}
@@ -305,12 +308,12 @@ void ArenaPairFreeAll(ArenaPair *arenaPair)
 	if (arenaPair->arena1)
 	{
 		ArenaReset(arenaPair->arena1);
-		arenaPair->arena1->readyForAssignment = true;
+		arenaPair->arena1->flags |= ARENA_FLAG_READY_FOR_ASSIGNMENT;
 	}
 	if (arenaPair->arena2)
 	{
 		ArenaReset(arenaPair->arena2);
-		arenaPair->arena2->readyForAssignment = true;
+		arenaPair->arena2->flags |= ARENA_FLAG_READY_FOR_ASSIGNMENT;
 	}
 	*arenaPair = {};
 }

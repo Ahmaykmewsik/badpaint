@@ -123,7 +123,7 @@ Arena *StringArena()
 	{
 		init = true;
 		result = ArenaInit(STRING_ARENA_SIZE);
-		result.circular = true;
+		result.flags |= ARENA_FLAG_CIRCULAR;
 	}
 	return &result;
 }

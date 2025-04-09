@@ -544,7 +544,7 @@ void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas)
 
 	unsigned int pixelCount = canvas->drawnImageData.width * canvas->drawnImageData.height;
 
-#if 1
+#if 0
 	for (int i = 0;
 			i < pixelCount;
 			i++)
@@ -589,7 +589,7 @@ PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread)
 void StartProcessedImageWork(Canvas *canvas, unsigned int threadCount, ProcessedImage *processedImage, PlatformWorkQueue *threadWorkQueue)
 {
 	unsigned int pixelCount = canvas->drawnImageData.width * canvas->drawnImageData.height;
-#if 1
+#if 0
 	for (int i = 0;
 			i < pixelCount;
 			i++)

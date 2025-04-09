@@ -2,13 +2,19 @@
 
 #include <base/macros.h>
 
+enum ARENA_FLAGS : u32
+{
+	ARENA_FLAG_IS_BASE              = 1 << 0,
+	ARENA_FLAG_CIRCULAR             = 1 << 1,
+	ARENA_FLAG_READY_FOR_ASSIGNMENT = 1 << 2,
+};
+
 struct Arena
 {
 	u8 *memory;
 	u64 size;
 	u64 used;
-	b8 circular;
-	b8 readyForAssignment;
+	u32 flags;
 };
 
 struct ArenaMarker
