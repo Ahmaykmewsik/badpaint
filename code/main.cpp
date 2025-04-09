@@ -427,8 +427,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					u32 endY = startY + drawingRect.dim.y;
 					for (int y = startY; y < endY; y++)
 					{
-						u32 startIndex = (canvas->drawnImageData.dim.x * y) + drawingRect.pos.x;
-						u32 endIndex = startIndex + drawingRect.dim.x;
+						u32 startIndex = ((u32)canvas->drawnImageData.dim.x * y) + (u32) drawingRect.pos.x;
+						u32 endIndex = startIndex + (u32)drawingRect.dim.x;
 						for (int i = startIndex; i < endIndex; i++)
 						{
 							Color canvasPixel = ((Color *)canvas->drawnImageData.dataU8)[i];
