@@ -59,7 +59,11 @@ struct Canvas
 	Texture textureVisualizedFilteredRootImage;
 
 	ImageRaw drawnImageData;
+	V2 drawingRectDim;
+	b32 *drawingRectDirtyList;
+	u32 drawingRectCount;
 	Texture textureDrawing;
+
 	Brush *brush;
 	bool proccessAsap;
 	bool needsTextureUpload;

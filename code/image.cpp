@@ -351,7 +351,6 @@ void UpdateRectInTexture(Texture *texture, void *data, Rect rect)
 	if (data)
 	{
 		rlUpdateTexture(texture->id, rect.pos.x, rect.pos.y, rect.dim.x, rect.dim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, data);
-		GenTextureMipmaps(texture);
 	}
 	else
 	{
@@ -390,6 +389,73 @@ void SetPNGFilterType(Canvas *canvas, ImageRaw *rootImageRaw, GameMemory *gameMe
 	canvas->needsTextureUpload = true;
 }
 
+Rect GetDrawingRectFromIndex(Canvas *canvas, u32 i)
+{
+	Rect result;
+	result.dim = canvas->drawingRectDim;
+
+	u32 numX = Ceil(canvas->drawnImageData.dim.x / canvas->drawingRectDim.x);
+	u32 numY = Ceil(canvas->drawnImageData.dim.y / canvas->drawingRectDim.y);
+	u32 indexX = i % numX;
+	u32 indexY = ((u32) Ceil(i / numX)) % numX;
+	result.pos.x = result.dim.x * indexX;
+	result.pos.y = result.dim.y * indexY;
+
+	if (result.pos.x + result.dim.x > canvas->drawnImageData.dim.x)
+	{
+		result.dim.x = canvas->drawnImageData.dim.x - result.pos.x;
+	}
+	if (result.pos.y + result.dim.y > canvas->drawnImageData.dim.y)
+	{
+		result.dim.y = canvas->drawnImageData.dim.y - result.pos.y;
+	}
+
+	return result;
+}
+
+u32 GetDrawingRectCount(Canvas *canvas)
+{
+	u32 result = Ceil(canvas->drawnImageData.dim.x / canvas->drawingRectDim.x) * Ceil(canvas->drawnImageData.dim.y / canvas->drawingRectDim.y);
+	return result;
+}
+
+void CanvasSetDirtyRect(Canvas *canvas, Rect updateArea)
+{
+	u32 drawingRectCount = GetDrawingRectCount(canvas);
+	u32 numX = Ceil(canvas->drawnImageData.dim.x / canvas->drawingRectDim.x);
+	u32 numY = Ceil(canvas->drawnImageData.dim.y / canvas->drawingRectDim.y);
+	u32 indexX = updateArea.pos.x / canvas->drawingRectDim.x;
+	u32 indexY = updateArea.pos.y / canvas->drawingRectDim.y;
+
+	Rect drawRect;
+	drawRect.dim = canvas->drawingRectDim;
+	for (f32 y = indexY; y < numY; y++)
+	{
+		drawRect.pos.y = y * canvas->drawingRectDim.x;
+		b32 interceptsThisRow = false;
+		for (f32 x = indexX; x < numX; x++)
+		{
+			drawRect.pos.x = x * canvas->drawingRectDim.x;
+			if (!IsInterceptRect2D(updateArea, drawRect))
+			{
+				break;
+			}
+			interceptsThisRow = true;
+			u32 dirtyIndexX = drawRect.pos.x / canvas->drawingRectDim.x;
+			u32 dirtyIndexY = drawRect.pos.y / canvas->drawingRectDim.y;
+			u32 index = dirtyIndexX + (dirtyIndexY * numX);
+			if (ASSERT(index < drawingRectCount))
+			{
+				canvas->drawingRectDirtyList[index] = true;
+			}
+		}
+		if (!interceptsThisRow)
+		{
+			break;
+		}
+	}
+}
+
 void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, GameMemory *gameMemory)
 {
 	//NOTE: (Ahmayk) free and reallocate temporary arena to reduce memory size
@@ -406,8 +472,9 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
 	V2 canvasDim = V2{(rootImageRaw->dim.x * 4) + 1, rootImageRaw->dim.y};
 	u32 visualizedCanvasDataSize = canvasDim.x * canvasDim.y * sizeof(Color);
 
-	//NOTE: (Ahmayk) drawn image and visualized image
-	gameMemory->canvasArena = ArenaInit(visualizedCanvasDataSize * 2);
+	//NOTE: (Ahmayk) drawn image, visualized image, drawingRects
+	u64 canvasArneaSize = Max(MegaByte * 1, visualizedCanvasDataSize * 2.1);
+	gameMemory->canvasArena = ArenaInit(canvasArneaSize);
 
 	canvas->drawnImageData.dataU8 = ArenaPushSize(&gameMemory->canvasArena, visualizedCanvasDataSize, {});
 	canvas->drawnImageData.dim = canvasDim;
@@ -445,6 +512,11 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
 	canvas->rollbackIndexStart = 0;
 	canvas->rollbackIndexNext = 0;
 	canvas->brush = brush;
+
+	canvas->drawingRectDim = V2{64, 64};
+	u32 drawingRectCount = GetDrawingRectCount(canvas);
+	canvas->drawingRectDirtyList = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, drawingRectCount, b32);
+	memset(canvas->drawingRectDirtyList, 0, drawingRectCount * sizeof(b32));
 
 	canvas->initialized = true;
 }

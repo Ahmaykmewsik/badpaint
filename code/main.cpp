@@ -280,10 +280,18 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			tempImage.height = canvas->drawnImageData.dim.y;
 			tempImage.mipmaps = 1;
             tempImage.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
-            for (int i = 0; i <= distance; i++)
+            for (int i = 0; i < distance; i++)
 			{
 				V2 pos = Lerp(startPos, i / distance, endPos);
 				ImageDrawCircle(&tempImage, pos.x, pos.y, currentBrush.size, colorToPaint);
+
+				Rect updateArea;
+				updateArea.dim.x = currentBrush.size * 2;
+				updateArea.dim.y = currentBrush.size * 2;
+				updateArea.pos = pos;
+				updateArea.pos.x -= currentBrush.size;
+				updateArea.pos.y -= currentBrush.size;
+				CanvasSetDirtyRect(canvas, updateArea);
 			}
 
 			ArenaPair arenaPair = {};
@@ -397,31 +405,59 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		if (canvas->needsTextureUpload)
 		{
 			canvas->needsTextureUpload = false;
-			Image outputImage = {};
-			unsigned int pixelCount = canvas->drawnImageData.dim.x * canvas->drawnImageData.dim.y;
-			ArenaMarker marker;
-			Color *pixels = ARENA_PUSH_ARRAY_MARKER(&gameMemory.temporaryArena, pixelCount, Color, &marker);
-			memset(pixels, 0, pixelCount * sizeof(Color));
 
-			for (int i = 0; i < pixelCount; i++)
+			u32 drawingRectCount = GetDrawingRectCount(canvas);
+			for (u32 rectIndex = 0; rectIndex < drawingRectCount; rectIndex++)
 			{
-				Color canvasPixel = ((Color *)canvas->drawnImageData.dataU8)[i];
-				if (canvasPixel.r)
+				if (canvas->drawingRectDirtyList[rectIndex])
 				{
-					Color drawnPixel = G_BRUSH_EFFECT_COLORS[canvasPixel.r];
-					if (canvasPixel.a < 255)
+					Rect drawingRect = GetDrawingRectFromIndex(canvas, rectIndex);
+					u32 pixelCount = drawingRect.dim.x * drawingRect.dim.y;
+					ArenaMarker marker {};
+					Color *pixels = ARENA_PUSH_ARRAY_MARKER(&gameMemory.temporaryArena, pixelCount, Color, &marker);
+					memset(pixels, 0, pixelCount * sizeof(Color));
+
+					u32 pixelIndex = 0;
+					u32 startY = drawingRect.pos.y;
+					u32 endY = startY + drawingRect.dim.y;
+					for (int y = startY; y < endY; y++)
 					{
-						drawnPixel.a = 255 * 0.5;
+						u32 startIndex = (canvas->drawnImageData.dim.x * y) + drawingRect.pos.x;
+						u32 endIndex = startIndex + drawingRect.dim.x;
+						for (int i = startIndex; i < endIndex; i++)
+						{
+							Color canvasPixel = ((Color *)canvas->drawnImageData.dataU8)[i];
+							if (canvasPixel.r)
+							{
+								Color drawnPixel = G_BRUSH_EFFECT_COLORS[canvasPixel.r];
+								if (canvasPixel.a < 255)
+								{
+									drawnPixel.a = 255 * 0.5;
+								}
+								Color *outPixel = (pixels + pixelIndex);
+								*outPixel = drawnPixel;
+							}
+#if 1
+							else
+							{
+								Color *outPixel = (pixels + pixelIndex);
+								*outPixel = PINK;
+								outPixel->a = 100;
+							}
+#endif
+
+
+							pixelIndex++;
+						}
 					}
-					Color *outPixel = (pixels + i);
-					*outPixel = drawnPixel;
+
+					UpdateRectInTexture(&canvas->textureDrawing, pixels, drawingRect);
+					ArenaPopMarker(marker);
+
+					canvas->drawingRectDirtyList[rectIndex] = false;
 				}
 			}
-
-			Rect rect = {};
-			rect.dim = canvas->drawnImageData.dim;
-			UpdateRectInTexture(&canvas->textureDrawing, pixels, rect);
-			ArenaPopMarker(marker);
+			GenTextureMipmaps(&canvas->textureDrawing);
 		}
 
 		//----------------------------------------------------

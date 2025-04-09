@@ -980,6 +980,15 @@ inline bool IsInRect2D(V2 pos, Rect rect)
 	return result;
 }
 
+inline bool IsInterceptRect2D(Rect a, Rect b)
+{
+    bool result = (a.pos.x < b.pos.x + b.dim.x) &&
+           (a.pos.x + a.dim.x > b.pos.x) &&
+           (a.pos.y < b.pos.y + b.dim.y) &&
+           (a.pos.y + a.dim.y > b.pos.y);
+	return result;
+}
+
 inline void ModNext(int &i, int size)
 {
 	i = (i + 1) % size;
