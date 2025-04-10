@@ -85,9 +85,7 @@ PlatformWorkQueue *SetupThreads(unsigned int threadCount, GameMemory *gameMemory
 	unsigned int initialThreadCount = 0;
 	result->semaphoreHandle = CreateSemaphoreExA(0, initialThreadCount, threadCount, 0, 0, SEMAPHORE_ALL_ACCESS);
 
-	for (int i = 0;
-			i < threadCount;
-			i++)
+	for (u32 i = 0; i < threadCount; i++)
 	{
 		DWORD threadID;
 		HANDLE threadHandle = CreateThread(0, 0, ThreadProc, result, 0, &threadID);
@@ -146,13 +144,14 @@ bool GetPngImageFilePathFromUser(char *buffer, unsigned int bufferSize, unsigned
 
 								if (SUCCEEDED(hr))
 								{
-									int pathLen = GetWCharLength(filePathW);
+									u32 pathLen = GetWCharLength(filePathW);
 									if (pathLen <= (bufferSize - 1))
 									{
 										WideCharToMultiByte(CP_UTF8, 0, filePathW, -1, buffer, bufferSize - 1, NULL, NULL);
 										result = true;
 										//TODO: append filetype if not there
-										*filePathLength = strlen(buffer);
+										//TODO: (Marc) don't use strlen lol
+										*filePathLength = (u32) strlen(buffer);
 									}
 									else
 									{
@@ -249,17 +248,17 @@ static String filenameString = {};
 
 const char *crashDirectory = "./crashdumps/";
 
-static float CRASH_REPORT_WINDOW_MARGIN = 10;
+static u32 CRASH_REPORT_WINDOW_MARGIN = 10;
 
-static float CRASH_REPORT_DESC_HEIGHT = 175;
-static float CRASH_REPORT_INPUT_HEIGHT = 100;
-static float CRASH_REPORT_BUTTON_HEIGHT = 50;
+static u32 CRASH_REPORT_DESC_HEIGHT = 175;
+static u32 CRASH_REPORT_INPUT_HEIGHT = 100;
+static u32 CRASH_REPORT_BUTTON_HEIGHT = 50;
 
-static float CRASH_REPORT_DESC_YPOS = CRASH_REPORT_WINDOW_MARGIN;
-static float CRASH_REPORT_INPUT_YPOS = CRASH_REPORT_DESC_YPOS + CRASH_REPORT_DESC_HEIGHT + CRASH_REPORT_WINDOW_MARGIN;
-static float CRASH_REPORT_BUTTON_YPOS = CRASH_REPORT_INPUT_YPOS + CRASH_REPORT_INPUT_HEIGHT + CRASH_REPORT_WINDOW_MARGIN;
+static u32 CRASH_REPORT_DESC_YPOS = CRASH_REPORT_WINDOW_MARGIN;
+static u32 CRASH_REPORT_INPUT_YPOS = CRASH_REPORT_DESC_YPOS + CRASH_REPORT_DESC_HEIGHT + CRASH_REPORT_WINDOW_MARGIN;
+static u32 CRASH_REPORT_BUTTON_YPOS = CRASH_REPORT_INPUT_YPOS + CRASH_REPORT_INPUT_HEIGHT + CRASH_REPORT_WINDOW_MARGIN;
 
-static v2 CRASH_REPORT_WINDOW_DIM = v2{600, 400};
+static iv2 CRASH_REPORT_WINDOW_DIM = iv2{600, 400};
 
 static char CRASH_USER_DETAILS_CHARS[1500] = {};
 
@@ -679,7 +678,9 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
 		int screenWidth = GetSystemMetrics(SM_CXSCREEN);
 		int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
-		v2 windowPosition = (v2{(float)screenWidth, (float)screenHeight} * 0.5f) - (CRASH_REPORT_WINDOW_DIM * 0.5f);
+		iv2 windowPosition = {};
+		windowPosition.x = RoundI32((screenWidth * 0.5f) - (CRASH_REPORT_WINDOW_DIM.x * 0.5f));
+		windowPosition.x = RoundI32((screenHeight * 0.5f) - (CRASH_REPORT_WINDOW_DIM.y * 0.5f));
 
 		// Create the window
 		HWND hwnd = CreateWindowEx(0,
@@ -859,7 +860,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
 				// Get crash dump file size
 				LARGE_INTEGER fileSizeInt = {};
 				GetFileSizeEx(file, &fileSizeInt);
-				uint64_t fileSize = fileSizeInt.QuadPart;
+				u32 fileSize = (u32) fileSizeInt.QuadPart;
 				if (fileSize >= discordMaxLength)
 					SendGodDammitErrorWindowInLoop(hWnd, STRING("The crash dump file is too big for discord!"));
 
@@ -880,7 +881,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
 				update_loading_bar(x += 0.1f);
 
 				// Print the body postfix after the data file (overflow already checked)
-				unsigned int bodyTotalSize = headerLength + fileSize + bodyPostfix.length;
+				u32 bodyTotalSize = headerLength + fileSize + bodyPostfix.length;
 				memcpy(body + headerLength + fileSize, bodyPostfix.chars, bodyPostfix.length);
 				update_loading_bar(x += 0.1f);
 
@@ -998,12 +999,13 @@ int CALLBACK WinMain(HINSTANCE instance,
 	//Memory allocated size is chosen based on size of image imported so that our memory
 	//usage scales with the size of the image we're editing (which could be very large)
 
-	// HINSTANCE instance = GetModuleHandle(NULL);
 	CrashHandler(instance, &gameMemory);
 
 	//NOTE: Thanks phillip and martins :D
-	const char *string_or_null = getenv("_NO_DEBUG_HEAP");
-	ASSERT(string_or_null);
+	char *buffer = NULL;
+	size_t len = 0;
+	errno_t err = _dupenv_s(&buffer, &len, "_NO_DEBUG_HEAP");
+	ASSERT(err == 0 && buffer != NULL); // Ensure no error and variable exists
 
 	unsigned int threadCount = 8;
 

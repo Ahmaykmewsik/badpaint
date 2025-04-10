@@ -2,14 +2,15 @@
 
 #include <base/macros.h>
 
+void AlignPow2U32(u32 *value, u32 alignment);
+void AlignPow2U64(u64 *value, u64 alignment);
+void AlignPow2LimitU64(u64 *value, u64 alignment, u64 limit);
+
 #if DEBUG_MODE
 void MemoryProtectReadWrite(void *memory, u64 size);
 void MemoryProtectWrite(void *memory, u64 size);
 void MemoryUnprotect(void *memory, u64 size);
 #endif
-
-#define ALIGN_POW2(value, alignment) *value = ((*value + ((alignment) - 1)) & ~((alignment) - 1))
-#define ALIGN_POW2_LIMIT(value, alignment, limit) if ((*value + alignment) < limit) ALIGN_POW2(value, alignment)
 
 enum ARENA_FLAGS : u32
 {

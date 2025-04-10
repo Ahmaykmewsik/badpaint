@@ -11,9 +11,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	bool imageIsBroken = {};
 
 	ProcessedImage *processedImages = ARENA_PUSH_ARRAY(&gameMemory.permanentArena, threadCount, ProcessedImage);
-	for (int i = 0;
-			i < threadCount;
-			i++)
+	for (u32 i = 0; i < threadCount; i++)
 	{
 		ProcessedImage *processedImage = processedImages + i;
 		processedImage->rootImageRaw = rootImageRaw;
@@ -29,7 +27,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	InitWindow(200, 200, "badpaint");
 
 	u32 refreshRate = 0;
-	for (u32 i = 0; i < GetMonitorCount(); i++)
+	for (u32 i = 0; i < (u32) GetMonitorCount(); i++)
 	{
 		refreshRate = MaxU32(refreshRate, GetMonitorRefreshRate(i));
 	}
@@ -40,11 +38,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	iv2 screenDim = iv2{GetMonitorWidth(0), GetMonitorHeight(0)};
 
 	iv2 windowDim;
-	windowDim.x = screenDim.x * 0.8f;
-	windowDim.y = screenDim.y * 0.8f;
+	windowDim.x = (u32) RoundF32(screenDim.x * 0.8f);
+	windowDim.y = (u32) RoundF32(screenDim.y * 0.8f);
 
 	v2 windowPosMiddle = PositionInCenterV2(screenDim, windowDim);
-	SetWindowPosition(windowPosMiddle.x, windowPosMiddle.y);
+	SetWindowPosition((u32) RoundF32(windowPosMiddle.x), (u32) RoundF32(windowPosMiddle.y));
 	SetWindowSize(windowDim.x, windowDim.y);
 
 	Font defaultFont = LoadFontEx("./assets/W95FA.otf", 18, 0, 0);
@@ -254,9 +252,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			}
 
 			ProcessedImage *processedImage = {};
-			for (int i = 0;
-					i < threadCount;
-					i++)
+			for (u32 i = 0; i < threadCount; i++)
 			{
 				ProcessedImage *processedImageOfIndex = processedImages + i;
 				if (!processedImageOfIndex->active)
@@ -277,9 +273,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				unsigned int processedImageIndex = (processedImage)
 					? processedImage->index
 					: threadCount + 1;
-				colorToPaint.r = currentBrush.brushEffect;
-				colorToPaint.g = RandomInRangeI32(0, 255);
-				colorToPaint.a = processedImageIndex;
+				//NOTE: (Ahmayk) lol
+				ASSERT(processedImageIndex < 255);
+				colorToPaint.r = (u8) currentBrush.brushEffect;
+				colorToPaint.g = (u8) RandomInRangeI32(0, 255);
+				colorToPaint.a = (u8) processedImageIndex;
 			}
 
 			Image tempImage = {};
@@ -291,13 +289,13 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
             for (int i = 0; i < distance; i++)
 			{
 				v2 pos = LerpV2(startPos, i / distance, endPos);
-				ImageDrawCircle(&tempImage, pos.x, pos.y, currentBrush.size, colorToPaint);
+				ImageDrawCircle(&tempImage, (u32) RoundF32(pos.x), (u32) RoundF32(pos.y), currentBrush.size, colorToPaint);
 
 				RectIV2 updateArea;
 				updateArea.dim.x = currentBrush.size * 2;
 				updateArea.dim.y = currentBrush.size * 2;
-				updateArea.pos.x = FloorF32(pos.x) - currentBrush.size;
-				updateArea.pos.y = FloorF32(pos.y) - currentBrush.size;
+				updateArea.pos.x = (u32) FloorF32(pos.x) - currentBrush.size;
+				updateArea.pos.y = (u32) FloorF32(pos.y) - currentBrush.size;
 				CanvasSetDirtyRect(canvas, updateArea);
 			}
 
@@ -374,9 +372,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		}
 
 		ProcessedImage *latestCompletedProcessedImage = {};
-		for (int i = 0;
-				i < threadCount;
-				i++)
+		for (u32 i = 0; i < threadCount; i++)
 		{
 			ProcessedImage *processedImageOfIndex = processedImages + i;
 			if (processedImageOfIndex->active && processedImageOfIndex->frameFinished > 0)
@@ -427,11 +423,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					u32 pixelIndex = 0;
 					u32 startY = drawingRect.pos.y;
 					u32 endY = startY + drawingRect.dim.y;
-					for (int y = startY; y < endY; y++)
+					for (u32 y = startY; y < endY; y++)
 					{
 						u32 startIndex = (canvas->drawnImageData.dim.x * y) + drawingRect.pos.x;
 						u32 endIndex = startIndex + drawingRect.dim.x;
-						for (int i = startIndex; i < endIndex; i++)
+						for (u32 i = startIndex; i < endIndex; i++)
 						{
 							Color canvasPixel = ((Color *)canvas->drawnImageData.dataU8)[i];
 							if (canvasPixel.r)
@@ -439,7 +435,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 								Color drawnPixel = G_BRUSH_EFFECT_COLORS[canvasPixel.r];
 								if (canvasPixel.a < 255)
 								{
-									drawnPixel.a = 255 * 0.5;
+									drawnPixel.a = 127;
 								}
 								Color *outPixel = (pixels + pixelIndex);
 								*outPixel = drawnPixel;
@@ -649,7 +645,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			G_UI_INPUTS->sliderAction = SLIDER_ACTION_BRUSH_SIZE;
 
 			Slider slider = brushSizeSlider;
-			float value = MapNormalizeF32(brushSizeSlider.min, *brushSizeSlider.unsignedIntToChange, brushSizeSlider.max);
+			float value = MapNormalizeF32(brushSizeSlider.min, (f32) *brushSizeSlider.unsignedIntToChange, brushSizeSlider.max);
 			G_UI_INPUTS->value = value;
 
 			SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT * 0.5f});
@@ -682,7 +678,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			G_UI_INPUTS->relativePixelPosition = v2{0, titleBarHeight};
 			CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, G_NOTIFICATION_MESSAGE);
 
-			G_NOTIFICATION_ALPHA -= 0.001;
+			G_NOTIFICATION_ALPHA -= 0.001f;
 			if (G_NOTIFICATION_ALPHA <= 0)
 			{
 				G_NOTIFICATION_MESSAGE = {};

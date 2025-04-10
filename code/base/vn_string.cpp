@@ -222,9 +222,7 @@ b32 StringCompare(String s1, String s2)
 	bool result = s1.length == s2.length;
 	if (result)
 	{
-		for (int i = 0;
-				i < s1.length;
-				i++)
+		for (u32 i = 0; i < s1.length; i++)
 		{
 			if (s1.chars[i] != s2.chars[i])
 			{
@@ -355,7 +353,7 @@ b32 StringIsF32(String s)
 f32 StringToF32(String s)
 {
 	char *end = s.chars + s.length;
-	f32 number = strtod(s.chars, &end);
+	f32 number = (f32) strtod(s.chars, &end);
 	return number;
 }
 
@@ -363,7 +361,8 @@ String U32ToString(u32 i, Arena *arena)
 {
 	//TODO: figure out how large this should be
 	String result = AllocateString(30, arena);
-	sprintf(result.chars, "%d", i);
+	//TODO: (Ahmayk) should probably replace this
+	sprintf_s(result.chars, 30, "%d", i);
 	result.length = CharArrayLength(result.chars);
 	return result;
 }
@@ -372,7 +371,8 @@ String U64ToString(u64 n, Arena *arena)
 {
 	//TODO: figure out how large this should be
 	String result = AllocateString(30, arena);
-	sprintf(result.chars, "%lld", n);
+	//TODO: (Ahmayk) should probably replace this
+	sprintf_s(result.chars, 30, "%lld", n);
 	result.length = CharArrayLength(result.chars);
 	return result;
 }
@@ -433,7 +433,7 @@ String CleanStringForDiscord(String string, Arena *arena)
 
 	result.chars = ARENA_PUSH_ARRAY(arena, string.length * 2 + 1, char);
 
-	for (int i = 0; i < string.length; i++, result.length++)
+	for (u32 i = 0; i < string.length; i++, result.length++)
 	{
 		char c = string.chars[i];
 		switch (c)

@@ -947,7 +947,7 @@ f32 MaxF32(f32 i, f32 j)
 	return result;
 }
 
-f32 ClampI32(i32 min, i32 value, i32 max)
+i32 ClampI32(i32 min, i32 value, i32 max)
 {
 	i32 result = value;
 

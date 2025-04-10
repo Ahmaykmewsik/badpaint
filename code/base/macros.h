@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include <stdint.h>
 
 #if !defined(OS_WINDOWS) && !defined(OS_WEB)

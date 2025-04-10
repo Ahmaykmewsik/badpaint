@@ -1,6 +1,24 @@
 #include <base/macros.h>
 #include <base/memory.h>
 
+void AlignPow2U32(u32 *value, u32 alignment)
+{
+	*value = ((*value + ((alignment) - 1)) & ~((alignment) - 1));
+}
+
+void AlignPow2U64(u64 *value, u64 alignment)
+{
+	*value = ((*value + ((alignment) - 1)) & ~((alignment) - 1));
+}
+
+void AlignPow2LimitU64(u64 *value, u64 alignment, u64 limit)
+{
+	if ((*value + alignment) < limit)
+	{
+		AlignPow2U64(value, alignment);
+	}
+}
+
 #if OS_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #include "Windows.h"
@@ -48,7 +66,7 @@ Arena ArenaInit(u64 size)
 	Arena result = {};
 
 	u64 pageSize = GetPageSize();
-	ALIGN_POW2(&size, pageSize);
+	AlignPow2U64(&size, pageSize);
 
 #if DEBUG_MODE
 	size += pageSize;
@@ -103,9 +121,12 @@ u8 *ArenaPushSize(Arena *arena, u64 size, ArenaMarker *arenaMarker)
 		{
 			*arenaMarker = ArenaPushMarker(arena);
 		}
-		if (size)
+		//NOTE: (Marc) Assume that something has gone wrong if we try to commit more than a gigabyte
+		//And the arena wasn't initialized at that size
+		//(can happen if an unsigned int underflows due to faulty math)
+		if (size && ASSERT(size < GigaByte || (arena->size > size)))
 		{
-			ALIGN_POW2_LIMIT(&arena->used, 16, arena->size);
+			AlignPow2LimitU64(&arena->used, 16, arena->size);
 
 			if ((arena->flags & ARENA_FLAG_CIRCULAR) && arena->used + size > arena->size)
 			{
@@ -126,7 +147,7 @@ u8 *ArenaPushSize(Arena *arena, u64 size, ArenaMarker *arenaMarker)
 
 #if DEBUG_MODE
 			u64 pageSize = GetPageSize();
-			ALIGN_POW2_LIMIT(&arena->used, pageSize, arena->size);
+			AlignPow2LimitU64(&arena->used, pageSize, arena->size);
 			if (arena->used + pageSize < arena->size)
 			{
 				MemoryProtectReadWrite(arena->memory + arena->used, pageSize);
@@ -193,17 +214,20 @@ void ArenaGroupResetAndFill(ArenaGroup *arenaGroup, u32 blockSize)
 	{
 		ArenaGroupReset(arenaGroup);
 		u64 pageSize = GetPageSize();
-		ALIGN_POW2(&blockSize, pageSize);
+		AlignPow2U32(&blockSize, (u32) pageSize);
 
-		u32 count = FloorF32(SafeDivideF32(arenaGroup->masterArena.size, blockSize));
-		arenaGroup->arenas = ARENA_PUSH_ARRAY(&arenaGroup->masterArena, count, Arena);
-
-		ALIGN_POW2_LIMIT(&arenaGroup->masterArena.used, pageSize, arenaGroup->masterArena.size);
-		while (arenaGroup->masterArena.used + blockSize + 16 <= arenaGroup->masterArena.size)
+		if (blockSize > 0)
 		{
-			Arena *arena = &arenaGroup->arenas[arenaGroup->count++];
-			*arena = ArenaInitFromArena(&arenaGroup->masterArena, blockSize);
-			arena->flags |= ARENA_FLAG_READY_FOR_ASSIGNMENT;
+			u32 count = (u32) FloorF32((f32)(arenaGroup->masterArena.size / blockSize));
+			arenaGroup->arenas = ARENA_PUSH_ARRAY(&arenaGroup->masterArena, count, Arena);
+
+			AlignPow2LimitU64(&arenaGroup->masterArena.used, pageSize, arenaGroup->masterArena.size);
+			while (arenaGroup->masterArena.used + blockSize + 16 <= arenaGroup->masterArena.size)
+			{
+				Arena *arena = &arenaGroup->arenas[arenaGroup->count++];
+				*arena = ArenaInitFromArena(&arenaGroup->masterArena, blockSize);
+				arena->flags |= ARENA_FLAG_READY_FOR_ASSIGNMENT;
+			}
 		}
 	}
 }

@@ -27,7 +27,8 @@ unsigned char *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, A
 			unsigned int count = (unsigned int)fread(data, sizeof(unsigned char), size, file);
 			*bytesRead = count;
 
-			if (count != size)
+			//TODO: (Ahmayk) Log this stuff ourselves
+			if (count != (u32) size)
 				TRACELOG(LOG_WARNING, "FILEIO: [%s] File partially loaded", fileName);
 			else
 				TRACELOG(LOG_INFO, "FILEIO: [%s] File loaded successfully", fileName);
@@ -131,9 +132,7 @@ ImageRaw LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory)
 					}
 				}
 
-				for (int i = 0, k = 0;
-						i < result.dataSize;
-						i += 4, k++)
+				for (u32 i = 0, k = 0; i < result.dataSize; i += 4, k++)
 				{
 					result.dataU8[i] = (unsigned char)(pixels[k].x * 255.0f);
 					result.dataU8[i + 1] = (unsigned char)(pixels[k].y * 255.0f);
@@ -388,10 +387,10 @@ RectIV2 GetDrawingRectFromIndex(Canvas *canvas, u32 i)
 	RectIV2 result;
 	result.dim = canvas->drawingRectDim;
 
-	u32 numX = CeilF32(canvas->drawnImageData.dim.x / canvas->drawingRectDim.x);
-	u32 numY = CeilF32(canvas->drawnImageData.dim.y / canvas->drawingRectDim.y);
+	u32 numX = (u32) CeilF32(canvas->drawnImageData.dim.x / (f32) canvas->drawingRectDim.x);
+	u32 numY = (u32) CeilF32(canvas->drawnImageData.dim.y / (f32) canvas->drawingRectDim.y);
 	u32 indexX = i % numX;
-	u32 indexY = ((u32) CeilF32(i / numX)) % numX;
+	u32 indexY = ((u32) FloorF32(i / (f32) numX)) % numX;
 	result.pos.x = result.dim.x * indexX;
 	result.pos.y = result.dim.y * indexY;
 
@@ -403,31 +402,34 @@ RectIV2 GetDrawingRectFromIndex(Canvas *canvas, u32 i)
 	{
 		result.dim.y = canvas->drawnImageData.dim.y - result.pos.y;
 	}
+	ASSERT(result.dim.y > 0);
 
 	return result;
 }
 
 u32 GetDrawingRectCount(Canvas *canvas)
 {
-	u32 result = CeilF32(canvas->drawnImageData.dim.x / canvas->drawingRectDim.x) * CeilF32(canvas->drawnImageData.dim.y / canvas->drawingRectDim.y);
+	u32 numX = (u32) CeilF32(canvas->drawnImageData.dim.x / (f32) canvas->drawingRectDim.x);
+	u32 numY = (u32) CeilF32(canvas->drawnImageData.dim.y / (f32) canvas->drawingRectDim.y);
+	u32 result = numX * numY;
 	return result;
 }
 
 void CanvasSetDirtyRect(Canvas *canvas, RectIV2 updateArea)
 {
-	u32 drawingRectCount = GetDrawingRectCount(canvas);
-	u32 numX = CeilF32(canvas->drawnImageData.dim.x / canvas->drawingRectDim.x);
-	u32 numY = CeilF32(canvas->drawnImageData.dim.y / canvas->drawingRectDim.y);
+	u32 numX = (u32) CeilF32(canvas->drawnImageData.dim.x / (f32) canvas->drawingRectDim.x);
+	u32 numY = (u32) CeilF32(canvas->drawnImageData.dim.y / (f32) canvas->drawingRectDim.y);
+	u32 drawingRectCount = numX * numY;
 	u32 indexX = updateArea.pos.x / canvas->drawingRectDim.x;
 	u32 indexY = updateArea.pos.y / canvas->drawingRectDim.y;
 
 	RectIV2 drawRect;
 	drawRect.dim = canvas->drawingRectDim;
-	for (f32 y = indexY; y < numY; y++)
+	for (u32 y = indexY; y < numY; y++)
 	{
 		drawRect.pos.y = y * canvas->drawingRectDim.x;
 		b32 interceptsThisRow = false;
-		for (f32 x = indexX; x < numX; x++)
+		for (u32 x = indexX; x < numX; x++)
 		{
 			drawRect.pos.x = x * canvas->drawingRectDim.x;
 			if (!IsInterceptRectIV2(updateArea, drawRect))
@@ -467,7 +469,7 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
 	u32 visualizedCanvasDataSize = canvasDim.x * canvasDim.y * sizeof(Color);
 
 	//NOTE: (Ahmayk) drawn image, visualized image, drawingRects
-	u64 canvasArneaSize = MaxU32(MegaByte * 1, (u32) visualizedCanvasDataSize * 2.1);
+	u32 canvasArneaSize = (u32) MaxU32(MegaByte * 1, (u32) (visualizedCanvasDataSize * 2.1f));
 	gameMemory->canvasArena = ArenaInit(canvasArneaSize);
 
 	canvas->drawnImageData.dataU8 = ArenaPushSize(&gameMemory->canvasArena, visualizedCanvasDataSize, {});
@@ -476,8 +478,8 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
 	memset(canvas->drawnImageData.dataU8, 0, visualizedCanvasDataSize);
 
 	u32 conversionArenaSize = (canvasDim.x * canvasDim.y) + (rootImageRaw->dim.x * 4);
-	conversionArenaSize *= 1.2;
-	ALIGN_POW2(&conversionArenaSize, 256);
+	conversionArenaSize = (u32) (conversionArenaSize * 1.2f);
+	AlignPow2U32(&conversionArenaSize, 256);
 
 	canvas->arenaFilteredPNG = ArenaInitFromArena(&gameMemory->canvasArena, conversionArenaSize);
 
@@ -501,7 +503,7 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
 
 	ArenaFree(&gameMemory->canvasRollbackArena);
 	gameMemory->canvasRollbackArena = ArenaInit(MegaByte * 800);
-	canvas->rollbackSizeCount = FloorF32((f32)gameMemory->canvasRollbackArena.size / visualizedCanvasDataSize) - 1;
+	canvas->rollbackSizeCount = (u32) FloorF32((f32)gameMemory->canvasRollbackArena.size / visualizedCanvasDataSize) - 1;
 	canvas->rollbackImageData = ARENA_PUSH_ARRAY(&gameMemory->canvasRollbackArena, canvas->rollbackSizeCount * visualizedCanvasDataSize, u8);
 	canvas->rollbackIndexStart = 0;
 	canvas->rollbackIndexNext = 0;
@@ -540,9 +542,7 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 	memcpy(imagePNGFiltered.dataU8, canvas->imagePNGFiltered.dataU8, imagePNGFiltered.dataSize);
 	UnlockOnBool(&canvas->filterLock);
 
-	for (int i = 0;
-			i < imagePNGFiltered.dataSize;
-			i += 1)
+	for (u32 i = 0; i < imagePNGFiltered.dataSize; i += 1)
 	{
 		Color canvasPixel = ((Color *)canvas->drawnImageData.dataU8)[i];
 
@@ -586,7 +586,7 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 	Arena *arenaCompressed = ArenaPairPushOldest(&processedImage->arenaPair, {});
 
 	imagePNGCompressed.dataU8 = (u8 *)ArenaPushSize(arenaCompressed, arenaCompressed->size, {});
-	imagePNGCompressed.dataSize = fpng::pixel_deflate_dyn_4_rle_one_pass(imagePNGFiltered.dataU8, imagePNGFiltered.dim.x, imagePNGFiltered.dim.y, imagePNGCompressed.dataU8, arenaCompressed->size);
+	imagePNGCompressed.dataSize = fpng::pixel_deflate_dyn_4_rle_one_pass(imagePNGFiltered.dataU8, imagePNGFiltered.dim.x, imagePNGFiltered.dim.y, imagePNGCompressed.dataU8, (u32) arenaCompressed->size);
 	Arena *arenaChecksumed = ArenaPairPushOldest(&processedImage->arenaPair, arenaFiltered);
 
 	// Print("Encoded PNG Compression on thread " + IntToString(processedImage->index));
@@ -628,9 +628,7 @@ void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas)
 ProcessedImage *GetFreeProcessedImage(ProcessedImage *processedImages, unsigned int threadCount)
 {
 	ProcessedImage *result = {};
-	for (int i = 0;
-			i < threadCount;
-			i++)
+	for (u32 i = 0; i < threadCount; i++)
 	{
 		ProcessedImage *processedImageOfIndex = processedImages + i;
 		if (!processedImageOfIndex->active)

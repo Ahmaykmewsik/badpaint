@@ -60,7 +60,7 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
 		}
 
 		ASSERT(uiBox->uiSettings.font.baseSize);
-		Vector2 textDim = MeasureTextEx(uiBox->uiSettings.font, C_STRING_NULL_TERMINATED(uiBox->string), uiBox->uiSettings.font.baseSize, 1);
+		Vector2 textDim = MeasureTextEx(uiBox->uiSettings.font, C_STRING_NULL_TERMINATED(uiBox->string), (f32) uiBox->uiSettings.font.baseSize, 1);
 		uiBox->textDim = RayVectorToV2(textDim);
 	}
 
@@ -74,9 +74,7 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
 		{
 			unsigned int hashValue = Murmur3String(C_STRING_NULL_TERMINATED(keyString), 0);
 
-			for (int i = 0;
-					i < keyString.length;
-					i++)
+			for (u32 i = 0; i < keyString.length; i++)
 			{
 				unsigned int index = (hashValue + i) % ARRAY_COUNT(G_UI_STATE->uiHashEntries);
 				UiHashEntry *uiHashEntry = &G_UI_STATE->uiHashEntries[index];
@@ -382,9 +380,7 @@ UiBox *GetUiBoxOfStringKeyLastFrame(String stringKey)
 	{
 		unsigned int hashvalue = Murmur3String(C_STRING_NULL_TERMINATED(stringKey), 0);
 
-		for (int i = 0;
-				i < stringKey.length;
-				i++)
+		for (u32 i = 0; i < stringKey.length; i++)
 		{
 			unsigned int index = (hashvalue + i) % ARRAY_COUNT(G_UI_STATE->uiHashEntries);
 			UiHashEntry *uiHashEntry = &G_UI_STATE->uiHashEntries[index];
@@ -418,9 +414,7 @@ UiBox *GetUiBoxLastFrameOfStringKey(String stringKey)
 	UiBox *result = {};
 
 	int uiBoxArrayIndex = GetFrameModIndexLastFrame();
-	for (int uiBoxIndex = 0;
-			uiBoxIndex < ARRAY_COUNT(G_UI_STATE->uiBoxes[uiBoxArrayIndex]);
-			uiBoxIndex++)
+	for (u32 uiBoxIndex = 0; uiBoxIndex < ARRAY_COUNT(G_UI_STATE->uiBoxes[uiBoxArrayIndex]); uiBoxIndex++)
 	{
 		UiBox *uiBox = &G_UI_STATE->uiBoxes[uiBoxArrayIndex][uiBoxIndex];
 		if (uiBoxIndex != uiBox->index)
@@ -471,7 +465,7 @@ void RenderUiEntries(UiBox *uiBox, v2 windowPixelDim, int uiDepth = 0)
 				pos.x += uiBox->rect.dim.x - uiBox->textDim.x;
 			}
 
-			DrawTextPro(uiBox->uiSettings.font, C_STRING_NULL_TERMINATED(uiBox->string), V2ToRayVector(pos), {}, 0, uiBox->uiSettings.font.baseSize, 1, uiBox->uiSettings.frontColor);
+			DrawTextPro(uiBox->uiSettings.font, C_STRING_NULL_TERMINATED(uiBox->string), V2ToRayVector(pos), {}, 0, (f32) uiBox->uiSettings.font.baseSize, 1, uiBox->uiSettings.frontColor);
 		}
 
 		if (IsFlag(uiBox, UI_FLAG_DRAW_TEXTURE))
@@ -485,7 +479,9 @@ void RenderUiEntries(UiBox *uiBox, v2 windowPixelDim, int uiDepth = 0)
 
 			if (IsFlag(uiBox, UI_FLAG_ALIGN_TEXTURE_CENTERED))
 			{
-				v2 dim = WidthHeightToV2(dest.width, dest.height);
+				v2 dim;
+				dim.x = dest.width;
+				dim.y = dest.height;
 				v2 relativePos = GetCeneteredPosInRectV2(uiBox->rect, dim);
 				dest.x += relativePos.x;
 				dest.y += relativePos.y;
@@ -497,7 +493,8 @@ void RenderUiEntries(UiBox *uiBox, v2 windowPixelDim, int uiDepth = 0)
 		if (IsFlag(uiBox, UI_FLAG_DRAW_BORDER))
 		{
 			RectV2 rect = uiBox->rect;
-			DrawRectangleLines(rect.pos.x, rect.pos.y, rect.dim.x, rect.dim.y, uiBox->uiSettings.borderColor);
+			//TODO: (Ahmayk) Bleh. Need to have concept in UI of pixel-perfect positioning vs not
+			DrawRectangleLines((u32)rect.pos.x, (u32)rect.pos.y, (u32)rect.dim.x, (u32)rect.dim.y, uiBox->uiSettings.borderColor);
 		}
 
 		RenderUiEntries(uiBox->firstChild, windowPixelDim, uiDepth + 2);
@@ -522,14 +519,12 @@ void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bo
 	CreateUiBox(flags, string);
 }
 
-Color AddConstantToColor(Color color, int constant)
+Color AddConstantToColor(Color color, i8 constant)
 {
 	Color result = color;
-
-	result.r = ClampI32(0, result.r + constant, 255);
-	result.g = ClampI32(0, result.g + constant, 255);
-	result.b = ClampI32(0, result.b + constant, 255);
-
+	result.r = (u8) ClampI32(0, result.r + constant, 255);
+	result.g = (u8) ClampI32(0, result.g + constant, 255);
+	result.b = (u8) ClampI32(0, result.b + constant, 255);
 	return result;
 }
 

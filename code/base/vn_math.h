@@ -210,7 +210,7 @@ u32 MinU32(u32 i, u32 j);
 f32 MinF32(f32 i, f32 j);
 u32 MaxU32(u32 i, u32 j);
 f32 MaxF32(f32 i, f32 j);
-f32 ClampI32(i32 min, i32 value, i32 max);
+i32 ClampI32(i32 min, i32 value, i32 max);
 f32 ClampF32(f32 min, f32 value, f32 max);
 f64 ClampF64(f64 min, f64 value, f64 max);
 f32 DistanceV2(v2 v1, v2 v2);

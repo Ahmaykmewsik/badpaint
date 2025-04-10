@@ -40,8 +40,14 @@ Rename this file to lodepng.cpp to use it for C++, or to lodepng.c to use it for
 #endif /* LODEPNG_COMPILE_ALLOCATORS */
 
 #if defined(_MSC_VER) && (_MSC_VER >= 1310) /*Visual Studio: A few warning types are not desired here.*/
+#pragma warning(push)
 #pragma warning( disable : 4244 ) /*implicit conversions: not warned by gcc -Wall -Wextra and requires too much casts*/
 #pragma warning( disable : 4996 ) /*VS does not like fopen, but fopen_s is not standard C so unusable here*/
+
+//NOTE: (Ahmayk) Adding these myself
+#pragma warning( disable : 4334 ) // bit shifting complaining
+#pragma warning( disable : 4267 ) // loss of data conversions
+
 #endif /*_MSC_VER */
 
 const char* LODEPNG_VERSION_STRING = "20230410";
@@ -6989,3 +6995,8 @@ unsigned encode(const std::string& filename,
 #endif /* LODEPNG_COMPILE_PNG */
 } /* namespace lodepng */
 #endif /*LODEPNG_COMPILE_CPP*/
+
+//NOTE: (Marc) Re-enable warnings
+#if defined(_MSC_VER) && (_MSC_VER >= 1310)
+#pragma warning(pop)
+#endif
