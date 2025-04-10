@@ -3,7 +3,7 @@
 
 void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned int threadCount)
 {
-	ImageRaw *rootImageRaw = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, ImageRaw);
+	ImageRawRGBA32 *rootImageRaw = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, ImageRawRGBA32);
 	Canvas *canvas = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, Canvas);
 
 	canvas->currentPNGFilterType = PNG_FILTER_TYPE_OPTIMAL;

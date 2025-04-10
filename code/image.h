@@ -16,8 +16,7 @@ enum PNG_FILTER_TYPE : i32
 
 static const char *G_PNG_FILTER_NAMES[] = {"None", "Sub", "Up", "Average", "Paeth", "Optimal"};
 
-// NOTE: (Ahmayk) RGBA32
-struct ImageRaw
+struct ImageRawRGBA32
 {
 	u8 *dataU8;
 	u32 dataSize;
@@ -58,7 +57,7 @@ struct Canvas
 
 	Texture textureVisualizedFilteredRootImage;
 
-	ImageRaw drawnImageData;
+	ImageRawRGBA32 drawnImageData;
 	iv2 drawingRectDim;
 	b32 *drawingRectDirtyList;
 	u32 drawingRectCount;
@@ -80,10 +79,10 @@ struct ProcessedImage
 {
 	bool active;
 	unsigned int index;
-	ImageRaw *rootImageRaw;
+	ImageRawRGBA32 *rootImageRaw;
 	Canvas *canvas;
 	ArenaPair arenaPair;
-	ImageRaw finalProcessedImageRaw;
+	ImageRawRGBA32 finalProcessedImageRaw;
 	unsigned int frameStarted;
 	unsigned int frameFinished;
 };

@@ -50,9 +50,9 @@ unsigned int GetSizeOfRawRGBA32(iv2 dim)
 	return result;
 }
 
-ImageRaw LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory)
+ImageRawRGBA32 LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory)
 {
-	ImageRaw result = {};
+	ImageRawRGBA32 result = {};
 
 	ArenaMarker loadMarker = ArenaPushMarker(&gameMemory->temporaryArena);
 	unsigned int fileSize = {};
@@ -164,7 +164,7 @@ ImageRaw LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory)
 	return result;
 }
 
-ImagePNGFiltered PiratedSTB_EncodePngFilters(ImageRaw *imageRaw, Arena *arena, PNG_FILTER_TYPE pngFilterType)
+ImagePNGFiltered PiratedSTB_EncodePngFilters(ImageRawRGBA32 *imageRaw, Arena *arena, PNG_FILTER_TYPE pngFilterType)
 {
 	ImagePNGFiltered result = {};
 
@@ -274,9 +274,9 @@ ImagePNGChecksumed PiratedSTB_EncodePngCRC(ImagePNGCompressed *imagePNGCompresse
 	return result;
 }
 
-ImageRaw DecodePng(ImagePNGChecksumed *imagePNGChecksumed, Arena *arena)
+ImageRawRGBA32 DecodePng(ImagePNGChecksumed *imagePNGChecksumed, Arena *arena)
 {
-	ImageRaw result = {};
+	ImageRawRGBA32 result = {};
 
 	LodePNGColorType colorType = LCT_RGBA;
 	unsigned int bitdepth = 8;
@@ -320,7 +320,7 @@ ImageRaw DecodePng(ImagePNGChecksumed *imagePNGChecksumed, Arena *arena)
 	return result;
 }
 
-void UploadAndReplaceTexture(ImageRaw *imageRaw, Texture *texture)
+void UploadAndReplaceTexture(ImageRawRGBA32 *imageRaw, Texture *texture)
 {
 	if (ASSERT(imageRaw->dataU8))
 	{
@@ -352,7 +352,7 @@ void UpdateRectInTexture(Texture *texture, void *data, RectIV2 rect)
 	}
 }
 
-void SetPNGFilterType(Canvas *canvas, ImageRaw *rootImageRaw, GameMemory *gameMemory)
+void SetPNGFilterType(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *gameMemory)
 {
 	LockOnBool(&canvas->filterLock);
 	ArenaReset(&canvas->arenaFilteredPNG);
@@ -368,7 +368,7 @@ void SetPNGFilterType(Canvas *canvas, ImageRaw *rootImageRaw, GameMemory *gameMe
 	u32 visualizedCanvasDataSize = canvasDim.x * canvasDim.y * sizeof(Color);
 
 	ArenaMarker marker = {};
-	ImageRaw visualizedFilteredRootImage = {};
+	ImageRawRGBA32 visualizedFilteredRootImage = {};
 	visualizedFilteredRootImage.dim = canvasDim;
 	visualizedFilteredRootImage.dataSize = visualizedCanvasDataSize;
 	visualizedFilteredRootImage.dataU8 = (u8*) ArenaPushSize(&gameMemory->temporaryArena, visualizedCanvasDataSize, &marker);
@@ -452,7 +452,7 @@ void CanvasSetDirtyRect(Canvas *canvas, RectIV2 updateArea)
 	}
 }
 
-void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, GameMemory *gameMemory)
+void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush, GameMemory *gameMemory)
 {
 	//NOTE: (Ahmayk) free and reallocate temporary arena to reduce memory size
 	//to uncommit the memory there, will reduce our memory footprint
@@ -517,7 +517,7 @@ void InitializeCanvas(Canvas *canvas, ImageRaw *rootImageRaw, Brush *brush, Game
 	canvas->initialized = true;
 }
 
-void InitializeNewImage(const char *fileName, GameMemory *gameMemory, ImageRaw *rootImageRaw, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush)
+void InitializeNewImage(const char *fileName, GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush)
 {
 	*rootImageRaw = LoadDataIntoRawImage(fileName, gameMemory);
 	if (rootImageRaw->dataU8)
