@@ -72,3 +72,13 @@ inline v2 GetTextureDim(Texture texture)
 	v2 result = WidthHeightToV2(texture.width, texture.height) ;
 	return result;
 }
+
+inline Color RandomColor()
+{
+	Color result;
+	result.r = (u8) RandomInRangeI32(0, 255);
+	result.g = (u8) RandomInRangeI32(0, 255);
+	result.b = (u8) RandomInRangeI32(0, 255);
+	result.a = 255; 
+	return result;
+}

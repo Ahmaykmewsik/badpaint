@@ -262,10 +262,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				}
 			}
 
-			f32 scale = MaxF32(1, canvas->drawnImageData.dim.x / canvasUiBox->rect.dim.x);
-			v2 startPos = (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos) * scale;
-			v2 endPos = (mousePixelPos - canvasUiBox->rect.pos) * scale;
-			f32 distance = MaxF32(1, DistanceV2(startPos, endPos));
 			Color colorToPaint = {};
 
 			if (currentBrush.brushEffect != BRUSH_EFFECT_ERASE_EFFECT)
@@ -280,24 +276,18 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				colorToPaint.a = (u8) processedImageIndex;
 			}
 
-			Image tempImage = {};
-			tempImage.data = canvas->drawnImageData.dataU8;
-			tempImage.width = canvas->drawnImageData.dim.x;
-			tempImage.height = canvas->drawnImageData.dim.y;
-			tempImage.mipmaps = 1;
-            tempImage.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
-            for (int i = 0; i < distance; i++)
-			{
-				v2 pos = LerpV2(startPos, i / distance, endPos);
-				ImageDrawCircle(&tempImage, (u32) RoundF32(pos.x), (u32) RoundF32(pos.y), currentBrush.size, colorToPaint);
+			f32 scale = MaxF32(1, canvas->drawnImageData.dim.x / canvasUiBox->rect.dim.x);
+			v2 startPos = (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos) * scale;
+			v2 endPos = (mousePixelPos - canvasUiBox->rect.pos) * scale;
 
-				RectIV2 updateArea;
-				updateArea.dim.x = currentBrush.size * 2;
-				updateArea.dim.y = currentBrush.size * 2;
-				updateArea.pos.x = (u32) FloorF32(pos.x) - currentBrush.size;
-				updateArea.pos.y = (u32) FloorF32(pos.y) - currentBrush.size;
-				CanvasSetDirtyRect(canvas, updateArea);
-			}
+			iv2 startPosIV2;
+			startPosIV2.x = (u32) RoundF32(startPos.x);
+			startPosIV2.y = (u32) RoundF32(startPos.y);
+			iv2 endPosIV2;
+			endPosIV2.x = (u32) RoundF32(endPos.x);
+			endPosIV2.y = (u32) RoundF32(endPos.y);
+
+			CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, currentBrush.size, colorToPaint);
 
 			ArenaPair arenaPair = {};
 			if (processedImage)

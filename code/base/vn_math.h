@@ -60,6 +60,8 @@ void operator+=(iv2 &a, iv2 b);
 void operator-=(iv2 &a, iv2 b);
 void operator*=(iv2 &a, iv2 b);
 void operator/=(iv2 &a, iv2 b);
+b32 operator==(iv2 a, iv2 b);
+b32 operator!=(iv2 a, iv2 b);
 
 v2 operator+(iv2 a, v2 b);
 v2 operator-(iv2 a, v2 b);
@@ -236,6 +238,8 @@ v2 MapV2(v2 value, v2 inputStart, v2 inputEnd, v2 outputStart, v2 outputEnd);
 v3 MapV3(v3 value, v3 inputStart, v3 inputEnd, v3 outputStart, v3 outputEnd);
 f32 MapNormalizeF32(f32 start, f32 value, f32 end);
 
+f32 SqrtF32(f32 f);
+f32 SqrtI32(i32 i);
 f32 LengthV2(v2 v);
 f32 LengthV3(v3 v);
 v2 PerpV2(v2 v);

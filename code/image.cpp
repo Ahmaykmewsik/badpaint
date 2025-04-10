@@ -452,6 +452,126 @@ void CanvasSetDirtyRect(Canvas *canvas, RectIV2 updateArea)
 	}
 }
 
+Image ImageRawToRayImage(ImageRawRGBA32 *imageRaw)
+{
+	Image result;
+	result.data = imageRaw->dataU8;
+	result.width = imageRaw->dim.x;
+	result.height = imageRaw->dim.y;
+	result.mipmaps = 1;
+	result.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+	return result;
+}
+
+void ProcessEdge(iv2 a, iv2 b, i32 y, i32 *xmin, i32 *xmax)
+{
+	if (a.y == b.y)
+	{
+		if (y == a.y)
+		{
+			i32 left = a.x < b.x ? a.x : b.x;
+			i32 right = a.x > b.x ? a.x : b.x;
+			if (left < *xmin) *xmin = left;
+			if (right > *xmax) *xmax = right;
+		}
+	}
+	else if ((a.y <= y && y <= b.y) || (b.y <= y && y <= a.y))
+	{
+		f32 t = (f32) (y - a.y) / (b.y - a.y);
+		i32 x = a.x + (i32)(t * (b.x - a.x));
+		if (x < *xmin) *xmin = x;
+		if (x > *xmax) *xmax = x;
+	}
+}
+
+void CanvasFillConvexQuad(Canvas *canvas, iv2 p0, iv2 p1, iv2 p2, iv2 p3, Color color)
+{
+	iv2 minIV2 = p0;
+	iv2 maxIV2 = p0;
+    iv2 points[] = {p0, p1, p2, p3};
+    for (u32 i = 1; i < 4; i++)
+	{
+        if (points[i].x < minIV2.x)
+		{
+			minIV2.x = points[i].x;
+		}
+        if (points[i].x > maxIV2.x)
+		{
+			maxIV2.x = points[i].x;
+		}
+        if (points[i].y < minIV2.y)
+		{
+			minIV2.y = points[i].y;
+		}
+        if (points[i].y > maxIV2.y)
+		{
+			maxIV2.y = points[i].y;
+		}
+    }
+
+	Image tempImage = ImageRawToRayImage(&canvas->drawnImageData);
+    for (i32 y = minIV2.y; y <= maxIV2.y; y++)
+	{
+        i32 xmin = INT_MAX;
+        i32 xmax = INT_MIN;
+        ProcessEdge(p0, p1, y, &xmin, &xmax);
+        ProcessEdge(p1, p2, y, &xmin, &xmax);
+        ProcessEdge(p2, p3, y, &xmin, &xmax);
+        ProcessEdge(p3, p0, y, &xmin, &xmax);
+        if (xmin <= xmax)
+		{
+            for (i32 x = xmin; x <= xmax; x++)
+			{
+				ImageDrawPixel(&tempImage, x, y, color);
+            }
+        }
+    }
+
+	RectIV2 updateArea;
+	updateArea.pos = minIV2;
+	updateArea.dim = maxIV2 - minIV2 + 1;
+	CanvasSetDirtyRect(canvas, updateArea);
+}
+
+void CanvasDrawCircle(Canvas *canvas, iv2 pos, u32 radius, Color color)
+{
+	Image tempImage = ImageRawToRayImage(&canvas->drawnImageData);
+	ImageDrawCircle(&tempImage, pos.x, pos.y, radius, color);
+	RectIV2 updateArea;
+	updateArea.dim.x = radius * 2;
+	updateArea.dim.y = radius * 2;
+	updateArea.pos.x = pos.x - radius;
+	updateArea.pos.y = pos.y - radius;
+	CanvasSetDirtyRect(canvas, updateArea);
+}
+
+void CanvasDrawCircleStroke(Canvas *canvas, iv2 startPos, iv2 endPos, u32 radius, Color color)
+{
+	CanvasDrawCircle(canvas, startPos, radius, color);
+
+	if (startPos != endPos)
+	{
+		CanvasDrawCircle(canvas, endPos, radius, color);
+
+		i32 dx = endPos.x - startPos.x;
+		i32 dy = endPos.y - startPos.y;
+		f32 length = SqrtI32(dx*dx + dy*dy);
+		if (length > 0)
+		{
+			f32 px = (-dy * (i32) radius) / length;
+			f32 py = (dx * (i32) radius) / length;
+			iv2 points[4] =
+			{
+				{ (i32)RoundF32(startPos.x + px), (i32)RoundF32(startPos.y + py) },
+				{ (i32)RoundF32(startPos.x - px), (i32)RoundF32(startPos.y - py) },
+				{ (i32)RoundF32(endPos.x   - px), (i32)RoundF32(endPos.y   - py) },
+				{ (i32)RoundF32(endPos.x   + px), (i32)RoundF32(endPos.y   + py) }
+			};
+			CanvasFillConvexQuad(canvas, points[0], points[1], points[2], points[3], color);
+		}
+	}
+}
+
 void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush, GameMemory *gameMemory)
 {
 	//NOTE: (Ahmayk) free and reallocate temporary arena to reduce memory size
@@ -509,7 +629,7 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 	canvas->rollbackIndexNext = 0;
 	canvas->brush = brush;
 
-	canvas->drawingRectDim = iv2{64, 64};
+	canvas->drawingRectDim = iv2{16, 16};
 	u32 drawingRectCount = GetDrawingRectCount(canvas);
 	canvas->drawingRectDirtyList = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, drawingRectCount, b32);
 	memset(canvas->drawingRectDirtyList, 0, drawingRectCount * sizeof(b32));

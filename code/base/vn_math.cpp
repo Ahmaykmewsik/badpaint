@@ -763,6 +763,14 @@ f32 SqrtF32(f32 f)
 	return result;
 }
 
+f32 SqrtI32(i32 i)
+{
+    __m128 In = _mm_cvtsi32_ss(_mm_setzero_ps(), i);
+    __m128 Out = _mm_sqrt_ss(In);
+    f32 result = _mm_cvtss_f32(Out);
+    return result;
+}
+
 f32 InvSqrtF32(f32 f)
 {
 	f32 result = 1.0f / SqrtF32(f);
