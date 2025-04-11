@@ -419,9 +419,8 @@ void CanvasSetDirtyRect(Canvas *canvas, RectIV2 updateArea)
 {
 	u32 numX = (u32) CeilF32(canvas->drawnImageData.dim.x / (f32) canvas->drawingRectDim.x);
 	u32 numY = (u32) CeilF32(canvas->drawnImageData.dim.y / (f32) canvas->drawingRectDim.y);
-	u32 drawingRectCount = numX * numY;
-	u32 indexX = updateArea.pos.x / canvas->drawingRectDim.x;
-	u32 indexY = updateArea.pos.y / canvas->drawingRectDim.y;
+	u32 indexX = MaxI32(0, updateArea.pos.x) / canvas->drawingRectDim.x;
+	u32 indexY = MaxI32(0, updateArea.pos.y) / canvas->drawingRectDim.y;
 
 	RectIV2 drawRect;
 	drawRect.dim = canvas->drawingRectDim;
@@ -440,7 +439,7 @@ void CanvasSetDirtyRect(Canvas *canvas, RectIV2 updateArea)
 			u32 dirtyIndexX = drawRect.pos.x / canvas->drawingRectDim.x;
 			u32 dirtyIndexY = drawRect.pos.y / canvas->drawingRectDim.y;
 			u32 index = dirtyIndexX + (dirtyIndexY * numX);
-			if (ASSERT(index < drawingRectCount))
+			if (ASSERT(index < canvas->drawingRectCount))
 			{
 				canvas->drawingRectDirtyList[index] = true;
 				canvas->drawingRectDirtyListProcess[index] = true;
@@ -479,7 +478,8 @@ void ProcessEdge(iv2 a, iv2 b, i32 y, i32 *xmin, i32 *xmax)
 	else if ((a.y <= y && y <= b.y) || (b.y <= y && y <= a.y))
 	{
 		f32 t = (f32) (y - a.y) / (b.y - a.y);
-		i32 x = a.x + (i32)(t * (b.x - a.x));
+		//TODO: (Ahmayk) Worth it?
+		i32 x = a.x + (i32) RoundF32((t * (b.x - a.x)));
 		if (x < *xmin) *xmin = x;
 		if (x > *xmax) *xmax = x;
 	}
@@ -526,9 +526,7 @@ b32 CanvasFillConvexQuad(Canvas *canvas, iv2 p0, iv2 p1, iv2 p2, iv2 p3, Color c
 		}
     }
 
-	minIV2.x = ClampI32(0, minIV2.x, canvas->drawnImageData.dim.x - 1);
 	minIV2.y = ClampI32(0, minIV2.y, canvas->drawnImageData.dim.y - 1);
-	maxIV2.x = ClampI32(0, maxIV2.x, canvas->drawnImageData.dim.x - 1);
 	maxIV2.y = ClampI32(0, maxIV2.y, canvas->drawnImageData.dim.y - 1);
 
 	Image tempImage = ImageRawToRayImage(&canvas->drawnImageData);
@@ -540,6 +538,9 @@ b32 CanvasFillConvexQuad(Canvas *canvas, iv2 p0, iv2 p1, iv2 p2, iv2 p3, Color c
         ProcessEdge(p1, p2, y, &xmin, &xmax);
         ProcessEdge(p2, p3, y, &xmin, &xmax);
         ProcessEdge(p3, p0, y, &xmin, &xmax);
+		xmin = ClampI32(0, xmin, canvas->drawnImageData.dim.x - 1);
+		xmax = ClampI32(0, xmax, canvas->drawnImageData.dim.x - 1);
+
         if (xmin <= xmax)
 		{
             for (i32 x = xmin; x <= xmax; x++)
@@ -559,34 +560,29 @@ b32 CanvasFillConvexQuad(Canvas *canvas, iv2 p0, iv2 p1, iv2 p2, iv2 p3, Color c
 	return result;
 }
 
-b32 CanvasImageDrawRectangleRec(Image *dst, Rectangle rec, Color color)
+b32 CanvasImageDrawRectangle(Image *dst, int posX, int posY, int width, int height, Color color)
 {
 	b32 result = false;
-
-    // Security check to avoid program crash
-    if ((dst->data == NULL) || (dst->width == 0) || (dst->height == 0)) return result;
-
     // Security check to avoid drawing out of bounds in case of bad user data
-    if (rec.x < 0) { rec.width -= rec.x; rec.x = 0; }
-    if (rec.y < 0) { rec.height -= rec.y; rec.y = 0; }
-    if (rec.width < 0) rec.width = 0;
-    if (rec.height < 0) rec.height = 0;
+    if (posX < 0) { width += posX; posX = 0; }
+    if (posY < 0) { height += posY; posY = 0; }
+    if (width < 0) width = 0;
+    if (height < 0) height = 0;
 
     // Clamp the size the the image bounds
-    if ((rec.x + rec.width) >= dst->width) rec.width = dst->width - rec.x;
-    if ((rec.y + rec.height) >= dst->height) rec.height = dst->height - rec.y;
+    if ((posX + width) >= dst->width) width = dst->width - posX;
+    if ((posY + height) >= dst->height) height = dst->height - posY;
 
-    // Check if the rect is even inside the image
-    if ((rec.x > dst->width) || (rec.y > dst->height)) return result;
-    if (((rec.x + rec.width) < 0) || (rec.y + rec.height < 0)) return result;
-    if (!rec.width || !rec.height) return result;
+    // Check if the  is even inside the image
+    if ((posX >= dst->width) || (posY >= dst->height)) return result;
+    if (((posX + width) <= 0) || (posY + height <= 0)) return result;
 
-	u32 startY = (u32) rec.y;
-	u32 endY = (u32) startY + (u32) rec.height;
+	u32 startY = posY;
+	u32 endY = startY + height;
 	for (u32 y = startY; y < endY; y++)
 	{
-		u32 startIndex = (u32) (dst->width * y) + (u32) rec.x;
-		u32 endIndex = (u32) startIndex + (u32) rec.width;
+		u32 startIndex = (dst->width * y) + posX;
+		u32 endIndex = startIndex + width;
 		for (u32 i = startIndex; i < endIndex; i++)
 		{
 			Color *pixelDest = &((Color*)dst->data)[i];
@@ -596,14 +592,8 @@ b32 CanvasImageDrawRectangleRec(Image *dst, Rectangle rec, Color color)
 				result |= true;
 			}
 		}
-    }
+	}
 
-	return result;
-}
-
-b32 CanvasImageDrawRectangle(Image *dst, int posX, int posY, int width, int height, Color color)
-{
-   b32 result = CanvasImageDrawRectangleRec(dst, Rectangle{ (float)posX, (float)posY, (float)width, (float)height }, color);
    return result;
 }
 
@@ -637,8 +627,8 @@ b32 CanvasDrawCircle(Canvas *canvas, iv2 pos, u32 radius, Color color)
 	if (result)
 	{
 		RectIV2 updateArea;
-		updateArea.dim.x = radius * 2;
-		updateArea.dim.y = radius * 2;
+		updateArea.dim.x = radius * 2 + 1;
+		updateArea.dim.y = radius * 2 + 1;
 		updateArea.pos.x = pos.x - radius;
 		updateArea.pos.y = pos.y - radius;
 		CanvasSetDirtyRect(canvas, updateArea);
@@ -659,7 +649,7 @@ b32 CanvasDrawCircleStroke(Canvas *canvas, iv2 startPos, iv2 endPos, u32 radius,
 		i32 dx = endPos.x - startPos.x;
 		i32 dy = endPos.y - startPos.y;
 		f32 length = SqrtI32(dx*dx + dy*dy);
-		if (length > 0)
+		if (length > 2)
 		{
 			f32 px = (-dy * (i32) radius) / length;
 			f32 py = (dx * (i32) radius) / length;
@@ -733,7 +723,7 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 	canvas->rollbackIndexNext = 0;
 	canvas->brush = brush;
 
-	canvas->drawingRectDim = iv2{16, 16};
+	canvas->drawingRectDim = iv2{32, 32};
 	canvas->drawingRectCount = GetDrawingRectCount(canvas);
 	canvas->drawingRectDirtyList = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
 	canvas->drawingRectDirtyListProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);

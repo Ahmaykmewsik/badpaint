@@ -52,7 +52,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 	Brush currentBrush = {};
 	currentBrush.brushEffect = BRUSH_EFFECT_REMOVE;
-	currentBrush.size = 3;
+	currentBrush.size = 50;
 
 	Texture loadedTexture = {};
 
