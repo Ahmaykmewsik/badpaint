@@ -485,8 +485,24 @@ void ProcessEdge(iv2 a, iv2 b, i32 y, i32 *xmin, i32 *xmax)
 	}
 }
 
-void CanvasFillConvexQuad(Canvas *canvas, iv2 p0, iv2 p1, iv2 p2, iv2 p3, Color color)
+b32 CanvasImageDrawPixel(Image *dst, int x, int y, Color color)
 {
+	b32 result = false;
+	u8 r = ((unsigned char *)dst->data)[(y*dst->width + x)*4];
+	if (r != color.r) 
+	{
+		((unsigned char *)dst->data)[(y*dst->width + x)*4] = color.r;
+		((unsigned char *)dst->data)[(y*dst->width + x)*4 + 1] = color.g;
+		((unsigned char *)dst->data)[(y*dst->width + x)*4 + 2] = color.b;
+		((unsigned char *)dst->data)[(y*dst->width + x)*4 + 3] = color.a;
+		result = true;
+	}
+	return result;
+}
+
+b32 CanvasFillConvexQuad(Canvas *canvas, iv2 p0, iv2 p1, iv2 p2, iv2 p3, Color color)
+{
+	b32 result = false;
 	iv2 minIV2 = p0;
 	iv2 maxIV2 = p0;
     iv2 points[] = {p0, p1, p2, p3};
@@ -510,6 +526,11 @@ void CanvasFillConvexQuad(Canvas *canvas, iv2 p0, iv2 p1, iv2 p2, iv2 p3, Color 
 		}
     }
 
+	minIV2.x = ClampI32(0, minIV2.x, canvas->drawnImageData.dim.x - 1);
+	minIV2.y = ClampI32(0, minIV2.y, canvas->drawnImageData.dim.y - 1);
+	maxIV2.x = ClampI32(0, maxIV2.x, canvas->drawnImageData.dim.x - 1);
+	maxIV2.y = ClampI32(0, maxIV2.y, canvas->drawnImageData.dim.y - 1);
+
 	Image tempImage = ImageRawToRayImage(&canvas->drawnImageData);
     for (i32 y = minIV2.y; y <= maxIV2.y; y++)
 	{
@@ -523,36 +544,117 @@ void CanvasFillConvexQuad(Canvas *canvas, iv2 p0, iv2 p1, iv2 p2, iv2 p3, Color 
 		{
             for (i32 x = xmin; x <= xmax; x++)
 			{
-				ImageDrawPixel(&tempImage, x, y, color);
+				result |= CanvasImageDrawPixel(&tempImage, x, y, color);
             }
         }
     }
 
-	RectIV2 updateArea;
-	updateArea.pos = minIV2;
-	updateArea.dim = maxIV2 - minIV2 + 1;
-	CanvasSetDirtyRect(canvas, updateArea);
+	if (result)
+	{
+		RectIV2 updateArea;
+		updateArea.pos = minIV2;
+		updateArea.dim = maxIV2 - minIV2 + 1;
+		CanvasSetDirtyRect(canvas, updateArea);
+	}
+	return result;
 }
 
-void CanvasDrawCircle(Canvas *canvas, iv2 pos, u32 radius, Color color)
+b32 CanvasImageDrawRectangleRec(Image *dst, Rectangle rec, Color color)
 {
-	Image tempImage = ImageRawToRayImage(&canvas->drawnImageData);
-	ImageDrawCircle(&tempImage, pos.x, pos.y, radius, color);
-	RectIV2 updateArea;
-	updateArea.dim.x = radius * 2;
-	updateArea.dim.y = radius * 2;
-	updateArea.pos.x = pos.x - radius;
-	updateArea.pos.y = pos.y - radius;
-	CanvasSetDirtyRect(canvas, updateArea);
+	b32 result = false;
+
+    // Security check to avoid program crash
+    if ((dst->data == NULL) || (dst->width == 0) || (dst->height == 0)) return result;
+
+    // Security check to avoid drawing out of bounds in case of bad user data
+    if (rec.x < 0) { rec.width -= rec.x; rec.x = 0; }
+    if (rec.y < 0) { rec.height -= rec.y; rec.y = 0; }
+    if (rec.width < 0) rec.width = 0;
+    if (rec.height < 0) rec.height = 0;
+
+    // Clamp the size the the image bounds
+    if ((rec.x + rec.width) >= dst->width) rec.width = dst->width - rec.x;
+    if ((rec.y + rec.height) >= dst->height) rec.height = dst->height - rec.y;
+
+    // Check if the rect is even inside the image
+    if ((rec.x > dst->width) || (rec.y > dst->height)) return result;
+    if (((rec.x + rec.width) < 0) || (rec.y + rec.height < 0)) return result;
+    if (!rec.width || !rec.height) return result;
+
+	u32 startY = (u32) rec.y;
+	u32 endY = (u32) startY + (u32) rec.height;
+	for (u32 y = startY; y < endY; y++)
+	{
+		u32 startIndex = (u32) (dst->width * y) + (u32) rec.x;
+		u32 endIndex = (u32) startIndex + (u32) rec.width;
+		for (u32 i = startIndex; i < endIndex; i++)
+		{
+			Color *pixelDest = &((Color*)dst->data)[i];
+			if (pixelDest->r != color.r)
+			{
+				*pixelDest = color;
+				result |= true;
+			}
+		}
+    }
+
+	return result;
 }
 
-void CanvasDrawCircleStroke(Canvas *canvas, iv2 startPos, iv2 endPos, u32 radius, Color color)
+b32 CanvasImageDrawRectangle(Image *dst, int posX, int posY, int width, int height, Color color)
 {
-	CanvasDrawCircle(canvas, startPos, radius, color);
+   b32 result = CanvasImageDrawRectangleRec(dst, Rectangle{ (float)posX, (float)posY, (float)width, (float)height }, color);
+   return result;
+}
+
+b32 CanvasDrawCircle(Canvas *canvas, iv2 pos, u32 radius, Color color)
+{
+	b32 result = false;
+
+	Image dst = ImageRawToRayImage(&canvas->drawnImageData);
+	u32 centerX = pos.x;
+	u32 centerY = pos.y;
+    int x = 0;
+    int y = radius;
+    int decesionParameter = 3 - 2*radius;
+
+    while (y >= x)
+    {
+        result |= CanvasImageDrawRectangle(&dst, centerX - x, centerY + y, x*2, 1, color);
+        result |= CanvasImageDrawRectangle(&dst, centerX - x, centerY - y, x*2, 1, color);
+        result |= CanvasImageDrawRectangle(&dst, centerX - y, centerY + x, y*2, 1, color);
+        result |= CanvasImageDrawRectangle(&dst, centerX - y, centerY - x, y*2, 1, color);
+        x++;
+
+        if (decesionParameter > 0)
+        {
+            y--;
+            decesionParameter = decesionParameter + 4*(x - y) + 10;
+        } 
+        else decesionParameter = decesionParameter + 4*x + 6;
+    }
+
+	if (result)
+	{
+		RectIV2 updateArea;
+		updateArea.dim.x = radius * 2;
+		updateArea.dim.y = radius * 2;
+		updateArea.pos.x = pos.x - radius;
+		updateArea.pos.y = pos.y - radius;
+		CanvasSetDirtyRect(canvas, updateArea);
+	}
+	return result;
+}
+
+b32 CanvasDrawCircleStroke(Canvas *canvas, iv2 startPos, iv2 endPos, u32 radius, Color color)
+{
+	b32 result = false;
+
+	result |= CanvasDrawCircle(canvas, startPos, radius, color);
 
 	if (startPos != endPos)
 	{
-		CanvasDrawCircle(canvas, endPos, radius, color);
+		result |= CanvasDrawCircle(canvas, endPos, radius, color);
 
 		i32 dx = endPos.x - startPos.x;
 		i32 dy = endPos.y - startPos.y;
@@ -568,9 +670,10 @@ void CanvasDrawCircleStroke(Canvas *canvas, iv2 startPos, iv2 endPos, u32 radius
 				{ (i32)RoundF32(endPos.x   - px), (i32)RoundF32(endPos.y   - py) },
 				{ (i32)RoundF32(endPos.x   + px), (i32)RoundF32(endPos.y   + py) }
 			};
-			CanvasFillConvexQuad(canvas, points[0], points[1], points[2], points[3], color);
+			result |= CanvasFillConvexQuad(canvas, points[0], points[1], points[2], points[3], color);
 		}
 	}
+	return result;
 }
 
 void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush, GameMemory *gameMemory)

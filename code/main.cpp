@@ -268,10 +268,12 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			endPosIV2.x = (u32) RoundF32(endPos.x);
 			endPosIV2.y = (u32) RoundF32(endPos.y);
 
-			CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, currentBrush.size, colorToPaint);
-
-			canvas->proccessAsap = true;
-			canvas->needsTextureUpload = true;
+			b32 drewSomething = CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, currentBrush.size, colorToPaint);
+			if (drewSomething)
+			{
+				canvas->proccessAsap = true;
+				canvas->needsTextureUpload = true;
+			}
 		}
 
 		if ((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown((KEY_RIGHT_CONTROL))) && IsKeyPressed(KEY_Z))

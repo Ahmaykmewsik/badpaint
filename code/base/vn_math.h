@@ -211,6 +211,7 @@ v3 AbsV3(v3 v);
 u32 MinU32(u32 i, u32 j);
 f32 MinF32(f32 i, f32 j);
 u32 MaxU32(u32 i, u32 j);
+i32 MaxI32(i32 i, i32 j);
 f32 MaxF32(f32 i, f32 j);
 i32 ClampI32(i32 min, i32 value, i32 max);
 f32 ClampF32(f32 min, f32 value, f32 max);

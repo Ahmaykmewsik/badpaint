@@ -943,6 +943,19 @@ u32 MaxU32(u32 i, u32 j)
 	return result;
 }
 
+i32 MaxI32(i32 i, i32 j)
+{
+	i32 result = i;
+
+	if (i < j)
+	{
+		result = j;
+	}
+
+	return result;
+}
+
+
 f32 MaxF32(f32 i, f32 j)
 {
 	f32 result = i;
