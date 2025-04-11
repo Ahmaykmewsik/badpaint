@@ -983,6 +983,15 @@ int CALLBACK WinMain(HINSTANCE instance,
 		LPSTR commandLine,
 		int showCode)
 {
+
+#if DEBUG_MODE
+    AllocConsole();
+    freopen("CONOUT$", "w", stdout);
+    freopen("CONOUT$", "w", stderr);
+    freopen("CONIN$", "r", stdin);
+    setvbuf(stdout, NULL, _IONBF, 0);
+#endif
+
 	// int main()
 	// {
 	GameMemory gameMemory = {};
