@@ -253,12 +253,9 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 			Color colorToPaint = {};
 
-			if (currentBrush.brushEffect != BRUSH_EFFECT_ERASE_EFFECT)
-			{
-				colorToPaint.r = (u8) currentBrush.brushEffect;
-				colorToPaint.g = (u8) RandomInRangeI32(0, 255);
-				colorToPaint.a = (u8) canvas->processBatchIndex;
-			}
+			colorToPaint.r = (u8) currentBrush.brushEffect;
+			colorToPaint.g = (u8) RandomInRangeI32(0, 255);
+			colorToPaint.a = (u8) canvas->processBatchIndex;
 
 			f32 scale = MaxF32(1, canvas->drawnImageData.dim.x / canvasUiBox->rect.dim.x);
 			v2 startPos = (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos) * scale;
@@ -429,15 +426,17 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 							Color canvasPixel = ((Color *)canvas->drawnImageData.dataU8)[i];
 							if (canvasPixel.r)
 							{
-								Color drawnPixel = G_BRUSH_EFFECT_COLORS[canvasPixel.r];
+								Color *outPixel = (pixels + pixelIndex);
 								//NOTE: (Ahmayk) alpha = 0 -> no processing
 								//alpha != 0 -> is being processed currently
 								if (canvasPixel.a != 0)
 								{
-									drawnPixel.a = 127;
+									*outPixel = G_BRUSH_EFFECT_COLORS_PROCESSING[canvasPixel.r];
 								}
-								Color *outPixel = (pixels + pixelIndex);
-								*outPixel = drawnPixel;
+								else
+								{
+									*outPixel = G_BRUSH_EFFECT_COLORS_PRIMARY[canvasPixel.r];
+								}
 							}
 #if 0
 							else
@@ -605,20 +604,20 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			UiParent()
 			{
 				CreateBrushEffectButton(BRUSH_EFFECT_ERASE_EFFECT, STRING("Ers"), Color{245, 245, 245, 255}, COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE, &currentBrush);
-				CreateBrushEffectButton(BRUSH_EFFECT_REMOVE, STRING("Rmv"), G_BRUSH_EFFECT_COLORS[BRUSH_EFFECT_REMOVE], COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE, &currentBrush);
+				CreateBrushEffectButton(BRUSH_EFFECT_REMOVE, STRING("Rmv"), G_BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_REMOVE], COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE, &currentBrush);
 			}
 			SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
 			CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
 			UiParent()
 			{
-				CreateBrushEffectButton(BRUSH_EFFECT_MAX, STRING("Max"), G_BRUSH_EFFECT_COLORS[BRUSH_EFFECT_MAX], COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX, &currentBrush);
-				CreateBrushEffectButton(BRUSH_EFFECT_SHIFT, STRING("Sft"), G_BRUSH_EFFECT_COLORS[BRUSH_EFFECT_SHIFT], COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT, &currentBrush);
+				CreateBrushEffectButton(BRUSH_EFFECT_MAX, STRING("Max"), G_BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_MAX], COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX, &currentBrush);
+				CreateBrushEffectButton(BRUSH_EFFECT_SHIFT, STRING("Sft"), G_BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_SHIFT], COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT, &currentBrush);
 			}
 			SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
 			CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
 			UiParent()
 			{
-				CreateBrushEffectButton(BRUSH_EFFECT_RANDOM, STRING("Rnd"), G_BRUSH_EFFECT_COLORS[BRUSH_EFFECT_RANDOM], COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM, &currentBrush);
+				CreateBrushEffectButton(BRUSH_EFFECT_RANDOM, STRING("Rnd"), G_BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_RANDOM], COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM, &currentBrush);
 			}
 
 			// SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
@@ -662,7 +661,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 			SetUiAxis({UI_SIZE_KIND_PIXELS, toolbarWidth}, {UI_SIZE_KIND_PIXELS, toolbarWidth});
 
-			uiSettings->backColor = G_BRUSH_EFFECT_COLORS[currentBrush.brushEffect];
+			uiSettings->backColor = G_BRUSH_EFFECT_COLORS_PRIMARY[currentBrush.brushEffect];
 			if (currentBrush.brushEffect == BRUSH_EFFECT_ERASE_EFFECT)
 				uiSettings->backColor = Color{245, 245, 245, 255};
 			uiSettings->borderColor = BLACK;

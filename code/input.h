@@ -37,7 +37,24 @@ enum BRUSH_EFFECT
     BRUSH_EFFECT_RANDOM,
 };
 
-static Color G_BRUSH_EFFECT_COLORS[] = {BLANK, BLANK, RED, YELLOW, BLUE, PURPLE};
+static Color G_BRUSH_EFFECT_COLORS_PRIMARY[] =
+{
+	{},
+	{ 0, 0, 0, 0},
+	{ 230, 41, 55, 187 }, // RED
+	{ 253, 249, 0, 187 }, // YELLOW
+	{ 0, 121, 241, 187 }, //BLUE
+	{ 200, 122, 255, 187 }, //PURPLE
+};
+static Color G_BRUSH_EFFECT_COLORS_PROCESSING[] =
+{
+	{},
+	{ 255, 255, 255, 127},
+	{ 230, 41, 55, 127 }, // RED
+	{ 253, 249, 0, 127 }, // YELLOW
+	{ 0, 121, 241, 127 }, //BLUE
+	{ 200, 122, 255, 127 }, //PURPLE
+};
 
 struct Brush
 {
