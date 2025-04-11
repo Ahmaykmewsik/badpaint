@@ -443,6 +443,7 @@ void CanvasSetDirtyRect(Canvas *canvas, RectIV2 updateArea)
 			if (ASSERT(index < drawingRectCount))
 			{
 				canvas->drawingRectDirtyList[index] = true;
+				canvas->drawingRectDirtyListProcess[index] = true;
 			}
 		}
 		if (!interceptsThisRow)
@@ -588,7 +589,7 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 	iv2 canvasDim = iv2{(rootImageRaw->dim.x * 4) + 1, rootImageRaw->dim.y};
 	u32 visualizedCanvasDataSize = canvasDim.x * canvasDim.y * sizeof(Color);
 
-	//NOTE: (Ahmayk) drawn image, visualized image, drawingRects
+	//NOTE: (Ahmayk) drawn image, visualized image, drawingRects, dirtyRectsForEachProcesssImage
 	u32 canvasArneaSize = (u32) MaxU32(MegaByte * 1, (u32) (visualizedCanvasDataSize * 2.1f));
 	gameMemory->canvasArena = ArenaInit(canvasArneaSize);
 
@@ -630,21 +631,27 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 	canvas->brush = brush;
 
 	canvas->drawingRectDim = iv2{16, 16};
-	u32 drawingRectCount = GetDrawingRectCount(canvas);
-	canvas->drawingRectDirtyList = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, drawingRectCount, b32);
-	memset(canvas->drawingRectDirtyList, 0, drawingRectCount * sizeof(b32));
+	canvas->drawingRectCount = GetDrawingRectCount(canvas);
+	canvas->drawingRectDirtyList = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
+	canvas->drawingRectDirtyListProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
+	memset(canvas->drawingRectDirtyList, 0, canvas->drawingRectCount * sizeof(b32));
+	memset(canvas->drawingRectDirtyListProcess, 0, canvas->drawingRectCount * sizeof(b32));
 
 	canvas->initialized = true;
 }
 
-void InitializeNewImage(const char *fileName, GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush)
+void InitializeNewImage(const char *fileName, GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush, ProcessedImage *processedImages, u32 threadCount)
 {
 	*rootImageRaw = LoadDataIntoRawImage(fileName, gameMemory);
 	if (rootImageRaw->dataU8)
 	{
 		UploadAndReplaceTexture(rootImageRaw, loadedTexture);
 		InitializeCanvas(canvas, rootImageRaw, currentBrush, gameMemory);
-		// *latestCompletedBpImage = CreateDataImage(rootImageRaw, {}, gameMemory);
+		for (u32 i = 0; i < threadCount; i++)
+		{
+			ProcessedImage *processedImage = processedImages + i;
+			processedImage->dirtyRectsInProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
+		}
 	}
 }
 
@@ -729,20 +736,6 @@ void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas)
 	processedImage->frameFinished = 0;
 	processedImage->finalProcessedImageRaw = {};
 	ArenaPairFreeAll(&processedImage->arenaPair);
-
-#if 0
-	u32 pixelCount = canvas->drawnImageData.dim.x * canvas->drawnImageData.dim.y;
-	for (int i = 0;
-			i < pixelCount;
-			i++)
-	{
-		Color *drawnPixel = &((Color *)canvas->drawnImageData.data)[i];
-		if ((drawnPixel->r || drawnPixel->g || drawnPixel->b) && drawnPixel->a == processedImage->index)
-			drawnPixel->a = 255;
-	}
-#endif
-
-	canvas->needsTextureUpload = true;
 }
 
 ProcessedImage *GetFreeProcessedImage(ProcessedImage *processedImages, unsigned int threadCount)
@@ -769,29 +762,6 @@ PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread)
 	UpdateBpImageOnThread(processedImage);
 	processedImage->frameFinished = G_CURRENT_FRAME;
 	// Print("Finished on thread " + IntToString(processedImage->index));
-}
-
-void StartProcessedImageWork(Canvas *canvas, unsigned int threadCount, ProcessedImage *processedImage, PlatformWorkQueue *threadWorkQueue)
-{
-#if 0
-	u32 pixelCount = canvas->drawnImageData.dim.x * canvas->drawnImageData.dim.y;
-	for (int i = 0;
-			i < pixelCount;
-			i++)
-	{
-		Color *drawnPixel = &((Color *)canvas->drawnImageData.data)[i];
-		if (drawnPixel->a == threadCount + 1 || (canvas->oldDataPresent && (drawnPixel->r || drawnPixel->g || drawnPixel->b) && drawnPixel->a != 255))
-			drawnPixel->a = processedImage->index;
-	}
-#endif
-
-	canvas->proccessAsap = false;
-	canvas->oldDataPresent = false;
-
-	// Print("Queueing Work on thread " + IntToString(processedImage->index));
-	processedImage->frameStarted = G_CURRENT_FRAME;
-	processedImage->active = true;
-	PlatformAddThreadWorkEntry(threadWorkQueue, ProcessImageOnThread, (void *)processedImage);
 }
 
 bool ExportImage(Image image, String filepath)

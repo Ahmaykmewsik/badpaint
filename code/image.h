@@ -56,16 +56,21 @@ struct Canvas
 
 	Texture textureVisualizedFilteredRootImage;
 
+	//Data in drawnImageData:
+	//R - brush type
+	//G - random value
+	//A - processBatchIndex if processing, otherwise 0 (for displaying processes state per pixel)
 	ImageRawRGBA32 drawnImageData;
 	iv2 drawingRectDim;
 	b32 *drawingRectDirtyList;
+	b32 *drawingRectDirtyListProcess;
 	u32 drawingRectCount;
 	Texture textureDrawing;
+	u8 processBatchIndex;
 
 	Brush *brush;
 	bool proccessAsap;
 	bool needsTextureUpload;
-	bool oldDataPresent;
 	PNG_FILTER_TYPE currentPNGFilterType;
 
 	unsigned char *rollbackImageData;
@@ -78,10 +83,12 @@ struct ProcessedImage
 {
 	bool active;
 	unsigned int index;
+	u8 processBatchIndex;
 	ImageRawRGBA32 *rootImageRaw;
 	Canvas *canvas;
 	ArenaPair arenaPair;
 	ImageRawRGBA32 finalProcessedImageRaw;
 	unsigned int frameStarted;
 	unsigned int frameFinished;
+	b32 *dirtyRectsInProcess;
 };

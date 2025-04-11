@@ -76,7 +76,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 	//NOTE: DEVELOPER HACK
 	{
-		InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootImageRaw, canvas, &loadedTexture, &currentBrush);
+		InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootImageRaw, canvas, &loadedTexture, &currentBrush, processedImages, threadCount);
 	}
 
 	while (!WindowShouldClose())
@@ -112,7 +112,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		{
 			FilePathList droppedFiles = LoadDroppedFiles();
 			char *fileName = droppedFiles.paths[0];
-			InitializeNewImage(fileName, &gameMemory, rootImageRaw, canvas, &loadedTexture, &currentBrush);
+			InitializeNewImage(fileName, &gameMemory, rootImageRaw, canvas, &loadedTexture, &currentBrush, processedImages, threadCount);
 
 			if (rootImageRaw->dataSize > 15000000)
 			{
@@ -251,29 +251,13 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				}
 			}
 
-			ProcessedImage *processedImage = {};
-			for (u32 i = 0; i < threadCount; i++)
-			{
-				ProcessedImage *processedImageOfIndex = processedImages + i;
-				if (!processedImageOfIndex->active)
-				{
-					processedImage = processedImageOfIndex;
-					break;
-				}
-			}
-
 			Color colorToPaint = {};
 
 			if (currentBrush.brushEffect != BRUSH_EFFECT_ERASE_EFFECT)
 			{
-				unsigned int processedImageIndex = (processedImage)
-					? processedImage->index
-					: threadCount + 1;
-				//NOTE: (Ahmayk) lol
-				ASSERT(processedImageIndex < 255);
 				colorToPaint.r = (u8) currentBrush.brushEffect;
 				colorToPaint.g = (u8) RandomInRangeI32(0, 255);
-				colorToPaint.a = (u8) processedImageIndex;
+				colorToPaint.a = (u8) canvas->processBatchIndex;
 			}
 
 			f32 scale = MaxF32(1, canvas->drawnImageData.dim.x / canvasUiBox->rect.dim.x);
@@ -289,23 +273,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 			CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, currentBrush.size, colorToPaint);
 
-			ArenaPair arenaPair = {};
-			if (processedImage)
-			{
-				arenaPair = ArenaPairAssign(&gameMemory.conversionArenaGroup);
-			}
-
-			if (processedImage && arenaPair.arena1 && arenaPair.arena2)
-			{
-				processedImage->arenaPair = arenaPair;
-				StartProcessedImageWork(canvas, threadCount, processedImage, threadWorkQueue);
-			}
-			else
-			{
-				// Print("No thread avaliabe");
-				canvas->proccessAsap = true;
-			}
-
+			canvas->proccessAsap = true;
 			canvas->needsTextureUpload = true;
 		}
 
@@ -318,7 +286,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				memcpy(canvas->drawnImageData.dataU8, rollbackImage, canvas->drawnImageData.dataSize);
 				canvas->proccessAsap = true;
 				canvas->needsTextureUpload = true;
-				canvas->oldDataPresent = true;
 				imageIsBroken = false;
 			}
 			else
@@ -356,17 +323,58 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				if (arenaPair.arena1 && arenaPair.arena2)
 				{
 					processedImage->arenaPair = arenaPair;
-					StartProcessedImageWork(canvas, threadCount, processedImage, threadWorkQueue);
+					memcpy(processedImage->dirtyRectsInProcess, canvas->drawingRectDirtyListProcess, canvas->drawingRectCount * sizeof(b32));
+					canvas->proccessAsap = false;
+					processedImage->frameStarted = G_CURRENT_FRAME;
+					processedImage->active = true;
+					processedImage->processBatchIndex = canvas->processBatchIndex;
+					canvas->processBatchIndex++;
+					//NOTE: (Ahmayk) skip 0 as this represents already processed 
+					if (canvas->processBatchIndex == 0)
+					{
+						canvas->processBatchIndex++;
+					}
+					memset(canvas->drawingRectDirtyListProcess, 0, canvas->drawingRectCount * sizeof(b32));
+					PlatformAddThreadWorkEntry(threadWorkQueue, ProcessImageOnThread, (void *)processedImage);
+					// Print("Queueing Work on thread " + IntToString(processedImage->index));
 				}
 			}
 		}
 
 		ProcessedImage *latestCompletedProcessedImage = {};
-		for (u32 i = 0; i < threadCount; i++)
+		for (u32 threadIndex = 0; threadIndex < threadCount; threadIndex++)
 		{
-			ProcessedImage *processedImageOfIndex = processedImages + i;
+			ProcessedImage *processedImageOfIndex = processedImages + threadIndex;
 			if (processedImageOfIndex->active && processedImageOfIndex->frameFinished > 0)
 			{
+				for (u32 rectIndex = 0; rectIndex < canvas->drawingRectCount; rectIndex++)
+				{
+					if (processedImageOfIndex->dirtyRectsInProcess[rectIndex])
+					{
+						canvas->drawingRectDirtyList[rectIndex] = true;
+						RectIV2 drawingRect = GetDrawingRectFromIndex(canvas, rectIndex);
+						u32 pixelIndex = 0;
+						u32 startY = drawingRect.pos.y;
+						u32 endY = startY + drawingRect.dim.y;
+						for (u32 y = startY; y < endY; y++)
+						{
+							u32 startIndex = (canvas->drawnImageData.dim.x * y) + drawingRect.pos.x;
+							u32 endIndex = startIndex + drawingRect.dim.x;
+							for (u32 i = startIndex; i < endIndex; i++)
+							{
+								Color *canvasPixel = &((Color *)canvas->drawnImageData.dataU8)[i];
+								if (canvasPixel->a == processedImageOfIndex->processBatchIndex)
+								{
+									canvasPixel->a = 0;
+								}
+								pixelIndex++;
+							}
+						}
+					}
+				}
+
+				canvas->needsTextureUpload = true;
+
 				if (latestCompletedProcessedImage && (latestCompletedProcessedImage->frameStarted > processedImageOfIndex->frameStarted))
 				{
 					// Print("Throwing away image from thread " + IntToString(latestCompletedProcessedImage->index));
@@ -399,8 +407,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		{
 			canvas->needsTextureUpload = false;
 
-			u32 drawingRectCount = GetDrawingRectCount(canvas);
-			for (u32 rectIndex = 0; rectIndex < drawingRectCount; rectIndex++)
+			for (u32 rectIndex = 0; rectIndex < canvas->drawingRectCount; rectIndex++)
 			{
 				if (canvas->drawingRectDirtyList[rectIndex])
 				{
@@ -423,7 +430,9 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 							if (canvasPixel.r)
 							{
 								Color drawnPixel = G_BRUSH_EFFECT_COLORS[canvasPixel.r];
-								if (canvasPixel.a < 255)
+								//NOTE: (Ahmayk) alpha = 0 -> no processing
+								//alpha != 0 -> is being processed currently
+								if (canvasPixel.a != 0)
 								{
 									drawnPixel.a = 127;
 								}
