@@ -381,35 +381,35 @@ void SetPNGFilterType(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 	ArenaPopMarker(marker);
 }
 
-RectIV2 GetDrawingRectFromIndex(Canvas *canvas, u32 i)
+RectIV2 GetDrawingRectFromIndex(iv2 imageDim, iv2 rectDim, u32 i)
 {
 	RectIV2 result;
-	result.dim = canvas->drawingRectDim;
+	result.dim = rectDim; 
 
-	u32 numX = (u32) CeilF32(canvas->drawnImageData.dim.x / (f32) canvas->drawingRectDim.x);
-	u32 numY = (u32) CeilF32(canvas->drawnImageData.dim.y / (f32) canvas->drawingRectDim.y);
+	u32 numX = (u32) CeilF32(imageDim.x / (f32) rectDim.x);
+	u32 numY = (u32) CeilF32(imageDim.y / (f32) rectDim.y);
 	u32 indexX = i % numX;
 	u32 indexY = ((u32) FloorF32(i / (f32) numX)) % numX;
 	result.pos.x = result.dim.x * indexX;
 	result.pos.y = result.dim.y * indexY;
 
-	if (result.pos.x + result.dim.x > canvas->drawnImageData.dim.x)
+	if (result.pos.x + result.dim.x > imageDim.x)
 	{
-		result.dim.x = canvas->drawnImageData.dim.x - result.pos.x;
+		result.dim.x = imageDim.x - result.pos.x;
 	}
-	if (result.pos.y + result.dim.y > canvas->drawnImageData.dim.y)
+	if (result.pos.y + result.dim.y > imageDim.y)
 	{
-		result.dim.y = canvas->drawnImageData.dim.y - result.pos.y;
+		result.dim.y = imageDim.y - result.pos.y;
 	}
 	ASSERT(result.dim.y > 0);
 
 	return result;
 }
 
-u32 GetDrawingRectCount(Canvas *canvas)
+u32 GetDrawingRectCount(iv2 imageDim, iv2 rectDim)
 {
-	u32 numX = (u32) CeilF32(canvas->drawnImageData.dim.x / (f32) canvas->drawingRectDim.x);
-	u32 numY = (u32) CeilF32(canvas->drawnImageData.dim.y / (f32) canvas->drawingRectDim.y);
+	u32 numX = (u32) CeilF32(imageDim.x / (f32) rectDim.x);
+	u32 numY = (u32) CeilF32(imageDim.y / (f32) rectDim.y);
 	u32 result = numX * numY;
 	return result;
 }
@@ -726,6 +726,26 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 	}
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
+	if (canvas->initialized)
+	{
+		glDeleteBuffers(ARRAY_COUNT(canvas->finalImagePboIDs), canvas->finalImagePboIDs);
+	}
+	glGenBuffers(ARRAY_COUNT(canvas->finalImagePboIDs), canvas->finalImagePboIDs);
+	for(u32 i = 0; i < ARRAY_COUNT(canvas->finalImagePboIDs); i++) 
+	{
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->finalImagePboIDs[i]);
+		glBufferData(GL_PIXEL_UNPACK_BUFFER, rootImageRaw->dim.x * rootImageRaw->dim.y * 4, NULL, GL_STREAM_DRAW);
+	}
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+	//NOTE: (Ahmayk) This needing to be cleared makes me wonder if maybe this abstraction is wrong 
+	//I had a bug where I forgot to clear this and it crashed due to the arena not existing anymore
+	canvas->arenaPairLatestCompletedFinalProcessedImageRaw = {};
+
+	//NOTE: (Ahmayk) Have a copy of the root image be our first cahched final result
+	//(This assumes we start with no data changes)
+	canvas->cachedLatestCompletedFinalProcessedImageRaw = *rootImageRaw; 
+
 	ArenaFree(&gameMemory->canvasRollbackArena);
 	gameMemory->canvasRollbackArena = ArenaInit(MegaByte * 800);
 	canvas->rollbackSizeCount = (u32) FloorF32((f32)gameMemory->canvasRollbackArena.size / visualizedCanvasDataSize) - 1;
@@ -735,7 +755,7 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 	canvas->brush = brush;
 
 	canvas->drawingRectDim = iv2{32, 32};
-	canvas->drawingRectCount = GetDrawingRectCount(canvas);
+	canvas->drawingRectCount = GetDrawingRectCount(canvasDim, canvas->drawingRectDim);
 	canvas->drawingRectDirtyList = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
 	canvas->drawingRectDirtyListProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
 	memset(canvas->drawingRectDirtyList, 0, canvas->drawingRectCount * sizeof(b32));
@@ -839,7 +859,6 @@ void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas)
 	processedImage->frameStarted = 0;
 	processedImage->frameFinished = 0;
 	processedImage->finalProcessedImageRaw = {};
-	ArenaPairFreeAll(&processedImage->arenaPair);
 }
 
 ProcessedImage *GetFreeProcessedImage(ProcessedImage *processedImages, unsigned int threadCount)

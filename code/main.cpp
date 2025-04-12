@@ -350,7 +350,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					if (processedImageOfIndex->dirtyRectsInProcess[rectIndex])
 					{
 						canvas->drawingRectDirtyList[rectIndex] = true;
-						RectIV2 drawingRect = GetDrawingRectFromIndex(canvas, rectIndex);
+						RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->drawnImageData.dim, canvas->drawingRectDim, rectIndex);
 						u32 pixelIndex = 0;
 						u32 startY = drawingRect.pos.y;
 						u32 endY = startY + drawingRect.dim.y;
@@ -371,12 +371,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					}
 				}
 
-				canvas->needsTextureUpload = true;
-
 				if (latestCompletedProcessedImage && (latestCompletedProcessedImage->frameStarted > processedImageOfIndex->frameStarted))
 				{
 					// Print("Throwing away image from thread " + IntToString(latestCompletedProcessedImage->index));
 					ResetProcessedImage(processedImageOfIndex, canvas);
+					ArenaPairFreeAll(&processedImageOfIndex->arenaPair);
 				}
 				else
 				{
@@ -390,19 +389,110 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		{
 			if (latestCompletedProcessedImage->finalProcessedImageRaw.dataU8)
 			{
+				ProfilerPrintTimeStart();
 				//UploadAndReplaceTexture(&latestCompletedProcessedImage->finalProcessedImageRaw, &loadedTexture);
 				// Print("Uploading New Image from thread " + IntToString(latestCompletedProcessedImage->index));
-				//TODO: put the latest uploaded image somewhere for safekeeping?
-				RectIV2 drawingRect = {};
-				drawingRect.dim = latestCompletedProcessedImage->finalProcessedImageRaw.dim;
-				UpdateRectInTexture(&loadedTexture, latestCompletedProcessedImage->finalProcessedImageRaw.dataU8, drawingRect);
-				uploaded = true;
+				//RectIV2 drawingRect = {};
+				//drawingRect.dim = latestCompletedProcessedImage->finalProcessedImageRaw.dim;
+				//UpdateRectInTexture(&loadedTexture, latestCompletedProcessedImage->finalProcessedImageRaw.dataU8, drawingRect);
+
+#if 1
+
+				iv2 finalImageRectDim = {1024, 1024};
+				iv2 finalImageDim = latestCompletedProcessedImage->finalProcessedImageRaw.dim;
+				u32 finalImageDrawingRectCount = GetDrawingRectCount(finalImageDim, finalImageRectDim);
+				ArenaMarker marker = {};
+				b32 *finalImageDirtyRects = ARENA_PUSH_ARRAY_MARKER(&gameMemory.temporaryArena, finalImageDrawingRectCount, b32, &marker);
+				memset(finalImageDirtyRects, 1, finalImageDrawingRectCount * sizeof(b32));
+
+				//b32 atLeastOneDirtyRect = true;
+#if 1
+				b32 atLeastOneDirtyRect = false;
+				for (u32 rectIndex = 0; rectIndex < finalImageDrawingRectCount; rectIndex++)
+				{
+					RectIV2 drawingRect = GetDrawingRectFromIndex(finalImageDim, finalImageRectDim, rectIndex);
+					u32 startY = drawingRect.pos.y;
+					u32 endY = startY + drawingRect.dim.y;
+					for (u32 y = startY; y < endY; y++)
+					{
+						u32 index = ((finalImageDim.x * y) + drawingRect.pos.x) * 4;
+						u8 *buffer1 = latestCompletedProcessedImage->finalProcessedImageRaw.dataU8 + index;
+						u8 *buffer2 = canvas->cachedLatestCompletedFinalProcessedImageRaw.dataU8 + index;
+						if (memcmp(buffer1, buffer2, (drawingRect.dim.x) * 4) != 0)
+						{
+							finalImageDirtyRects[rectIndex] = true;
+							atLeastOneDirtyRect = true;
+							break;
+						}
+					}
+				}
+#endif
+
+				ProfilerPrintTimeEnd("MATCHING");
+
+				if (atLeastOneDirtyRect)
+				{
+					glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->finalImagePboIDs[canvas->currentFinalImagePboID]);
+					u8 *pixels = (u8 *) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+					if (ASSERT(pixels))
+					{
+						for (u32 rectIndex = 0; rectIndex < finalImageDrawingRectCount; rectIndex++)
+						{
+							if (finalImageDirtyRects[rectIndex])
+							{
+								RectIV2 drawingRect = GetDrawingRectFromIndex(finalImageDim, finalImageRectDim, rectIndex);
+								u32 startY = drawingRect.pos.y;
+								u32 endY = startY + drawingRect.dim.y;
+								for (u32 y = startY; y < endY; y++)
+								{
+									u32 index = ((finalImageDim.x * y) + drawingRect.pos.x) * 4;
+									u8 *dst = pixels + index;
+									u8 *src = latestCompletedProcessedImage->finalProcessedImageRaw.dataU8 + index;
+									memcpy(dst, src, drawingRect.dim.x * 4);
+								}
+							}
+						}
+						glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+					}
+
+					glBindTexture(GL_TEXTURE_2D, loadedTexture.id);
+					glPixelStorei(GL_UNPACK_ROW_LENGTH, loadedTexture.width);
+					for (u32 rectIndex = 0; rectIndex < finalImageDrawingRectCount; rectIndex++)
+					{
+						if (finalImageDirtyRects[rectIndex])
+						{
+							RectIV2 drawingRect = GetDrawingRectFromIndex(finalImageDim, finalImageRectDim, rectIndex);
+							GLintptr offset = (drawingRect.pos.y * finalImageDim.x + drawingRect.pos.x) * sizeof(Color);
+							glTexSubImage2D(GL_TEXTURE_2D, 0, drawingRect.pos.x, drawingRect.pos.y, drawingRect.dim.x, drawingRect.dim.y, GL_RGBA, GL_UNSIGNED_BYTE, (void*)offset);
+						}
+					}
+
+					ArenaPopMarker(marker);
+
+					glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+					glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+					canvas->currentFinalImagePboID = ModNextU32(canvas->currentFinalImagePboID, ARRAY_COUNT(canvas->finalImagePboIDs));
+
+					uploaded = true;
+
+					canvas->cachedLatestCompletedFinalProcessedImageRaw = latestCompletedProcessedImage->finalProcessedImageRaw;
+					ArenaPairFreeAll(&canvas->arenaPairLatestCompletedFinalProcessedImageRaw);
+					canvas->arenaPairLatestCompletedFinalProcessedImageRaw = latestCompletedProcessedImage->arenaPair;
+				}
+				else
+				{
+					ArenaPairFreeAll(&latestCompletedProcessedImage->arenaPair);
+				}
+#else
+				ArenaPairFreeAll(&latestCompletedProcessedImage->arenaPair);
+#endif
+				ProfilerPrintTimeEnd("DRAWING");
 			}
 			else
 			{
 				imageIsBroken = true;
+				ArenaPairFreeAll(&latestCompletedProcessedImage->arenaPair);
 			}
-
 			ResetProcessedImage(latestCompletedProcessedImage, canvas);
 		}
 
@@ -414,7 +504,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			{
 				if (canvas->drawingRectDirtyList[rectIndex])
 				{
-					RectIV2 drawingRect = GetDrawingRectFromIndex(canvas, rectIndex);
+					RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->drawnImageData.dim, canvas->drawingRectDim, rectIndex);
 					u32 pixelCount = drawingRect.dim.x * drawingRect.dim.y;
 					ArenaMarker marker {};
 
@@ -464,7 +554,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		{
 			if (canvas->drawingRectDirtyList[rectIndex])
 			{
-				RectIV2 drawingRect = GetDrawingRectFromIndex(canvas, rectIndex);
+				RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->drawnImageData.dim, canvas->drawingRectDim, rectIndex);
 				GLintptr offset = (drawingRect.pos.y * canvas->textureDrawing.width + drawingRect.pos.x) * sizeof(Color);
 				glTexSubImage2D(GL_TEXTURE_2D, 0, drawingRect.pos.x, drawingRect.pos.y, drawingRect.dim.x, drawingRect.dim.y, GL_RGBA, GL_UNSIGNED_BYTE, (void*)offset);
 				canvas->drawingRectDirtyList[rectIndex] = false;

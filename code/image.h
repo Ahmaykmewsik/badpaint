@@ -74,6 +74,11 @@ struct Canvas
 	bool proccessAsap;
 	PNG_FILTER_TYPE currentPNGFilterType;
 
+	u32 finalImagePboIDs[2]; 
+	u32 currentFinalImagePboID;
+	ImageRawRGBA32 cachedLatestCompletedFinalProcessedImageRaw;
+	ArenaPair arenaPairLatestCompletedFinalProcessedImageRaw;
+
 	unsigned char *rollbackImageData;
 	unsigned int rollbackSizeCount;
 	unsigned int rollbackIndexNext;
