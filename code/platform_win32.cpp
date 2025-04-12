@@ -15,6 +15,7 @@
 #include "nonRepo.h"
 
 #include <base/memory.cpp>
+#include <base/profiler.cpp>
 #include <base/vn_math.cpp>
 #include <base/vn_string.cpp>
 #include <base/multithreading.cpp>
