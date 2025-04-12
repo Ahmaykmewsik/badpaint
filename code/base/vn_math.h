@@ -257,6 +257,7 @@ v2 PositionInCenterV2(v2 parentDim, v2 childDim);
 u32 Murmur3U32(u32 key, u32 seed = 0, u32 prevHash = 0);
 u32 Murmur3F32(f32 key, u32 seed, u32 prevHash = 0);
 u32 Murmur3String(const char *key, u32 seed = 69);
+u32 DJB33HashU32(u32 *data, u32 len, u32 seed = 5381);
 
 i32 RandomInRangeI32(i32 min, i32 max);
 f32 RandomF32ZeroToOne();

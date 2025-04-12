@@ -1345,6 +1345,17 @@ u32 Murmur3String(const char *key, u32 seed)
 	return hash;
 }
 
+u32 DJB33HashU32(u32 *data, u32 len, u32 seed)
+{
+	u32 h = seed;
+	while (len--) 
+	{
+		h += (h << 5);
+		h ^= *data++;
+	}
+	return h;
+}
+
 // NOTE: LCG parameters
 static u64 G_VN_RANDOM_SEED = time(NULL);
 static const u32 G_VN_RAND_A = 1664525;

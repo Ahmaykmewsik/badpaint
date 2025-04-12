@@ -764,13 +764,9 @@ void HashImageRects(ImageRawRGBA32 *imageRaw, iv2 rectDim, u32 **outHashes)
 		u32 endY = startY + rect.dim.y;
 		for (u32 y = startY; y < endY; y++)
 		{
-			u32 startIndex = (imageRaw->dim.x * y) + rect.pos.x;
-			u32 endIndex = startIndex + rect.dim.x;
-			for (u32 i = startIndex; i < endIndex; i++)
-			{
-				u32 pixel = ((u32*)imageRaw->dataU8)[i];
-				hash = Murmur3U32(pixel, hash);
-			}
+			u32 startIndex = ((imageRaw->dim.x * y) + rect.pos.x) * 4;
+			u8 *pixel = imageRaw->dataU8 + startIndex;
+			hash = DJB33HashU32((u32*)pixel, rect.dim.x, hash);
 		}
 		(*outHashes)[rectIndex] = hash;
 	}
