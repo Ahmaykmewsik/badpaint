@@ -2640,8 +2640,11 @@ do_literals:
 			filter &= 511;
 
 			uint32_t expected_filter = (y ? 2 : 0);
+			//NOTE: (Ahmayk) Nope! Do it anyway!
+#if 0
 			if (filter != expected_filter)
 				return false;
+#endif
 
 			uint32_t x_ofs = 0;
 			uint8_t prev_delta_r = 0, prev_delta_g = 0, prev_delta_b = 0, prev_delta_a = 0;
@@ -2927,7 +2930,7 @@ do_literals:
 	};
 #pragma pack(pop)
 
-	static int fpng_get_info_internal(const void* pImage, uint32_t image_size, uint32_t& width, uint32_t& height, uint32_t& channels_in_file, uint32_t &idat_ofs, uint32_t &idat_len)
+	int fpng_get_info_internal(const void* pImage, uint32_t image_size, uint32_t& width, uint32_t& height, uint32_t& channels_in_file, uint32_t &idat_ofs, uint32_t &idat_len)
 	{
 		static const uint8_t s_png_sig[8] = { 137, 80, 78, 71, 13, 10, 26, 10 };
 

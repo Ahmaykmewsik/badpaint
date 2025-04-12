@@ -119,4 +119,7 @@ namespace fpng
 	bool create_dynamic_block_prefix(uint64_t* pFreq, uint32_t num_chans, std::vector<uint8_t>& prefix, uint64_t& bit_buf, int& bit_buf_size, uint32_t *pCodes, uint8_t *pCodesizes);
 #endif
 
+int fpng_get_info_internal(const void* pImage, uint32_t image_size, uint32_t& width, uint32_t& height, uint32_t& channels_in_file, uint32_t &idat_ofs, uint32_t &idat_len);
+
 } // namespace fpng
+

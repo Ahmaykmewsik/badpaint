@@ -414,7 +414,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 				if (atLeastOneDirtyRect)
 				{
-					ProfilerPrintTimeStart();
 					glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->finalImagePboIDs[canvas->currentFinalImagePboID]);
 					u8 *pixels = (u8 *) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
 					if (ASSERT(pixels))
@@ -437,7 +436,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						}
 						glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
 					}
-					ProfilerPrintTimeEnd("COPY END");
 
 					glBindTexture(GL_TEXTURE_2D, loadedTexture.id);
 					glPixelStorei(GL_UNPACK_ROW_LENGTH, loadedTexture.width);
@@ -460,7 +458,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					uploaded = true;
 
 					memcpy(canvas->cachedFinalImageRectHashes, latestCompletedProcessedImage->finalImageRectHashes, canvas->finalImageRectCount * sizeof(u32));
-					ProfilerPrintTimeEnd("DRAWING END");
 				}
 #endif
 			}
