@@ -375,7 +375,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				{
 					// Print("Throwing away image from thread " + IntToString(latestCompletedProcessedImage->index));
 					ResetProcessedImage(processedImageOfIndex, canvas);
-					ArenaPairFreeAll(&processedImageOfIndex->arenaPair);
 				}
 				else
 				{
@@ -389,7 +388,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		{
 			if (latestCompletedProcessedImage->finalProcessedImageRaw.dataU8)
 			{
-				ProfilerPrintTimeStart();
 				//UploadAndReplaceTexture(&latestCompletedProcessedImage->finalProcessedImageRaw, &loadedTexture);
 				// Print("Uploading New Image from thread " + IntToString(latestCompletedProcessedImage->index));
 				//RectIV2 drawingRect = {};
@@ -398,49 +396,34 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 #if 1
 
-				iv2 finalImageRectDim = {1024, 1024};
 				iv2 finalImageDim = latestCompletedProcessedImage->finalProcessedImageRaw.dim;
-				u32 finalImageDrawingRectCount = GetDrawingRectCount(finalImageDim, finalImageRectDim);
 				ArenaMarker marker = {};
-				b32 *finalImageDirtyRects = ARENA_PUSH_ARRAY_MARKER(&gameMemory.temporaryArena, finalImageDrawingRectCount, b32, &marker);
-				memset(finalImageDirtyRects, 1, finalImageDrawingRectCount * sizeof(b32));
+				b32 *finalImageDirtyRects = ARENA_PUSH_ARRAY_MARKER(&gameMemory.temporaryArena, canvas->finalImageRectCount, b32, &marker);
+				memset(finalImageDirtyRects, 1, canvas->finalImageRectCount * sizeof(b32));
 
-				//b32 atLeastOneDirtyRect = true;
-#if 1
 				b32 atLeastOneDirtyRect = false;
-				for (u32 rectIndex = 0; rectIndex < finalImageDrawingRectCount; rectIndex++)
+				for (u32 rectIndex = 0; rectIndex < canvas->finalImageRectCount; rectIndex++)
 				{
-					RectIV2 drawingRect = GetDrawingRectFromIndex(finalImageDim, finalImageRectDim, rectIndex);
-					u32 startY = drawingRect.pos.y;
-					u32 endY = startY + drawingRect.dim.y;
-					for (u32 y = startY; y < endY; y++)
+					if (latestCompletedProcessedImage->finalImageRectHashes[rectIndex] != canvas->cachedFinalImageRectHashes[rectIndex])
 					{
-						u32 index = ((finalImageDim.x * y) + drawingRect.pos.x) * 4;
-						u8 *buffer1 = latestCompletedProcessedImage->finalProcessedImageRaw.dataU8 + index;
-						u8 *buffer2 = canvas->cachedLatestCompletedFinalProcessedImageRaw.dataU8 + index;
-						if (memcmp(buffer1, buffer2, (drawingRect.dim.x) * 4) != 0)
-						{
-							finalImageDirtyRects[rectIndex] = true;
-							atLeastOneDirtyRect = true;
-							break;
-						}
+						finalImageDirtyRects[rectIndex] = true;
+						atLeastOneDirtyRect = true;
+						break;
 					}
 				}
-#endif
-
-				ProfilerPrintTimeEnd("MATCHING");
 
 				if (atLeastOneDirtyRect)
 				{
+					ProfilerPrintTimeStart();
 					glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->finalImagePboIDs[canvas->currentFinalImagePboID]);
 					u8 *pixels = (u8 *) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
 					if (ASSERT(pixels))
 					{
-						for (u32 rectIndex = 0; rectIndex < finalImageDrawingRectCount; rectIndex++)
+						for (u32 rectIndex = 0; rectIndex < canvas->finalImageRectCount; rectIndex++)
 						{
 							if (finalImageDirtyRects[rectIndex])
 							{
-								RectIV2 drawingRect = GetDrawingRectFromIndex(finalImageDim, finalImageRectDim, rectIndex);
+								RectIV2 drawingRect = GetDrawingRectFromIndex(finalImageDim, canvas->finalImageRectDim, rectIndex);
 								u32 startY = drawingRect.pos.y;
 								u32 endY = startY + drawingRect.dim.y;
 								for (u32 y = startY; y < endY; y++)
@@ -454,14 +437,15 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						}
 						glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
 					}
+					ProfilerPrintTimeEnd("COPY END");
 
 					glBindTexture(GL_TEXTURE_2D, loadedTexture.id);
 					glPixelStorei(GL_UNPACK_ROW_LENGTH, loadedTexture.width);
-					for (u32 rectIndex = 0; rectIndex < finalImageDrawingRectCount; rectIndex++)
+					for (u32 rectIndex = 0; rectIndex < canvas->finalImageRectCount; rectIndex++)
 					{
 						if (finalImageDirtyRects[rectIndex])
 						{
-							RectIV2 drawingRect = GetDrawingRectFromIndex(finalImageDim, finalImageRectDim, rectIndex);
+							RectIV2 drawingRect = GetDrawingRectFromIndex(finalImageDim, canvas->finalImageRectDim, rectIndex);
 							GLintptr offset = (drawingRect.pos.y * finalImageDim.x + drawingRect.pos.x) * sizeof(Color);
 							glTexSubImage2D(GL_TEXTURE_2D, 0, drawingRect.pos.x, drawingRect.pos.y, drawingRect.dim.x, drawingRect.dim.y, GL_RGBA, GL_UNSIGNED_BYTE, (void*)offset);
 						}
@@ -475,23 +459,14 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 					uploaded = true;
 
-					canvas->cachedLatestCompletedFinalProcessedImageRaw = latestCompletedProcessedImage->finalProcessedImageRaw;
-					ArenaPairFreeAll(&canvas->arenaPairLatestCompletedFinalProcessedImageRaw);
-					canvas->arenaPairLatestCompletedFinalProcessedImageRaw = latestCompletedProcessedImage->arenaPair;
+					memcpy(canvas->cachedFinalImageRectHashes, latestCompletedProcessedImage->finalImageRectHashes, canvas->finalImageRectCount * sizeof(u32));
+					ProfilerPrintTimeEnd("DRAWING END");
 				}
-				else
-				{
-					ArenaPairFreeAll(&latestCompletedProcessedImage->arenaPair);
-				}
-#else
-				ArenaPairFreeAll(&latestCompletedProcessedImage->arenaPair);
 #endif
-				ProfilerPrintTimeEnd("DRAWING");
 			}
 			else
 			{
 				imageIsBroken = true;
-				ArenaPairFreeAll(&latestCompletedProcessedImage->arenaPair);
 			}
 			ResetProcessedImage(latestCompletedProcessedImage, canvas);
 		}

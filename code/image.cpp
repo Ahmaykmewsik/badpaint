@@ -665,6 +665,29 @@ b32 CanvasDrawCircleStroke(Canvas *canvas, iv2 startPos, iv2 endPos, u32 radius,
 	return result;
 }
 
+void HashImageRects(ImageRawRGBA32 *imageRaw, iv2 rectDim, u32 **outHashes)
+{
+	u32 rectCount = GetDrawingRectCount(imageRaw->dim, rectDim);
+	for (u32 rectIndex = 0; rectIndex < rectCount; rectIndex++)
+	{
+		u32 hash = 0;
+		RectIV2 rect = GetDrawingRectFromIndex(imageRaw->dim, rectDim, rectIndex);
+		u32 startY = rect.pos.y;
+		u32 endY = startY + rect.dim.y;
+		for (u32 y = startY; y < endY; y++)
+		{
+			u32 startIndex = (imageRaw->dim.x * y) + rect.pos.x;
+			u32 endIndex = startIndex + rect.dim.x;
+			for (u32 i = startIndex; i < endIndex; i++)
+			{
+				u32 pixel = ((u32*)imageRaw->dataU8)[i];
+				hash = Murmur3U32(pixel, hash);
+			}
+		}
+		(*outHashes)[rectIndex] = hash;
+	}
+}
+
 void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush, GameMemory *gameMemory)
 {
 	//NOTE: (Ahmayk) free and reallocate temporary arena to reduce memory size
@@ -681,7 +704,7 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 	iv2 canvasDim = iv2{(rootImageRaw->dim.x * 4) + 1, rootImageRaw->dim.y};
 	u32 visualizedCanvasDataSize = canvasDim.x * canvasDim.y * sizeof(Color);
 
-	//NOTE: (Ahmayk) drawn image, visualized image, drawingRects, dirtyRectsForEachProcesssImage
+	//NOTE: (Ahmayk) drawn image, visualized image, drawingRects, dirtyRectsForEachProcesssImage, finalImageRectHashes
 	u32 canvasArneaSize = (u32) MaxU32(MegaByte * 1, (u32) (visualizedCanvasDataSize * 2.1f));
 	gameMemory->canvasArena = ArenaInit(canvasArneaSize);
 
@@ -738,13 +761,10 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 	}
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
-	//NOTE: (Ahmayk) This needing to be cleared makes me wonder if maybe this abstraction is wrong 
-	//I had a bug where I forgot to clear this and it crashed due to the arena not existing anymore
-	canvas->arenaPairLatestCompletedFinalProcessedImageRaw = {};
-
-	//NOTE: (Ahmayk) Have a copy of the root image be our first cahched final result
-	//(This assumes we start with no data changes)
-	canvas->cachedLatestCompletedFinalProcessedImageRaw = *rootImageRaw; 
+	canvas->finalImageRectDim = iv2{512, 512};
+	canvas->finalImageRectCount = GetDrawingRectCount(rootImageRaw->dim, canvas->finalImageRectDim);
+	canvas->cachedFinalImageRectHashes = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->finalImageRectCount, u32);
+	HashImageRects(rootImageRaw, canvas->finalImageRectDim, &canvas->cachedFinalImageRectHashes);
 
 	ArenaFree(&gameMemory->canvasRollbackArena);
 	gameMemory->canvasRollbackArena = ArenaInit(MegaByte * 800);
@@ -775,6 +795,7 @@ void InitializeNewImage(const char *fileName, GameMemory *gameMemory, ImageRawRG
 		{
 			ProcessedImage *processedImage = processedImages + i;
 			processedImage->dirtyRectsInProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
+			processedImage->finalImageRectHashes = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->finalImageRectCount, u32);
 		}
 	}
 }
@@ -848,6 +869,11 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 	processedImage->finalProcessedImageRaw = DecodePng(&imagePNGChecksumed, arenaFinalRaw);
 
 	ArenaPairFreeOldest(&processedImage->arenaPair);
+
+	//f64 start = GetTime();
+	HashImageRects(&processedImage->finalProcessedImageRaw, canvas->finalImageRectDim, &processedImage->finalImageRectHashes);
+	//f64 end = GetTime();
+	//printf("process time: %f\n", (end - start) * 1000);
 	// Print("Decoded PNG on thread " + IntToString(processedImage->index));
 
 	// Print("Converted to final PNG on thead " + IntToString(processedImage->index));
@@ -859,6 +885,7 @@ void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas)
 	processedImage->frameStarted = 0;
 	processedImage->frameFinished = 0;
 	processedImage->finalProcessedImageRaw = {};
+	ArenaPairFreeAll(&processedImage->arenaPair);
 }
 
 ProcessedImage *GetFreeProcessedImage(ProcessedImage *processedImages, unsigned int threadCount)

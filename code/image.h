@@ -76,8 +76,9 @@ struct Canvas
 
 	u32 finalImagePboIDs[2]; 
 	u32 currentFinalImagePboID;
-	ImageRawRGBA32 cachedLatestCompletedFinalProcessedImageRaw;
-	ArenaPair arenaPairLatestCompletedFinalProcessedImageRaw;
+	iv2 finalImageRectDim;
+	u32 finalImageRectCount;
+	u32 *cachedFinalImageRectHashes;
 
 	unsigned char *rollbackImageData;
 	unsigned int rollbackSizeCount;
@@ -97,4 +98,5 @@ struct ProcessedImage
 	unsigned int frameStarted;
 	unsigned int frameFinished;
 	b32 *dirtyRectsInProcess;
+	u32 *finalImageRectHashes;
 };
