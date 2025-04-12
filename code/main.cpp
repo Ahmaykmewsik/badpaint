@@ -197,7 +197,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		}
 
 		if (IsCommandPressed(COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE))
-			currentBrush.brushEffect = BRUSH_EFFECT_ERASE_EFFECT;
+			currentBrush.brushEffect = BRUSH_EFFECT_ERASE;
 		if (IsCommandPressed(COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE))
 			currentBrush.brushEffect = BRUSH_EFFECT_REMOVE;
 		if (IsCommandPressed(COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX))
@@ -490,19 +490,16 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						for (u32 i = startIndex; i < endIndex; i++)
 						{
 							Color canvasPixel = ((Color *)canvas->drawnImageData.dataU8)[i];
-							if (canvasPixel.r)
+							Color *outPixel = (pixels + i);
+							//NOTE: (Ahmayk) alpha = 0 -> no processing
+							//alpha != 0 -> is being processed currently
+							if (canvasPixel.a != 0)
 							{
-								Color *outPixel = (pixels + i);
-								//NOTE: (Ahmayk) alpha = 0 -> no processing
-								//alpha != 0 -> is being processed currently
-								if (canvasPixel.a != 0)
-								{
-									*outPixel = G_BRUSH_EFFECT_COLORS_PROCESSING[canvasPixel.r];
-								}
-								else
-								{
-									*outPixel = G_BRUSH_EFFECT_COLORS_PRIMARY[canvasPixel.r];
-								}
+								*outPixel = G_BRUSH_EFFECT_COLORS_PROCESSING[canvasPixel.r];
+							}
+							else
+							{
+								*outPixel = G_BRUSH_EFFECT_COLORS_PRIMARY[canvasPixel.r];
 							}
 #if 0
 							else
@@ -682,7 +679,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
 			UiParent()
 			{
-				CreateBrushEffectButton(BRUSH_EFFECT_ERASE_EFFECT, STRING("Ers"), Color{245, 245, 245, 255}, COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE, &currentBrush);
+				CreateBrushEffectButton(BRUSH_EFFECT_ERASE, STRING("Ers"), Color{245, 245, 245, 255}, COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE, &currentBrush);
 				CreateBrushEffectButton(BRUSH_EFFECT_REMOVE, STRING("Rmv"), G_BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_REMOVE], COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE, &currentBrush);
 			}
 			SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
@@ -741,7 +738,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			SetUiAxis({UI_SIZE_KIND_PIXELS, toolbarWidth}, {UI_SIZE_KIND_PIXELS, toolbarWidth});
 
 			uiSettings->backColor = G_BRUSH_EFFECT_COLORS_PRIMARY[currentBrush.brushEffect];
-			if (currentBrush.brushEffect == BRUSH_EFFECT_ERASE_EFFECT)
+			if (currentBrush.brushEffect == BRUSH_EFFECT_ERASE)
 				uiSettings->backColor = Color{245, 245, 245, 255};
 			uiSettings->borderColor = BLACK;
 			CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);

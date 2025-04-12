@@ -911,6 +911,8 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 		{
 			switch (canvasPixel.r)
 			{
+				case BRUSH_EFFECT_ERASE:
+					break;
 				case BRUSH_EFFECT_REMOVE:
 					{
 						imagePNGFiltered.dataU8[i] = 0;
@@ -933,8 +935,6 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 						imagePNGFiltered.dataU8[i] = canvasPixel.g;
 						break;
 					}
-				case BRUSH_EFFECT_ERASE_EFFECT:
-					break;
 					InvalidDefaultCase
 			}
 		}
@@ -961,7 +961,7 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 
 	//NOTE: (Ahmayk) FPNG seems to be optimized on filter type up only. So if we're in that mode
 	//we can take advantage of its optimization! But otherwise we need a slower generic decoder
-	if (canvas->currentPNGFilterType == PNG_FILTER_TYPE_UP && IsKeyDown(KEY_SPACE))
+	if (canvas->currentPNGFilterType == PNG_FILTER_TYPE_UP)
 	{
 		processedImage->finalProcessedImageRaw = DecodePNG_FPNG(&imagePNGChecksumed, arenaFinalRaw);
 	}
