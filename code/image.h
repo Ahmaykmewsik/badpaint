@@ -67,12 +67,11 @@ struct Canvas
 	u32 drawingRectCount;
 	Texture textureDrawing;
 	u8 processBatchIndex;
-	u32 pboIDs[2]; 
-	u32 currentPboID;
+	u32 drawingPboIDs[2]; 
+	u32 currentDrawingPboID;
 
 	Brush *brush;
 	bool proccessAsap;
-	bool needsTextureUpload;
 	PNG_FILTER_TYPE currentPNGFilterType;
 
 	unsigned char *rollbackImageData;

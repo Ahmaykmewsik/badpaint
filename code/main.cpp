@@ -273,7 +273,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			if (drewSomething)
 			{
 				canvas->proccessAsap = true;
-				canvas->needsTextureUpload = true;
 			}
 		}
 
@@ -285,7 +284,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				unsigned char *rollbackImage = &canvas->rollbackImageData[(canvas->drawnImageData.dataSize * canvas->rollbackIndexNext)];
 				memcpy(canvas->drawnImageData.dataU8, rollbackImage, canvas->drawnImageData.dataSize);
 				canvas->proccessAsap = true;
-				canvas->needsTextureUpload = true;
 				imageIsBroken = false;
 			}
 			else
@@ -408,81 +406,76 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			ResetProcessedImage(latestCompletedProcessedImage, canvas);
 		}
 
-		if (canvas->needsTextureUpload)
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->drawingPboIDs[canvas->currentDrawingPboID]);
+		Color *pixels = (Color *) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+		if (ASSERT(pixels))
 		{
-			canvas->needsTextureUpload = false;
-
-			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->pboIDs[canvas->currentPboID]);
-			Color *pixels = (Color *) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-			if (ASSERT(pixels))
-			{
-				for (u32 rectIndex = 0; rectIndex < canvas->drawingRectCount; rectIndex++)
-				{
-					if (canvas->drawingRectDirtyList[rectIndex])
-					{
-						RectIV2 drawingRect = GetDrawingRectFromIndex(canvas, rectIndex);
-						u32 pixelCount = drawingRect.dim.x * drawingRect.dim.y;
-						ArenaMarker marker {};
-
-						u32 pixelIndex = 0;
-						u32 startY = drawingRect.pos.y;
-						u32 endY = startY + drawingRect.dim.y;
-						for (u32 y = startY; y < endY; y++)
-						{
-							u32 startIndex = (canvas->drawnImageData.dim.x * y) + drawingRect.pos.x;
-							u32 endIndex = startIndex + drawingRect.dim.x;
-							for (u32 i = startIndex; i < endIndex; i++)
-							{
-								Color canvasPixel = ((Color *)canvas->drawnImageData.dataU8)[i];
-								if (canvasPixel.r)
-								{
-									Color *outPixel = (pixels + i);
-									//NOTE: (Ahmayk) alpha = 0 -> no processing
-									//alpha != 0 -> is being processed currently
-									if (canvasPixel.a != 0)
-									{
-										*outPixel = G_BRUSH_EFFECT_COLORS_PROCESSING[canvasPixel.r];
-									}
-									else
-									{
-										*outPixel = G_BRUSH_EFFECT_COLORS_PRIMARY[canvasPixel.r];
-									}
-								}
-#if 0
-								else
-								{
-									Color *outPixel = (pixels + pixelIndex);
-									*outPixel = PINK;
-									outPixel->a = 100;
-								}
-#endif
-							}
-						}
-					}
-				}
-				glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-			}
-
-			glBindTexture(GL_TEXTURE_2D, canvas->textureDrawing.id);
-			glPixelStorei(GL_UNPACK_ROW_LENGTH, canvas->textureDrawing.width);
-
 			for (u32 rectIndex = 0; rectIndex < canvas->drawingRectCount; rectIndex++)
 			{
 				if (canvas->drawingRectDirtyList[rectIndex])
 				{
 					RectIV2 drawingRect = GetDrawingRectFromIndex(canvas, rectIndex);
-					GLintptr offset = (drawingRect.pos.y * canvas->textureDrawing.width + drawingRect.pos.x) * sizeof(Color);
-					glTexSubImage2D(GL_TEXTURE_2D, 0, drawingRect.pos.x, drawingRect.pos.y, drawingRect.dim.x, drawingRect.dim.y, GL_RGBA, GL_UNSIGNED_BYTE, (void*)offset);
-					canvas->drawingRectDirtyList[rectIndex] = false;
+					u32 pixelCount = drawingRect.dim.x * drawingRect.dim.y;
+					ArenaMarker marker {};
+
+					u32 pixelIndex = 0;
+					u32 startY = drawingRect.pos.y;
+					u32 endY = startY + drawingRect.dim.y;
+					for (u32 y = startY; y < endY; y++)
+					{
+						u32 startIndex = (canvas->drawnImageData.dim.x * y) + drawingRect.pos.x;
+						u32 endIndex = startIndex + drawingRect.dim.x;
+						for (u32 i = startIndex; i < endIndex; i++)
+						{
+							Color canvasPixel = ((Color *)canvas->drawnImageData.dataU8)[i];
+							if (canvasPixel.r)
+							{
+								Color *outPixel = (pixels + i);
+								//NOTE: (Ahmayk) alpha = 0 -> no processing
+								//alpha != 0 -> is being processed currently
+								if (canvasPixel.a != 0)
+								{
+									*outPixel = G_BRUSH_EFFECT_COLORS_PROCESSING[canvasPixel.r];
+								}
+								else
+								{
+									*outPixel = G_BRUSH_EFFECT_COLORS_PRIMARY[canvasPixel.r];
+								}
+							}
+#if 0
+							else
+							{
+								Color *outPixel = (pixels + pixelIndex);
+								*outPixel = PINK;
+								outPixel->a = 100;
+							}
+#endif
+						}
+					}
 				}
 			}
-
-			glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-			canvas->currentPboID = ModNextU32(canvas->currentPboID, ARRAY_COUNT(canvas->pboIDs));
-
-			GenTextureMipmaps(&canvas->textureDrawing);
+			glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
 		}
+
+		glBindTexture(GL_TEXTURE_2D, canvas->textureDrawing.id);
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, canvas->textureDrawing.width);
+
+		for (u32 rectIndex = 0; rectIndex < canvas->drawingRectCount; rectIndex++)
+		{
+			if (canvas->drawingRectDirtyList[rectIndex])
+			{
+				RectIV2 drawingRect = GetDrawingRectFromIndex(canvas, rectIndex);
+				GLintptr offset = (drawingRect.pos.y * canvas->textureDrawing.width + drawingRect.pos.x) * sizeof(Color);
+				glTexSubImage2D(GL_TEXTURE_2D, 0, drawingRect.pos.x, drawingRect.pos.y, drawingRect.dim.x, drawingRect.dim.y, GL_RGBA, GL_UNSIGNED_BYTE, (void*)offset);
+				canvas->drawingRectDirtyList[rectIndex] = false;
+			}
+		}
+
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+		canvas->currentDrawingPboID = ModNextU32(canvas->currentDrawingPboID, ARRAY_COUNT(canvas->drawingPboIDs));
+
+		GenTextureMipmaps(&canvas->textureDrawing);
 
 		//----------------------------------------------------
 		//---------------------RENDER-------------------------

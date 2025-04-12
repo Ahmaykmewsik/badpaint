@@ -379,7 +379,6 @@ void SetPNGFilterType(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 	}
 	UploadAndReplaceTexture(&visualizedFilteredRootImage, &canvas->textureVisualizedFilteredRootImage);
 	ArenaPopMarker(marker);
-	canvas->needsTextureUpload = true;
 }
 
 RectIV2 GetDrawingRectFromIndex(Canvas *canvas, u32 i)
@@ -717,12 +716,12 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 
 	if (canvas->initialized)
 	{
-		glDeleteBuffers(ARRAY_COUNT(canvas->pboIDs), canvas->pboIDs);
+		glDeleteBuffers(ARRAY_COUNT(canvas->drawingPboIDs), canvas->drawingPboIDs);
 	}
-	glGenBuffers(ARRAY_COUNT(canvas->pboIDs), canvas->pboIDs);
-	for(u32 i = 0; i < ARRAY_COUNT(canvas->pboIDs); i++) 
+	glGenBuffers(ARRAY_COUNT(canvas->drawingPboIDs), canvas->drawingPboIDs);
+	for(u32 i = 0; i < ARRAY_COUNT(canvas->drawingPboIDs); i++) 
 	{
-		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->pboIDs[i]);
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->drawingPboIDs[i]);
 		glBufferData(GL_PIXEL_UNPACK_BUFFER, visualizedCanvasDataSize, NULL, GL_STREAM_DRAW);
 	}
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
