@@ -67,6 +67,8 @@ struct Canvas
 	u32 drawingRectCount;
 	Texture textureDrawing;
 	u8 processBatchIndex;
+	u32 pboIDs[2]; 
+	u32 currentPboID;
 
 	Brush *brush;
 	bool proccessAsap;

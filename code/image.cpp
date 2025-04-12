@@ -715,6 +715,18 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 	canvas->textureDrawing.mipmaps = 1;
 	canvas->textureDrawing.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
 
+	if (canvas->initialized)
+	{
+		glDeleteBuffers(ARRAY_COUNT(canvas->pboIDs), canvas->pboIDs);
+	}
+	glGenBuffers(ARRAY_COUNT(canvas->pboIDs), canvas->pboIDs);
+	for(u32 i = 0; i < ARRAY_COUNT(canvas->pboIDs); i++) 
+	{
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->pboIDs[i]);
+		glBufferData(GL_PIXEL_UNPACK_BUFFER, visualizedCanvasDataSize, NULL, GL_STREAM_DRAW);
+	}
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
 	ArenaFree(&gameMemory->canvasRollbackArena);
 	gameMemory->canvasRollbackArena = ArenaInit(MegaByte * 800);
 	canvas->rollbackSizeCount = (u32) FloorF32((f32)gameMemory->canvasRollbackArena.size / visualizedCanvasDataSize) - 1;

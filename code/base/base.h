@@ -11,6 +11,9 @@
 #include <cstring> //for memcpy
 #include <math.h>
 
+//NOTE: (Ahmayk) hack to allow raw openGL calls in our code 
+#include "../includes/raylib/src/external/glad.h" // GLAD extensions loading library, includes OpenGL headers
+
 //NOTE: (Ahmayk) Leftovers from vn_intrinsic.h
 struct GameMemory
 {
