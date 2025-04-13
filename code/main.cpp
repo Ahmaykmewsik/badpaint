@@ -616,7 +616,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						{
 							G_UI_INPUTS->texture = loadedTexture;
 							SetUiAxis({UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT}, {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT});
-							CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT);
+							CreateUiBox(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT, STRING(G_UI_HASH_TAG) + STRING("finalTexture"));
 						}
 						else
 						{
@@ -884,6 +884,20 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					CalculateUiPosGivenReletativePositions(uiBox);
 					RenderUiEntries(uiBox, windowDim);
 				}
+			}
+		}
+
+		if (canvasUiBox && canvasUiBox->hovered)
+		{
+			Color hoverCursorColor = G_BRUSH_EFFECT_COLORS_PROCESSING[currentBrush.brushEffect];
+			DrawCircle((i32)mousePixelPos.x, (i32)mousePixelPos.y, (f32)currentBrush.size, hoverCursorColor);
+			UiBox *finalTextureBox = GetUiBoxLastFrameOfStringKey(STRING("finalTexture"));
+			if (finalTextureBox)
+			{
+				v2 relativeHoverPos = mousePixelPos - canvasUiBox->rect.pos;
+				v2 textureHoverPos = finalTextureBox->rect.pos + relativeHoverPos;
+				Color outlineColor = Color{0, 0, 0, 100};
+				DrawCircleLines((i32)textureHoverPos.x, (i32)textureHoverPos.y, (f32)currentBrush.size, outlineColor);
 			}
 		}
 
