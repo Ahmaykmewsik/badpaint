@@ -184,7 +184,7 @@ void CalculateUiUpwardsDependentSizes(UiBox *uiBox)
 			if (uiBox->parent->rect.dim.y)
 				scaleY = uiBox->parent->rect.dim.y / textureDim.y;
 
-			float scale = MinF32(1, MinF32(scaleX, scaleY));
+			float scale = MinF32(scaleX, scaleY);
 
 			uiBox->rect.dim = textureDim * scale;
 		}

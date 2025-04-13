@@ -261,7 +261,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		b32 isHoveredOnPaintable = false;
 		if (canvasUiBox && canvasUiBox->hovered)
 		{
-			f32 scale = MaxF32(1, canvas->drawnImageData.dim.x / canvasUiBox->rect.dim.x);
+			f32 scale = canvas->drawnImageData.dim.x / canvasUiBox->rect.dim.x;
 			cursorPosInDrawnImagePrevious = (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBox->rect.pos) * scale;
 			cursorPosInDrawnImage = (mousePixelPos - canvasUiBox->rect.pos) * scale;
 			isDownOnPaintable = canvasUiBox->down;
@@ -269,7 +269,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		}
 		if (finalTextureUiBox && finalTextureUiBox->hovered)
 		{
-			f32 scale = MaxF32(1, rootImageRaw->dim.x / canvasUiBox->rect.dim.x);
+			f32 scale = rootImageRaw->dim.x / finalTextureUiBox->rect.dim.x;
 			cursorPosInDrawnImagePrevious = (mousePixelPos - RayVectorToV2(GetMouseDelta()) - finalTextureUiBox->rect.pos) * scale;
 			cursorPosInDrawnImage = (mousePixelPos - finalTextureUiBox->rect.pos) * scale;
 			isDownOnPaintable = finalTextureUiBox->down;
@@ -907,17 +907,20 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 		if (isHoveredOnPaintable)
 		{
+			v2 normalizedRelativePos = cursorPosInDrawnImage / canvas->drawnImageData.dim;
 			if (canvasUiBox)
 			{
-				v2 hoverPos = canvasUiBox->rect.pos + cursorPosInDrawnImage;
+				v2 hoverPos = canvasUiBox->rect.pos + (canvasUiBox->rect.dim * normalizedRelativePos);
 				Color hoverCursorColor = G_BRUSH_EFFECT_COLORS_PROCESSING[currentBrush.brushEffect];
-				DrawCircle((i32)hoverPos.x, (i32)hoverPos.y, (f32)currentBrush.size, hoverCursorColor);
+				f32 size = currentBrush.size * SafeDivideF32(canvasUiBox->rect.dim.x, (f32) canvas->drawnImageData.dim.x);
+				DrawCircle((i32)hoverPos.x, (i32)hoverPos.y, size, hoverCursorColor);
 			}
 			if (finalTextureUiBox)
 			{
-				v2 hoverPos = finalTextureUiBox->rect.pos + cursorPosInDrawnImage;
+				v2 hoverPos = finalTextureUiBox->rect.pos + (finalTextureUiBox->rect.dim * normalizedRelativePos);
 				Color outlineColor = Color{0, 0, 0, 100};
-				DrawCircleLines((i32)hoverPos.x, (i32)hoverPos.y, (f32)currentBrush.size, outlineColor);
+				f32 size = currentBrush.size * SafeDivideF32(finalTextureUiBox->rect.dim.x, (f32) canvas->drawnImageData.dim.x);
+				DrawCircleLines((i32)hoverPos.x, (i32)hoverPos.y, size, outlineColor);
 			}
 		}
 

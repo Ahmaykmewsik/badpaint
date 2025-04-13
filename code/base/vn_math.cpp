@@ -718,6 +718,18 @@ f64 SafeDivideF64(f64 a, f64 b)
 	return result;
 }
 
+f32 SafeDivideI32(i32 a, i32 b)
+{
+	f32 result = {};
+
+	if (b)
+	{
+		result = a / (f32) b;
+	}
+
+	return result;
+}
+
 f32 DotProductV2(v2 v1, v2 v2)
 {
 	f32 result = (v1.x * v2.x) + (v1.y * v2.y);
