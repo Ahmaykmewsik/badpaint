@@ -250,6 +250,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				{
 					canvas->rollbackIndexStart = ModNextU32(canvas->rollbackIndexStart, canvas->rollbackSizeCount - 1);
 				}
+				//printf("New rollback! start: %d next: %d\n", canvas->rollbackIndexStart, canvas->rollbackIndexNext);
 			}
 
 			Color colorToPaint = {};
@@ -280,11 +281,13 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		{
 			if (canvas->rollbackIndexNext != canvas->rollbackIndexStart)
 			{
-				ModBackU32(canvas->rollbackIndexNext, canvas->rollbackSizeCount - 1);
-				unsigned char *rollbackImage = &canvas->rollbackImageData[(canvas->drawnImageData.dataSize * canvas->rollbackIndexNext)];
+				canvas->rollbackIndexNext =	ModBackU32(canvas->rollbackIndexNext, canvas->rollbackSizeCount - 1);
+				u8 *rollbackImage = &canvas->rollbackImageData[(canvas->drawnImageData.dataSize * canvas->rollbackIndexNext)];
 				memcpy(canvas->drawnImageData.dataU8, rollbackImage, canvas->drawnImageData.dataSize);
+				memset(canvas->drawingRectDirtyListFrame, 1, canvas->drawingRectCount * sizeof(b32));
 				canvas->proccessAsap = true;
 				imageIsBroken = false;
+				//printf("UNDO! start: %d next: %d\n", canvas->rollbackIndexStart, canvas->rollbackIndexNext);
 			}
 			else
 			{
@@ -349,7 +352,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				{
 					if (processedImageOfIndex->dirtyRectsInProcess[rectIndex])
 					{
-						canvas->drawingRectDirtyList[rectIndex] = true;
+						canvas->drawingRectDirtyListFrame[rectIndex] = true;
 						RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->drawnImageData.dim, canvas->drawingRectDim, rectIndex);
 						u32 pixelIndex = 0;
 						u32 startY = drawingRect.pos.y;
@@ -471,7 +474,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		b32 somethingToDraw = false;
 		for (u32 rectIndex = 0; rectIndex < canvas->drawingRectCount; rectIndex++)
 		{
-			if (canvas->drawingRectDirtyList[rectIndex])
+			if (canvas->drawingRectDirtyListFrame[rectIndex])
 			{
 				somethingToDraw = true;
 			}
@@ -485,7 +488,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			{
 				for (u32 rectIndex = 0; rectIndex < canvas->drawingRectCount; rectIndex++)
 				{
-					if (canvas->drawingRectDirtyList[rectIndex])
+					if (canvas->drawingRectDirtyListFrame[rectIndex])
 					{
 						RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->drawnImageData.dim, canvas->drawingRectDim, rectIndex);
 						u32 startY = drawingRect.pos.y;
@@ -520,12 +523,12 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 			for (u32 rectIndex = 0; rectIndex < canvas->drawingRectCount; rectIndex++)
 			{
-				if (canvas->drawingRectDirtyList[rectIndex])
+				if (canvas->drawingRectDirtyListFrame[rectIndex])
 				{
 					RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->drawnImageData.dim, canvas->drawingRectDim, rectIndex);
 					GLintptr offset = (drawingRect.pos.y * canvas->textureDrawing.width + drawingRect.pos.x) * sizeof(Color);
 					glTexSubImage2D(GL_TEXTURE_2D, 0, drawingRect.pos.x, drawingRect.pos.y, drawingRect.dim.x, drawingRect.dim.y, GL_RGBA, GL_UNSIGNED_BYTE, (void*)offset);
-					canvas->drawingRectDirtyList[rectIndex] = false;
+					canvas->drawingRectDirtyListFrame[rectIndex] = false;
 				}
 			}
 

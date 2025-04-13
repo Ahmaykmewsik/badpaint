@@ -363,7 +363,6 @@ RectIV2 GetDrawingRectFromIndex(iv2 imageDim, iv2 rectDim, u32 i)
 	result.dim = rectDim; 
 
 	u32 numX = (u32) CeilF32(imageDim.x / (f32) rectDim.x);
-	u32 numY = (u32) CeilF32(imageDim.y / (f32) rectDim.y);
 	u32 indexX = i % numX;
 	u32 indexY = ((u32) FloorF32(i / (f32) numX));
 	result.pos.x = result.dim.x * indexX;
@@ -416,7 +415,7 @@ void CanvasSetDirtyRect(Canvas *canvas, RectIV2 updateArea)
 			u32 index = dirtyIndexX + (dirtyIndexY * numX);
 			if (ASSERT(index < canvas->drawingRectCount))
 			{
-				canvas->drawingRectDirtyList[index] = true;
+				canvas->drawingRectDirtyListFrame[index] = true;
 				canvas->drawingRectDirtyListProcess[index] = true;
 			}
 		}
@@ -745,9 +744,9 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 
 	canvas->drawingRectDim = iv2{32, 32};
 	canvas->drawingRectCount = GetDrawingRectCount(canvasDim, canvas->drawingRectDim);
-	canvas->drawingRectDirtyList = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
+	canvas->drawingRectDirtyListFrame = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
 	canvas->drawingRectDirtyListProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
-	memset(canvas->drawingRectDirtyList, 0, canvas->drawingRectCount * sizeof(b32));
+	memset(canvas->drawingRectDirtyListFrame, 0, canvas->drawingRectCount * sizeof(b32));
 	memset(canvas->drawingRectDirtyListProcess, 0, canvas->drawingRectCount * sizeof(b32));
 
 	canvas->initialized = true;

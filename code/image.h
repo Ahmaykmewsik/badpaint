@@ -62,7 +62,7 @@ struct Canvas
 	//A - processBatchIndex if processing, otherwise 0 (for displaying processes state per pixel)
 	ImageRawRGBA32 drawnImageData;
 	iv2 drawingRectDim;
-	b32 *drawingRectDirtyList;
+	b32 *drawingRectDirtyListFrame;
 	b32 *drawingRectDirtyListProcess;
 	u32 drawingRectCount;
 	Texture textureDrawing;
@@ -80,10 +80,10 @@ struct Canvas
 	u32 finalImageRectCount;
 	u32 *cachedFinalImageRectHashes;
 
-	unsigned char *rollbackImageData;
-	unsigned int rollbackSizeCount;
-	unsigned int rollbackIndexNext;
-	unsigned int rollbackIndexStart;
+	u8 *rollbackImageData;
+	u32 rollbackSizeCount;
+	u32 rollbackIndexNext;
+	u32 rollbackIndexStart;
 };
 
 struct ProcessedImage
