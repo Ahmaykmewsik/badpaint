@@ -365,7 +365,7 @@ RectIV2 GetDrawingRectFromIndex(iv2 imageDim, iv2 rectDim, u32 i)
 	u32 numX = (u32) CeilF32(imageDim.x / (f32) rectDim.x);
 	u32 numY = (u32) CeilF32(imageDim.y / (f32) rectDim.y);
 	u32 indexX = i % numX;
-	u32 indexY = ((u32) FloorF32(i / (f32) numX)) % numX;
+	u32 indexY = ((u32) FloorF32(i / (f32) numX));
 	result.pos.x = result.dim.x * indexX;
 	result.pos.y = result.dim.y * indexY;
 
