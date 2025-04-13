@@ -20,8 +20,3 @@
 
 #include "../includes/lodepng.h"
 #include "../includes/lodepng.c"
-
-#define FPNG_DISABLE_DECODE_CRC32_CHECKS 1
-
-#include "../includes/fpng.cpp"
-#include "../includes/fpng.h"

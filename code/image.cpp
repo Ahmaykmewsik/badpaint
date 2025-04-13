@@ -273,187 +273,6 @@ ImageRawRGBA32 PiratedLoadPNG_Defilter(ImagePNGFiltered *imagePNGFiltered, Arena
 	return result;
 }
 
-ImagePNGChecksumed PiratedSTB_EncodePngCRC(ImagePNGCompressed *imagePNGCompressed, Arena *arena)
-{
-	ImagePNGChecksumed result = {};
-
-	unsigned int zlen = imagePNGCompressed->dataSize;
-	int x = imagePNGCompressed->dim.x;
-	int y = imagePNGCompressed->dim.y;
-
-	// each tag requires 12 bytes of overhead
-	unsigned int outLength = 8 + 12 + 13 + 12 + zlen + 12;
-	unsigned char *out = (unsigned char *)ArenaPushSize(arena, outLength, {});
-
-	int ctype[5] = {-1, 0, 4, 2, 6};
-	unsigned char sig[8] = {137, 80, 78, 71, 13, 10, 26, 10};
-	unsigned char *o = out;
-	STBIW_MEMMOVE(o, sig, 8);
-	o += 8;
-	stbiw__wp32(o, 13); // header length
-	stbiw__wptag(o, "IHDR");
-	stbiw__wp32(o, x);
-	stbiw__wp32(o, y);
-	*o++ = 8;
-	*o++ = STBIW_UCHAR(ctype[4]);
-	*o++ = 0;
-	*o++ = 0;
-	*o++ = 0;
-	stbiw__wpcrc(&o, 13);
-
-	stbiw__wp32(o, zlen);
-	stbiw__wptag(o, "IDAT");
-	STBIW_MEMMOVE(o, imagePNGCompressed->dataU8, zlen);
-	o += zlen;
-	stbiw__wpcrc(&o, zlen);
-
-	stbiw__wp32(o, 0);
-	stbiw__wptag(o, "IEND");
-	stbiw__wpcrc(&o, 0);
-
-	STBIW_ASSERT(o == out + outLength);
-
-	result.dataU8 = out;
-	result.dataSize = outLength;
-	result.dim = imagePNGCompressed->dim;
-
-	return result;
-}
-
-ImagePNGChecksumed PiratedFPNG_EncodePngCRC(ImagePNGCompressed *imagePNGCompressed, Arena *arena)
-{
-	ImagePNGChecksumed result = {};
-
-	u8 FPNG_FDEC_VERSION = 0;
-	u32 PNG_HEADER_SIZE = 58;
-	u32 zlen = imagePNGCompressed->dataSize;
-	u32 outLength = PNG_HEADER_SIZE + zlen + 16;
-	u8 *out = (u8 *)ArenaPushSize(arena, outLength, {});
-	u32 w = imagePNGCompressed->dim.x;
-	u32 h = imagePNGCompressed->dim.y;
-	u32 num_chans = 4;
-	u32 i;
-
-	u32 idat_len = imagePNGCompressed->dataSize;
-
-	// Write real PNG header, fdEC chunk, and the beginning of the IDAT chunk
-	{
-		static const uint8_t s_color_type[] = { 0x00, 0x00, 0x04, 0x02, 0x06 };
-
-		uint8_t pnghdr[58] = { 
-			0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a,   // PNG sig
-			0x00,0x00,0x00,0x0d, 'I','H','D','R',  // IHDR chunk len, type
-			0,0,(uint8_t)(w >> 8),(uint8_t)w, // width
-			0,0,(uint8_t)(h >> 8),(uint8_t)h, // height
-			8,   //bit_depth
-			s_color_type[num_chans], // color_type
-			0, // compression
-			0, // filter
-			0, // interlace
-			0, 0, 0, 0, // IHDR crc32
-			0, 0, 0, 5, 'f', 'd', 'E', 'C', 82, 36, 147, 227, FPNG_FDEC_VERSION,   0xE5, 0xAB, 0x62, 0x99, // our custom private, ancillary, do not copy, fdEC chunk // NOTE: (Ahmayk) Sorry imma copy it
-			(uint8_t)(idat_len >> 24),(uint8_t)(idat_len >> 16),(uint8_t)(idat_len >> 8),(uint8_t)idat_len, 'I','D','A','T' // IDATA chunk len, type
-		}; 
-
-		// Compute IHDR CRC32
-		u32 c = (u32)fpng::fpng_crc32(pnghdr + 12, 17, fpng::FPNG_CRC32_INIT);
-		for (i = 0; i < 4; ++i, c <<= 8)
-			((uint8_t*)(pnghdr + 29))[i] = (uint8_t)(c >> 24);
-
-		memcpy(out, pnghdr, PNG_HEADER_SIZE);
-	}
-
-	memcpy(out + PNG_HEADER_SIZE, imagePNGCompressed->dataU8, imagePNGCompressed->dataSize);
-
-	// Write IDAT chunk's CRC32 and a 0 length IEND chunk
-	//vector_append(out_buf, "\0\0\0\0\0\0\0\0\x49\x45\x4e\x44\xae\x42\x60\x82", 16); // IDAT CRC32, followed by the IEND chunk
-	memcpy(out + PNG_HEADER_SIZE + zlen, "\0\0\0\0\0\0\0\0\x49\x45\x4e\x44\xae\x42\x60\x82", 16);
-
-	// Compute IDAT crc32
-	u32 c = (u32)fpng::fpng_crc32(out + PNG_HEADER_SIZE - 4, idat_len + 4, fpng::FPNG_CRC32_INIT);
-
-	for (i = 0; i < 4; ++i, c <<= 8)
-		(out + outLength - 16)[i] = (uint8_t)(c >> 24);
-
-	result.dataU8 = out;
-	result.dataSize = outLength;
-	result.dim = imagePNGCompressed->dim;
-	return result;
-}
-
-ImageRawRGBA32 DecodePng(ImagePNGChecksumed *imagePNGChecksumed, Arena *arena)
-{
-	ImageRawRGBA32 result = {};
-
-	LodePNGColorType colorType = LCT_RGBA;
-	unsigned int bitdepth = 8;
-
-	LodePNGState state;
-	lodepng_state_init(&state);
-	state.info_raw.colortype = colorType;
-	state.info_raw.bitdepth = bitdepth;
-	state.info_png.color.colortype = colorType;
-	state.info_png.color.bitdepth = bitdepth;
-	state.decoder.ignore_crc = true;
-	state.decoder.zlibsettings.ignore_adler32 = true;
-	state.decoder.zlibsettings.ignore_nlen = true;
-
-	unsigned char *outData = {};
-	unsigned int width = imagePNGChecksumed->dim.x;
-	unsigned int height = imagePNGChecksumed->dim.y;
-	lodepng_decode(&outData, &width, &height, &state, imagePNGChecksumed->dataU8, (size_t)imagePNGChecksumed->dataSize);
-
-	const char *error = "";
-	if (!state.error)
-	{
-		unsigned int rawRGBA32DataSize = GetSizeOfRawRGBA32(imagePNGChecksumed->dim);
-		if (outData)
-		{
-			result.dim = imagePNGChecksumed->dim;
-			result.dataSize = rawRGBA32DataSize;
-			result.dataU8 = (u8*) ArenaPushSize(arena, result.dataSize, {});
-			//TOOD: (Ahmayk) Use our own memory so there's no copying or freeing here
-			memcpy(result.dataU8, outData, result.dataSize);
-			lodepng_free(outData);
-		}
-	}
-	else
-	{
-		// Print(lodepng_error_text(state.error));
-		error = lodepng_error_text(state.error);
-	}
-
-	lodepng_state_cleanup(&state);
-
-	return result;
-}
-
-
-ImageRawRGBA32 DecodePNG_FPNG(ImagePNGChecksumed *imagePNGChecksumed, Arena *arena)
-{
-	ImageRawRGBA32 result = {};
-
-	u32 height = 0;
-	u32 width = 0;
-	u32 idat_ofs = 0;
-	u32 idat_len = 0;
-	u32 channels_in_file = 0;
-	int status = fpng::fpng_get_info_internal(imagePNGChecksumed->dataU8, imagePNGChecksumed->dataSize, width, height, channels_in_file, idat_ofs, idat_len);
-	const u8 *idatData = imagePNGChecksumed->dataU8 + idat_ofs + sizeof(u32) * 2;
-	u32 src_len = imagePNGChecksumed->dataSize - (idat_ofs + sizeof(u32) * 2);
-	u8 *out = ArenaPushSize(arena, arena->size, {});
-	b32 decompressResult = fpng::fpng_pixel_zlib_decompress_4<4>(idatData, src_len, idat_len, out, width, height);
-	if (decompressResult)
-	{
-		result.dataU8 = out;
-		result.dataSize = width * height * 4;  //NOTE: (Ahmayk) don't assume what this should be, perhaps it has changed
-		result.dim = imagePNGChecksumed->dim;
-	}
-
-	return result;
-}
-
-
 void UploadAndReplaceTexture(ImageRawRGBA32 *imageRaw, Texture *texture)
 {
 	if (ASSERT(imageRaw->dataU8))
@@ -818,6 +637,8 @@ void HashImageRects(ImageRawRGBA32 *imageRaw, iv2 rectDim, u32 **outHashes)
 	}
 }
 
+//TODO: (Ahmayk) This takes a good deal of time now, the exspensive stuff should be offloaded to another thread
+//And we have a fun little loading animation or something
 void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush, GameMemory *gameMemory)
 {
 	//NOTE: (Ahmayk) free and reallocate temporary arena to reduce memory size
@@ -944,7 +765,6 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 	memcpy(imagePNGFiltered.dataU8, canvas->imagePNGFiltered.dataU8, imagePNGFiltered.dataSize);
 	UnlockOnBool(&canvas->filterLock);
 
-#if 1
 	for (u32 i = 0; i < imagePNGFiltered.dataSize; i += 1)
 	{
 		Color canvasPixel = ((Color *)canvas->drawnImageData.dataU8)[i];
@@ -981,50 +801,12 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 			}
 		}
 	}
-#endif
 
-#if 0
-	ImagePNGCompressed imagePNGCompressed = {};
-	imagePNGCompressed.dim = imagePNGFiltered.dim;
-	imagePNGCompressed.dataSize = imagePNGFiltered.dataSize;
-
-	Arena *arenaCompressed = ArenaPairPushOldest(&processedImage->arenaPair, {});
-
-	fpng::fpng_init(); //NOTE: (Ahmayk) enables SSE in fpng
-	imagePNGCompressed.dataU8 = (u8 *)ArenaPushSize(arenaCompressed, arenaCompressed->size, {});
-	imagePNGCompressed.dataSize = fpng::pixel_deflate_dyn_4_rle_one_pass(imagePNGFiltered.dataU8, imagePNGFiltered.dim.x, imagePNGFiltered.dim.y, imagePNGCompressed.dataU8, (u32) arenaCompressed->size);
-	Arena *arenaChecksumed = ArenaPairPushOldest(&processedImage->arenaPair, arenaFiltered);
-
-	// Print("Encoded PNG Compression on thread " + IntToString(processedImage->index));
-	//ImagePNGChecksumed imagePNGChecksumed = PiratedSTB_EncodePngCRC(&imagePNGCompressed, arenaChecksumed);
-	ImagePNGChecksumed imagePNGChecksumed = PiratedFPNG_EncodePngCRC(&imagePNGCompressed, arenaChecksumed);
-
-	Arena *arenaFinalRaw = ArenaPairPushOldest(&processedImage->arenaPair, arenaCompressed);
-	// Print("Encoded PNG CRC on thread " + IntToString(processedImage->index));
-
-	//NOTE: (Ahmayk) FPNG seems to be optimized on filter type up only. So if we're in that mode
-	//we can take advantage of its optimization! But otherwise we need a slower generic decoder
-	if (canvas->currentPNGFilterType == PNG_FILTER_TYPE_UP)
-	{
-		processedImage->finalProcessedImageRaw = DecodePNG_FPNG(&imagePNGChecksumed, arenaFinalRaw);
-	}
-	else
-	{
-		processedImage->finalProcessedImageRaw = DecodePng(&imagePNGChecksumed, arenaFinalRaw);
-	}
-#else
 	Arena *arenaFinalRaw = ArenaPairPushOldest(&processedImage->arenaPair, {});
 	processedImage->finalProcessedImageRaw = PiratedLoadPNG_Defilter(&imagePNGFiltered, arenaFinalRaw);
-#endif
 
 	ArenaPairFreeOldest(&processedImage->arenaPair);
-
-	//f64 start = GetTime();
 	HashImageRects(&processedImage->finalProcessedImageRaw, canvas->finalImageRectDim, &processedImage->finalImageRectHashes);
-	//f64 end = GetTime();
-	//printf("process time: %f\n", (end - start) * 1000);
-	// Print("Decoded PNG on thread " + IntToString(processedImage->index));
-
 	// Print("Converted to final PNG on thead " + IntToString(processedImage->index));
 }
 
