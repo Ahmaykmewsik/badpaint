@@ -249,6 +249,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				if (canvas->rollbackIndexNext == canvas->rollbackIndexStart)
 				{
 					canvas->rollbackIndexStart = ModNextU32(canvas->rollbackIndexStart, canvas->rollbackSizeCount - 1);
+					canvas->rollbackStartHasProgressed = true;
 				}
 				//printf("New rollback! start: %d next: %d\n", canvas->rollbackIndexStart, canvas->rollbackIndexNext);
 			}
@@ -287,11 +288,22 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				memset(canvas->drawingRectDirtyListFrame, 1, canvas->drawingRectCount * sizeof(b32));
 				canvas->proccessAsap = true;
 				imageIsBroken = false;
+				canvas->rollbackHasRolledBackOnce = true;
 				//printf("UNDO! start: %d next: %d\n", canvas->rollbackIndexStart, canvas->rollbackIndexNext);
+			}
+			else if (canvas->rollbackStartHasProgressed)
+			{
+				String notification = STRING("Tragedy has struck! For you must now live with your mistakes. You've run out of undos!");
+				InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
+			}
+			else if (canvas->rollbackHasRolledBackOnce)
+			{
+				String notification = STRING("You cannot go before the begining of time, my friend. (Nothing else to undo)");
+				InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
 			}
 			else
 			{
-				String notification = STRING("The past is no more. You must now live with your mistakes. You've run out of undos!");
+				String notification = STRING("You must go forward before you can go backwards. (No undo history yet! Draw something!!!!)");
 				InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
 			}
 		}

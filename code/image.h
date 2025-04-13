@@ -84,6 +84,8 @@ struct Canvas
 	u32 rollbackSizeCount;
 	u32 rollbackIndexNext;
 	u32 rollbackIndexStart;
+	b32 rollbackHasRolledBackOnce; 
+	b32 rollbackStartHasProgressed; 
 };
 
 struct ProcessedImage

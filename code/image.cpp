@@ -740,6 +740,8 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 	canvas->rollbackImageData = ARENA_PUSH_ARRAY(&gameMemory->canvasRollbackArena, canvas->rollbackSizeCount * visualizedCanvasDataSize, u8);
 	canvas->rollbackIndexStart = 0;
 	canvas->rollbackIndexNext = 0;
+	canvas->rollbackStartHasProgressed = {};
+	canvas->rollbackHasRolledBackOnce = {};
 	canvas->brush = brush;
 
 	canvas->drawingRectDim = iv2{32, 32};
