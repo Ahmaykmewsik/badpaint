@@ -317,7 +317,7 @@ void SetPNGFilterType(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 
 	UnlockOnBool(&canvas->filterLock);
 
-	iv2 canvasDim = iv2{(rootImageRaw->dim.x * 4) + 1, rootImageRaw->dim.y};
+	iv2 canvasDim = rootImageRaw->dim; 
 	u32 visualizedCanvasDataSize = canvasDim.x * canvasDim.y * sizeof(Color);
 
 	ArenaMarker marker = {};
@@ -325,12 +325,35 @@ void SetPNGFilterType(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 	visualizedFilteredRootImage.dim = canvasDim;
 	visualizedFilteredRootImage.dataSize = visualizedCanvasDataSize;
 	visualizedFilteredRootImage.dataU8 = (u8*) ArenaPushSize(&gameMemory->temporaryArena, visualizedCanvasDataSize, &marker);
-	for (int i = 0; i < canvasDim.x * canvasDim.y; i++)
+	for (u32 y = 0; y < (u32) canvasDim.y; y++)
 	{
-		u8 value = canvas->imagePNGFiltered.dataU8[i];
-		((Color *)(visualizedFilteredRootImage.dataU8))[i] = Color{value, value, value, 255};
+		u32 filterByteOffset = y + 1;
+		u32 startIndex = canvasDim.x * y;
+		u32 endIndex = startIndex + canvasDim.x;
+
+		u8 *scanlineFiltered = canvas->imagePNGFiltered.dataU8 + (startIndex * 4) + filterByteOffset;
+		u8 *scanlineVisualized = visualizedFilteredRootImage.dataU8 + (startIndex * 4);
+		memcpy(scanlineVisualized, scanlineFiltered, canvasDim.x * 4);
+
+		for (u32 i = startIndex; i < endIndex; i++)
+		{
+			u8 *filteredPixel = canvas->imagePNGFiltered.dataU8 + (i * 4) + filterByteOffset;
+			u8 *visualizedPixel = visualizedFilteredRootImage.dataU8 + (i * 4);
+			visualizedPixel[3] = 255;
+		}
 	}
-	UploadAndReplaceTexture(&visualizedFilteredRootImage, &canvas->textureVisualizedFilteredRootImage);
+
+	if (!canvas->textureVisualizedFilteredRootImage.id)
+	{
+		canvas->textureVisualizedFilteredRootImage.id = rlLoadTexture(visualizedFilteredRootImage.dataU8, visualizedFilteredRootImage.dim.x, visualizedFilteredRootImage.dim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
+		canvas->textureVisualizedFilteredRootImage.width = canvasDim.x;
+		canvas->textureVisualizedFilteredRootImage.height = canvasDim.y; 
+		canvas->textureVisualizedFilteredRootImage.mipmaps = 1;
+		canvas->textureVisualizedFilteredRootImage.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+	}
+	RectIV2 rect = {};
+	rect.dim = canvasDim;
+	UpdateRectInTexture(&canvas->textureVisualizedFilteredRootImage, visualizedFilteredRootImage.dataU8, rect);
 	ArenaPopMarker(marker);
 }
 
@@ -652,11 +675,15 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 
 	ArenaFree(&gameMemory->canvasArena);
 
-	iv2 canvasDim = iv2{(rootImageRaw->dim.x * 4) + 1, rootImageRaw->dim.y};
+	iv2 canvasDim = rootImageRaw->dim;
 	u32 visualizedCanvasDataSize = canvasDim.x * canvasDim.y * sizeof(Color);
 
+	u32 conversionArenaSize = visualizedCanvasDataSize + (rootImageRaw->dim.x * 4);
+	conversionArenaSize = (u32) (conversionArenaSize * 1.2f);
+	AlignPow2U32(&conversionArenaSize, 256);
+
 	//NOTE: (Ahmayk) drawn image, visualized image, drawingRects, dirtyRectsForEachProcesssImage, finalImageRectHashes
-	u32 canvasArneaSize = (u32) MaxU32(MegaByte * 1, (u32) (visualizedCanvasDataSize * 2.1f));
+	u32 canvasArneaSize = (u32) MaxU32(MegaByte * 1, (u32) (conversionArenaSize * 2.1f));
 	gameMemory->canvasArena = ArenaInit(canvasArneaSize);
 
 	canvas->drawnImageData.dataU8 = ArenaPushSize(&gameMemory->canvasArena, visualizedCanvasDataSize, {});
@@ -664,29 +691,20 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 	canvas->drawnImageData.dataSize = visualizedCanvasDataSize;
 	memset(canvas->drawnImageData.dataU8, 0, visualizedCanvasDataSize);
 
-	u32 conversionArenaSize = (canvasDim.x * canvasDim.y) + (rootImageRaw->dim.x * 4);
-	conversionArenaSize = (u32) (conversionArenaSize * 1.2f);
-	AlignPow2U32(&conversionArenaSize, 256);
-
 	canvas->arenaFilteredPNG = ArenaInitFromArena(&gameMemory->canvasArena, conversionArenaSize);
 
 	ArenaGroupFree(&gameMemory->conversionArenaGroup);
 	gameMemory->conversionArenaGroup = ArenaGroupInit(MegaByte * 400);
 	ArenaGroupResetAndFill(&gameMemory->conversionArenaGroup, conversionArenaSize);
 
-	SetPNGFilterType(canvas, rootImageRaw, gameMemory);
+	UploadAndReplaceTexture(&canvas->drawnImageData, &canvas->textureDrawing);
 
-	if (canvas->textureDrawing.id)
+	if (canvas->textureVisualizedFilteredRootImage.id)
 	{
-		rlUnloadTexture(canvas->textureDrawing.id);
-		canvas->textureDrawing = {};
+		rlUnloadTexture(canvas->textureVisualizedFilteredRootImage.id);
+		canvas->textureVisualizedFilteredRootImage = {};
 	}
-
-	canvas->textureDrawing.id = rlLoadTexture(canvas->drawnImageData.dataU8, canvasDim.x, canvasDim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
-	canvas->textureDrawing.width = canvasDim.x;
-	canvas->textureDrawing.height = canvasDim.y;
-	canvas->textureDrawing.mipmaps = 1;
-	canvas->textureDrawing.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+	SetPNGFilterType(canvas, rootImageRaw, gameMemory);
 
 	if (canvas->initialized)
 	{
@@ -741,6 +759,7 @@ void InitializeNewImage(const char *fileName, GameMemory *gameMemory, ImageRawRG
 	if (rootImageRaw->dataU8)
 	{
 		UploadAndReplaceTexture(rootImageRaw, loadedTexture);
+
 		InitializeCanvas(canvas, rootImageRaw, currentBrush, gameMemory);
 		for (u32 i = 0; i < threadCount; i++)
 		{
@@ -765,39 +784,56 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 	memcpy(imagePNGFiltered.dataU8, canvas->imagePNGFiltered.dataU8, imagePNGFiltered.dataSize);
 	UnlockOnBool(&canvas->filterLock);
 
-	for (u32 i = 0; i < imagePNGFiltered.dataSize; i += 1)
+	for (u32 y = 0; y < (u32) canvas->imagePNGFiltered.dim.y; y++)
 	{
-		Color canvasPixel = ((Color *)canvas->drawnImageData.dataU8)[i];
+		u32 filterByteOffset = y + 1;
+		u32 startIndex = imagePNGFiltered.dim.x * y;
+		u32 endIndex = startIndex + imagePNGFiltered.dim.x;
 
-		if (canvasPixel.r)
+		for (u32 i = startIndex; i < endIndex; i++)
 		{
-			switch (canvasPixel.r)
+			u8 *filteredPixel = imagePNGFiltered.dataU8 + (i * 4) + filterByteOffset;
+			u8 *canvasPixel = canvas->drawnImageData.dataU8 + (i * 4);
+
+			if (canvasPixel[0])
 			{
-				case BRUSH_EFFECT_ERASE:
-					break;
-				case BRUSH_EFFECT_REMOVE:
+				switch (canvasPixel[0])
+				{
+					case BRUSH_EFFECT_ERASE: break;
+					case BRUSH_EFFECT_REMOVE:
 					{
-						imagePNGFiltered.dataU8[i] = 0;
-						break;
-					}
-				case BRUSH_EFFECT_MAX:
+						filteredPixel[0] = 0;
+						filteredPixel[1] = 0;
+						filteredPixel[2] = 0;
+						filteredPixel[3] = 0;
+					} break;
+					case BRUSH_EFFECT_MAX:
 					{
-						imagePNGFiltered.dataU8[i] = 255;
-						break;
-					}
-				case BRUSH_EFFECT_SHIFT:
+						filteredPixel[0] = 255;
+						filteredPixel[1] = 255;
+						filteredPixel[2] = 255;
+						filteredPixel[3] = 255;
+					} break;
+					case BRUSH_EFFECT_SHIFT:
 					{
 						int shiftAmount = 36;
 						if (i < imagePNGFiltered.dataSize - shiftAmount)
-							imagePNGFiltered.dataU8[i] = imagePNGFiltered.dataU8[i + shiftAmount];
-						break;
-					}
-				case BRUSH_EFFECT_RANDOM:
+						{
+							filteredPixel[0] = filteredPixel[0 + shiftAmount];
+							filteredPixel[1] = filteredPixel[1 + shiftAmount];
+							filteredPixel[2] = filteredPixel[2 + shiftAmount];
+							filteredPixel[3] = filteredPixel[3 + shiftAmount];
+						}
+					} break;
+					case BRUSH_EFFECT_RANDOM:
 					{
-						imagePNGFiltered.dataU8[i] = canvasPixel.g;
-						break;
-					}
+						filteredPixel[0] = canvasPixel[1];
+						filteredPixel[1] = canvasPixel[1];
+						filteredPixel[2] = canvasPixel[1];
+						filteredPixel[3] = canvasPixel[1];
+					} break;
 					InvalidDefaultCase
+				}
 			}
 		}
 	}
