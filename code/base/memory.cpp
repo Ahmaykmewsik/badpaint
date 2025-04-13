@@ -115,7 +115,10 @@ ArenaMarker ArenaPushMarker(Arena *arena)
 u8 *ArenaPushSize(Arena *arena, u64 size, ArenaMarker *arenaMarker)
 {
 	u8 *result = {};
-	if (ASSERT(arena) && ASSERT(!(arena->flags & ARENA_FLAG_READY_FOR_ASSIGNMENT)) && ASSERT(arena->memory))
+	if (ASSERT(arena) &&
+		ASSERT(size) &&
+		ASSERT(arena->memory) &&
+		ASSERT(!(arena->flags & ARENA_FLAG_READY_FOR_ASSIGNMENT)))
 	{
 		if (arenaMarker)
 		{

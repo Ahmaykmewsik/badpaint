@@ -227,6 +227,52 @@ ImagePNGFiltered PiratedSTB_EncodePngFilters(ImageRawRGBA32 *imageRaw, Arena *ar
 	return result;
 }
 
+ImageRawRGBA32 PiratedLoadPNG_Defilter(ImagePNGFiltered *imagePNGFiltered, Arena *arena)
+{
+	ImageRawRGBA32 result = {};;
+
+	u32 rawRGBA32DataSize = GetSizeOfRawRGBA32(imagePNGFiltered->dim);
+	u8 *out = (u8*) ArenaPushSize(arena, rawRGBA32DataSize, {});
+
+	u8 bpp = 32;
+	u32 w = imagePNGFiltered->dim.x;
+	u32 h = imagePNGFiltered->dim.y;
+	u8 *in = imagePNGFiltered->dataU8;
+
+	unsigned y;
+	unsigned char* prevline = 0;
+
+	/*bytewidth is used for filtering, is 1 when bpp < 8, number of bytes per pixel otherwise*/
+	size_t bytewidth = (bpp + 7u) / 8u;
+	/*the width of a scanline in bytes, not including the filter type*/
+	size_t linebytes = lodepng_get_raw_size_idat(w, 1, bpp) - 1u;
+
+	u32 unfilterResult = 0;
+	for(y = 0; y < h; ++y)
+	{
+		size_t outindex = linebytes * y;
+		size_t inindex = (1 + linebytes) * y; /*the extra filterbyte added to each row*/
+		unsigned char filterType = in[inindex];
+
+		unfilterResult = unfilterScanline(&out[outindex], &in[inindex + 1], prevline, bytewidth, filterType, linebytes);
+		if (unfilterResult != 0)
+		{
+			break;
+		}
+
+		prevline = &out[outindex];
+	}
+
+	if (unfilterResult == 0)
+	{
+		result.dim = imagePNGFiltered->dim;
+		result.dataSize = rawRGBA32DataSize; 
+		result.dataU8 = out; 
+	}
+
+	return result;
+}
+
 ImagePNGChecksumed PiratedSTB_EncodePngCRC(ImagePNGCompressed *imagePNGCompressed, Arena *arena)
 {
 	ImagePNGChecksumed result = {};
@@ -758,7 +804,7 @@ void HashImageRects(ImageRawRGBA32 *imageRaw, iv2 rectDim, u32 **outHashes)
 	u32 rectCount = GetDrawingRectCount(imageRaw->dim, rectDim);
 	for (u32 rectIndex = 0; rectIndex < rectCount; rectIndex++)
 	{
-		u32 hash = 0;
+		u32 hash = 5381;
 		RectIV2 rect = GetDrawingRectFromIndex(imageRaw->dim, rectDim, rectIndex);
 		u32 startY = rect.pos.y;
 		u32 endY = startY + rect.dim.y;
@@ -937,6 +983,7 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 	}
 #endif
 
+#if 0
 	ImagePNGCompressed imagePNGCompressed = {};
 	imagePNGCompressed.dim = imagePNGFiltered.dim;
 	imagePNGCompressed.dataSize = imagePNGFiltered.dataSize;
@@ -965,6 +1012,10 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 	{
 		processedImage->finalProcessedImageRaw = DecodePng(&imagePNGChecksumed, arenaFinalRaw);
 	}
+#else
+	Arena *arenaFinalRaw = ArenaPairPushOldest(&processedImage->arenaPair, {});
+	processedImage->finalProcessedImageRaw = PiratedLoadPNG_Defilter(&imagePNGFiltered, arenaFinalRaw);
+#endif
 
 	ArenaPairFreeOldest(&processedImage->arenaPair);
 
