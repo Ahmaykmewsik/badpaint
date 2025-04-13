@@ -742,6 +742,8 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 	canvas->rollbackIndexNext = 0;
 	canvas->rollbackStartHasProgressed = {};
 	canvas->rollbackHasRolledBackOnce = {};
+	canvas->saveRollbackOnNextPress = {};
+	canvas->dataOnCanvas = {};
 	canvas->brush = brush;
 
 	canvas->drawingRectDim = iv2{32, 32};

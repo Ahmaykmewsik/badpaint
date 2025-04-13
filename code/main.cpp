@@ -239,21 +239,23 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		}
 
 		UiBox *canvasUiBox = GetUiBoxLastFrameOfStringKey(G_CANVAS_STRING_TAG_CHARS);
+
+		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && canvas->saveRollbackOnNextPress)
+		{
+			unsigned char *newRollbackImage = &canvas->rollbackImageData[(canvas->drawnImageData.dataSize * canvas->rollbackIndexNext)];
+			memcpy(newRollbackImage, canvas->drawnImageData.dataU8, canvas->drawnImageData.dataSize);
+			canvas->rollbackIndexNext =	ModNextU32(canvas->rollbackIndexNext, canvas->rollbackSizeCount - 1);
+			if (canvas->rollbackIndexNext == canvas->rollbackIndexStart)
+			{
+				canvas->rollbackIndexStart = ModNextU32(canvas->rollbackIndexStart, canvas->rollbackSizeCount - 1);
+				canvas->rollbackStartHasProgressed = true;
+			}
+			//printf("New rollback! start: %d next: %d\n", canvas->rollbackIndexStart, canvas->rollbackIndexNext);
+			canvas->saveRollbackOnNextPress = false;
+		}
+
 		if (canvasUiBox && canvasUiBox->down && !imageIsBroken)
 		{
-			if (canvasUiBox->pressed)
-			{
-				unsigned char *newRollbackImage = &canvas->rollbackImageData[(canvas->drawnImageData.dataSize * canvas->rollbackIndexNext)];
-				memcpy(newRollbackImage, canvas->drawnImageData.dataU8, canvas->drawnImageData.dataSize);
-				canvas->rollbackIndexNext =	ModNextU32(canvas->rollbackIndexNext, canvas->rollbackSizeCount - 1);
-				if (canvas->rollbackIndexNext == canvas->rollbackIndexStart)
-				{
-					canvas->rollbackIndexStart = ModNextU32(canvas->rollbackIndexStart, canvas->rollbackSizeCount - 1);
-					canvas->rollbackStartHasProgressed = true;
-				}
-				//printf("New rollback! start: %d next: %d\n", canvas->rollbackIndexStart, canvas->rollbackIndexNext);
-			}
-
 			Color colorToPaint = {};
 
 			colorToPaint.r = (u8) currentBrush.brushEffect;
@@ -275,6 +277,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			if (drewSomething)
 			{
 				canvas->proccessAsap = true;
+				canvas->saveRollbackOnNextPress = true;
+				canvas->dataOnCanvas = true;
 			}
 		}
 
@@ -289,6 +293,21 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				canvas->proccessAsap = true;
 				imageIsBroken = false;
 				canvas->rollbackHasRolledBackOnce = true;
+				canvas->saveRollbackOnNextPress = false;
+				//printf("UNDO! start: %d next: %d\n", canvas->rollbackIndexStart, canvas->rollbackIndexNext);
+			}
+			else if (canvas->rollbackIndexNext == 0 && 
+				canvas->rollbackIndexStart == 0 &&
+				!canvas->rollbackStartHasProgressed &&
+				canvas->dataOnCanvas)
+			{
+				memset(canvas->drawnImageData.dataU8, 0, canvas->drawnImageData.dataSize);
+				memset(canvas->drawingRectDirtyListFrame, 1, canvas->drawingRectCount * sizeof(b32));
+				canvas->proccessAsap = true;
+				imageIsBroken = false;
+				canvas->rollbackHasRolledBackOnce = true;
+				canvas->saveRollbackOnNextPress = false;
+				canvas->dataOnCanvas = false;
 				//printf("UNDO! start: %d next: %d\n", canvas->rollbackIndexStart, canvas->rollbackIndexNext);
 			}
 			else if (canvas->rollbackStartHasProgressed)

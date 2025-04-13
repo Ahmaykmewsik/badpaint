@@ -86,6 +86,8 @@ struct Canvas
 	u32 rollbackIndexStart;
 	b32 rollbackHasRolledBackOnce; 
 	b32 rollbackStartHasProgressed; 
+	b32 saveRollbackOnNextPress;
+	b32 dataOnCanvas;
 };
 
 struct ProcessedImage
