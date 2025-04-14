@@ -2,6 +2,7 @@
 #include "headers.h"
 
 #include "font.h"
+#include "defaultImage.h"
 
 void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned int threadCount)
 {
@@ -48,10 +49,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	SetWindowSize(windowDim.x, windowDim.y);
 
 	Font defaultFont = LoadFontFromMemory(".otf", PAINT_FONT_DATA, ARRAY_COUNT(PAINT_FONT_DATA), 18, 0, 0);
+	//Font largeFont = LoadFontFromMemory(".otf", PAINT_FONT_DATA, ARRAY_COUNT(PAINT_FONT_DATA), 32, 0, 0);
 
 #if 0
 	u32 dataSize;
-    unsigned char *fileData = LoadFileData("./assets/W95FA.otf", &dataSize);
+    unsigned char *fileData = LoadFileData("./assets/defaultImage.png", &dataSize);
 
     // NOTE: Text data buffer size is estimated considering image data size in bytes
     // and requiring 6 char bytes for every byte: "0x00, "
@@ -63,7 +65,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
     byteCount += sprintf(txtData + byteCount, "static unsigned char %s_DATA[%i] = { ", varFileName, dataSize);
     for (u32 i = 0; i < dataSize - 1; i++) byteCount += sprintf(txtData + byteCount, ((i%20 == 0)? "0x%x,\n" : "0x%x, "), ((unsigned char *)fileData)[i]);
     byteCount += sprintf(txtData + byteCount, "0x%x };\n", ((unsigned char *)fileData)[dataSize - 1]);
-    SaveFileText("font.h", txtData);
+    SaveFileText("defaultImage.h", txtData);
     RL_FREE(txtData);
 #endif
 
@@ -93,9 +95,47 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	brushSizeSlider.min = 1;
 	brushSizeSlider.max = 50;
 
-	//NOTE: DEVELOPER HACK
+#if 0
+	iv2 imageDefaultDim = {680, 384}; 
+	gameMemory.rootImageArena = ArenaInit(imageDefaultDim.x * imageDefaultDim.y * 4);
+	if (gameMemory.rootImageArena.memory)
 	{
-		InitializeNewImage("./assets/handmadelogo.png", &gameMemory, rootImageRaw, canvas, &loadedTexture, &currentBrush, processedImages, threadCount);
+		rootImageRaw->dim = imageDefaultDim;
+		rootImageRaw->dataSize = imageDefaultDim.x * imageDefaultDim.y * 4;
+		rootImageRaw->dataU8 = (u8*) ArenaPushSize(&gameMemory.rootImageArena, rootImageRaw->dataSize, {});
+
+		Font font = defaultFont; 
+		Color topColor = Color{0, 115, 198, 255};
+		Color bottomColor = Color{30, 139, 217, 255};
+		//Image imageDefault = GenImageChecked(imageDefaultDim.x, imageDefaultDim.y, 8, 8, WHITE, LIGHTGRAY);
+		Image imageDefault = GenImageGradientV(imageDefaultDim.x, imageDefaultDim.y, topColor, bottomColor);
+		//Image imageDefault = GenImagePerlinNoise(imageDefaultDim.x, imageDefaultDim.y, 69, 69, 8);
+		//Image imageDefault = GenImageColor(imageDefaultDim.x, imageDefaultDim.y, );
+		//ImageColorTint(&imageDefault, Color{1, 27, 208, 255});
+		//ImageColorBrightness(&imageDefault, 40);
+		const char *defaultText = "Drop any image into this window to paint it!";
+		Vector2 textRayVector2 = MeasureTextEx(font, defaultText, (f32) font.baseSize, 1);
+		iv2 textPos;
+		textPos.x = (i32) RoundF32((imageDefaultDim.x * 0.5f) - (textRayVector2.x * 0.5f));
+		textPos.y = (i32) RoundF32((imageDefaultDim.y * 0.5f) - (textRayVector2.y * 0.5f));
+		Vector2 textPosRayVector = {(f32)textPos.x, (f32)textPos.y};
+		iv2 margins = {80, 8};
+		RectIV2 bgRect;
+		bgRect.pos = textPos - margins; 
+		bgRect.dim.x = (i32) textRayVector2.x + (margins.x * 2);
+		bgRect.dim.y = (i32) textRayVector2.y + (margins.y * 2);
+		ImageDrawRectangle(&imageDefault, bgRect.pos.x, bgRect.pos.y, bgRect.dim.x, bgRect.dim.y, WHITE);
+		ImageDrawTextEx(&imageDefault, font, defaultText, textPosRayVector, (f32) font.baseSize, 1.0f, BLACK);
+		memcpy(rootImageRaw->dataU8, imageDefault.data, rootImageRaw->dataSize);
+		UnloadImage(imageDefault);
+		InitializeNewImage(&gameMemory, rootImageRaw, canvas, &loadedTexture, &currentBrush, processedImages, threadCount);
+	}
+#endif
+
+	*rootImageRaw = LoadDataIntoRawImage(&DEFAULT_IMAGE_DATA[0], ARRAY_COUNT(DEFAULT_IMAGE_DATA), &gameMemory);
+	if (rootImageRaw->dataSize)
+	{
+		InitializeNewImage(&gameMemory, rootImageRaw, canvas, &loadedTexture, &currentBrush, processedImages, threadCount);
 	}
 
 	while (!WindowShouldClose())
@@ -132,24 +172,37 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		{
 			FilePathList droppedFiles = LoadDroppedFiles();
 			char *fileName = droppedFiles.paths[0];
-			InitializeNewImage(fileName, &gameMemory, rootImageRaw, canvas, &loadedTexture, &currentBrush, processedImages, threadCount);
-
-			if (rootImageRaw->dataSize > 15000000)
+			ArenaMarker loadMarker = ArenaPushMarker(&gameMemory.temporaryArena);
+			unsigned int fileSize = {};
+			u8 *fileData = LoadDataFromDisk(fileName, &fileSize, &gameMemory.temporaryArena);
+			const char *getFileExtension = GetFileExtension(fileName);
+			if (fileData)
 			{
-				String notification = STRING("...Are you serious?!? Ok be patient with me, this image is freaking huge. I'm not going to run well at all.");
-				InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
+				//NOTE: (Ahmayk) prints error internally (may want to change?)
+				*rootImageRaw = LoadDataIntoRawImage(fileData, fileSize, &gameMemory);
 			}
-			else if (rootImageRaw->dataSize > 8000000)
+			else
 			{
-				String notification = STRING("Uh...I'm not really ready to edit images this big yet, but I can try. Don't blame me if I'm slow though. You asked for it.");
-				InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
-			}
-			else if (rootImageRaw->dataSize > 5000000)
-			{
-				String notification = STRING("Woah, this image is kind of large!. I'll try my best...");
+				String notification = STRING("Oops! I failed to read the file at all! Sorry! Guess you're out of luck pal. No badpaint for that file today.");
 				InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
 			}
 			UnloadDroppedFiles(droppedFiles);
+			ArenaPopMarker(loadMarker);
+
+			if (rootImageRaw->dataSize)
+			{
+				InitializeNewImage(&gameMemory, rootImageRaw, canvas, &loadedTexture, &currentBrush, processedImages, threadCount);
+				if (rootImageRaw->dataSize > MegaByte * 500)
+				{
+					String notification = STRING("You like to play dangerously, don't you?");
+					InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
+				}
+				else if (rootImageRaw->dataSize > MegaByte * 100)
+				{
+					String notification = STRING("This image is CHUNKY! Some things might be a little slow.");
+					InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
+				}
+			}
 		}
 
 		if (IsKeyDown(KEY_E))

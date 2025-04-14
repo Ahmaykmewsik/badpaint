@@ -60,31 +60,14 @@ void LoadDataSetPixel(u8 *dst, u32 i, v4 pixel)
 	dst[index + 3] = (u8)(pixel.w);
 }
 
-ImageRawRGBA32 LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory)
+ImageRawRGBA32 LoadDataIntoRawImage(u8 *fileData, u32 fileSize, GameMemory *gameMemory)
 {
 	ImageRawRGBA32 result = {};
-
-	ArenaMarker loadMarker = ArenaPushMarker(&gameMemory->temporaryArena);
-	unsigned int fileSize = {};
-	unsigned char *fileData = LoadDataFromDisk(filePath, &fileSize, &gameMemory->temporaryArena);
-	const char *getFileExtension = GetFileExtension(filePath);
 
 	int comp = 0;
 	int width = 0;
 	int height = 0;
-	void *outputData = {};
-
-	if (fileData != NULL)
-	{
-		outputData = stbi_load_from_memory(fileData, fileSize, &width, &height, &comp, 0);
-	}
-	else
-	{
-		String notification = STRING("Oops! I failed to read the file at all! Sorry! Guess you're out of luck pal. No badpaint for that file today.");
-		InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
-	}
-
-	ArenaPopMarker(loadMarker);
+	void *outputData = stbi_load_from_memory(fileData, fileSize, &width, &height, &comp, 0);
 
 	if (outputData != NULL)
 	{
@@ -768,10 +751,9 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 	}
 }
 
-b32 InitializeNewImage(const char *fileName, GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush, ProcessedImage *processedImages, u32 threadCount)
+b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush, ProcessedImage *processedImages, u32 threadCount)
 {
 	b32 result = false;
-	*rootImageRaw = LoadDataIntoRawImage(fileName, gameMemory);
 	if (rootImageRaw->dataU8)
 	{
 		InitializeCanvas(canvas, rootImageRaw, currentBrush, gameMemory);
@@ -787,12 +769,11 @@ b32 InitializeNewImage(const char *fileName, GameMemory *gameMemory, ImageRawRGB
 		}
 		else
 		{
-			*rootImageRaw = {};
 			//NOTE: (Ahmayk) The only way canvas init can fail is for this reason.
 			//Not sure how error handling should work yet...will need to change this once there's more than 1 way for this to fail
 			if (rootImageRaw->dataSize > MegaByte * 500)
 			{
-				String notification = STRING("Holy shit, this thing is huge! Sorry, but I failed to allocate the memory I needed to handle that. I'll need to be more memory efficent to handle that monster!");
+				String notification = STRING("Yikes, this thing is huge! Sorry, but I failed to allocate the memory I needed to handle that. I'll need to be more memory efficent to handle that monster!");
 				InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 			}
 			else
@@ -800,6 +781,7 @@ b32 InitializeNewImage(const char *fileName, GameMemory *gameMemory, ImageRawRGB
 				String notification = STRING("Failed to allocate the memory I needed to handle the new image! Man, not your day, huh?");
 				InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 			}
+			*rootImageRaw = {};
 		}
 	}
 	return result;
