@@ -681,10 +681,11 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
 
 		iv2 windowPosition = {};
 		windowPosition.x = RoundI32((screenWidth * 0.5f) - (CRASH_REPORT_WINDOW_DIM.x * 0.5f));
-		windowPosition.x = RoundI32((screenHeight * 0.5f) - (CRASH_REPORT_WINDOW_DIM.y * 0.5f));
+		windowPosition.y = RoundI32((screenHeight * 0.5f) - (CRASH_REPORT_WINDOW_DIM.y * 0.5f));
 
 		// Create the window
-		HWND hwnd = CreateWindowEx(0,
+		HWND hwnd = CreateWindowEx(
+				WS_EX_TOPMOST,
 				CLASS_NAME,
 				CRASH_ERROR_TITLE,
 				WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX,
@@ -968,7 +969,7 @@ void CrashHandler(HINSTANCE instance, GameMemory *gameMemory)
 			? L"Alright. Shall I restart?"
 			: L"Restart?";
 
-		if (MessageBoxW(nullptr, uploadedString, L"OH FISHSTICKS WE CRASHED",
+		if (MessageBoxW(nullptr, uploadedString, L"Happy crash window",
 					MB_YESNO | MB_ICONQUESTION | MB_SYSTEMMODAL | MB_SETFOREGROUND) != IDYES)
 		{
 			break;
@@ -986,15 +987,13 @@ int CALLBACK WinMain(HINSTANCE instance,
 {
 
 #if DEBUG_MODE
-    AllocConsole();
-    freopen("CONOUT$", "w", stdout);
-    freopen("CONOUT$", "w", stderr);
-    freopen("CONIN$", "r", stdin);
-    setvbuf(stdout, NULL, _IONBF, 0);
+    //AllocConsole();
+    //freopen("CONOUT$", "w", stdout);
+    //freopen("CONOUT$", "w", stderr);
+    //freopen("CONIN$", "r", stdin);
+    //setvbuf(stdout, NULL, _IONBF, 0);
 #endif
 
-	// int main()
-	// {
 	GameMemory gameMemory = {};
 	gameMemory.permanentArena = ArenaInit(MegaByte * 15);
 	gameMemory.mouseClickArena = ArenaInitFromArena(&gameMemory.permanentArena, MegaByte * 1);
