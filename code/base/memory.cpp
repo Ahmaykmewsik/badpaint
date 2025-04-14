@@ -127,7 +127,7 @@ u8 *ArenaPushSize(Arena *arena, u64 size, ArenaMarker *arenaMarker)
 		//NOTE: (Marc) Assume that something has gone wrong if we try to commit more than a gigabyte
 		//And the arena wasn't initialized at that size
 		//(can happen if an unsigned int underflows due to faulty math)
-		if (size && ASSERT(size < GigaByte || (arena->size > size)))
+		if (size && ASSERT(size < GigaByte || (arena->size >= size)))
 		{
 			AlignPow2LimitU64(&arena->used, 16, arena->size);
 

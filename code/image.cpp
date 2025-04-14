@@ -50,6 +50,16 @@ unsigned int GetSizeOfRawRGBA32(iv2 dim)
 	return result;
 }
 
+void LoadDataSetPixel(u8 *dst, u32 i, v4 pixel)
+{
+	pixel = pixel * 255.0f;
+	u32 index = i * 4; 
+	dst[index + 0] = (u8)(pixel.x);
+	dst[index + 1] = (u8)(pixel.y);
+	dst[index + 2] = (u8)(pixel.z);
+	dst[index + 3] = (u8)(pixel.w);
+}
+
 ImageRawRGBA32 LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory)
 {
 	ImageRawRGBA32 result = {};
@@ -70,7 +80,7 @@ ImageRawRGBA32 LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory
 	}
 	else
 	{
-		String notification = STRING("Oops! I failed to load that! Sorry! Guess you're out of luck pal. No badpaint for you today.");
+		String notification = STRING("Oops! I failed to read the file at all! Sorry! Guess you're out of luck pal. No badpaint for that file today.");
 		InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 	}
 
@@ -79,11 +89,11 @@ ImageRawRGBA32 LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory
 	if (outputData != NULL)
 	{
 		int dataSize = GetSizeOfRawRGBA32(iv2{width, height});
-		if (dataSize < MegaByte * 50)
-		{
-			ArenaFree(&gameMemory->rootImageArena);
-			gameMemory->rootImageArena = ArenaInit(dataSize);
+		ArenaFree(&gameMemory->rootImageArena);
+		gameMemory->rootImageArena = ArenaInit(dataSize);
 
+		if (gameMemory->rootImageArena.memory)
+		{
 			result.dim.x = width;
 			result.dim.y = height;
 			result.dataSize = dataSize;
@@ -91,56 +101,43 @@ ImageRawRGBA32 LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory
 
 			if (comp != 4)
 			{
-				ArenaMarker marker = {};
-				v4 *pixels = ARENA_PUSH_ARRAY_MARKER(&gameMemory->temporaryArena, width * height, v4, &marker);
-				for (int i = 0, k = 0;
-						i < result.dim.x * result.dim.y;
-						i++)
+				for (int i = 0, k = 0; i < result.dim.x * result.dim.y; i++)
 				{
+					v4 pixel;
 					switch (comp)
 					{
 						case 1:
-							{
-								//NOTE: PIXELFORMAT_UNCOMPRESSED_GRAYSCALE
-								pixels[i].x = (float)((unsigned char *)outputData)[i] / 255.0f;
-								pixels[i].y = (float)((unsigned char *)outputData)[i] / 255.0f;
-								pixels[i].z = (float)((unsigned char *)outputData)[i] / 255.0f;
-								pixels[i].w = 1.0f;
-								break;
-							}
+						{
+							//NOTE: PIXELFORMAT_UNCOMPRESSED_GRAYSCALE
+							pixel.x = (f32)((u8*)outputData)[i] / 255.0f;
+							pixel.y = (f32)((u8*)outputData)[i] / 255.0f;
+							pixel.z = (f32)((u8*)outputData)[i] / 255.0f;
+							pixel.w = 1.0f;
+							LoadDataSetPixel(result.dataU8, i, pixel);
+						} break;
 						case 2:
-							{
-								//NOTE: PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA
-								pixels[i].x = (float)((unsigned char *)outputData)[k] / 255.0f;
-								pixels[i].y = (float)((unsigned char *)outputData)[k] / 255.0f;
-								pixels[i].z = (float)((unsigned char *)outputData)[k] / 255.0f;
-								pixels[i].w = (float)((unsigned char *)outputData)[k + 1] / 255.0f;
-								k += 2;
-								break;
-							}
+						{
+							//NOTE: PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA
+							pixel.x = (f32)((u8*)outputData)[k] / 255.0f;
+							pixel.y = (f32)((u8*)outputData)[k] / 255.0f;
+							pixel.z = (f32)((u8*)outputData)[k] / 255.0f;
+							pixel.w = (f32)((u8*)outputData)[k + 1] / 255.0f;
+							k += 2;
+							LoadDataSetPixel(result.dataU8, i, pixel);
+						} break;
 						case 3:
-							{
-								//NOTE: PIXELFORMAT_UNCOMPRESSED_R8G8B8
-								pixels[i].x = (float)((unsigned char *)outputData)[k] / 255.0f;
-								pixels[i].y = (float)((unsigned char *)outputData)[k + 1] / 255.0f;
-								pixels[i].z = (float)((unsigned char *)outputData)[k + 2] / 255.0f;
-								pixels[i].w = 1.0f;
-								k += 3;
-								break;
-							}
-							InvalidDefaultCase
+						{
+							//NOTE: PIXELFORMAT_UNCOMPRESSED_R8G8B8
+							pixel.x = (f32)((u8*)outputData)[k] / 255.0f;
+							pixel.y = (f32)((u8*)outputData)[k + 1] / 255.0f;
+							pixel.z = (f32)((u8*)outputData)[k + 2] / 255.0f;
+							pixel.w = 1.0f;
+							k += 3;
+							LoadDataSetPixel(result.dataU8, i, pixel);
+						} break;
+						InvalidDefaultCase
 					}
 				}
-
-				for (u32 i = 0, k = 0; i < result.dataSize; i += 4, k++)
-				{
-					result.dataU8[i] = (unsigned char)(pixels[k].x * 255.0f);
-					result.dataU8[i + 1] = (unsigned char)(pixels[k].y * 255.0f);
-					result.dataU8[i + 2] = (unsigned char)(pixels[k].z * 255.0f);
-					result.dataU8[i + 3] = (unsigned char)(pixels[k].w * 255.0f);
-				}
-
-				ArenaPopMarker(marker);
 			}
 			else
 			{
@@ -149,10 +146,9 @@ ImageRawRGBA32 LoadDataIntoRawImage(const char *filePath, GameMemory *gameMemory
 		}
 		else
 		{
-			String notification = STRING("Geez!!! I am NOT touching that! That's WAY too big! I would crash!!!");
+			String notification = STRING("Failed to allocate memory for the image! Too bad!");
 			InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 		}
-
 		stbi_image_free(outputData);
 	}
 	else
@@ -670,13 +666,13 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 		u64 size = gameMemory->temporaryArena.size;
 		ArenaFree(&gameMemory->temporaryArena);
 		gameMemory->temporaryArena = ArenaInit(size);
+		gameMemory->temporaryArena.memory;
 	}
 
 	ArenaFree(&gameMemory->canvasArena);
 
 	iv2 canvasDim = rootImageRaw->dim;
 	u32 visualizedCanvasDataSize = canvasDim.x * canvasDim.y * sizeof(Color);
-
 	u32 conversionArenaSize = visualizedCanvasDataSize + (rootImageRaw->dim.x * 4);
 	conversionArenaSize = (u32) (conversionArenaSize * 1.2f);
 	AlignPow2U32(&conversionArenaSize, 256);
@@ -684,93 +680,129 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 	//NOTE: (Ahmayk) drawn image, visualized image, drawingRects, dirtyRectsForEachProcesssImage, finalImageRectHashes
 	u32 canvasArneaSize = (u32) MaxU32(MegaByte * 1, (u32) (conversionArenaSize * 2.1f));
 	gameMemory->canvasArena = ArenaInit(canvasArneaSize);
-
-	canvas->drawnImageData.dataU8 = ArenaPushSize(&gameMemory->canvasArena, visualizedCanvasDataSize, {});
-	canvas->drawnImageData.dim = canvasDim;
-	canvas->drawnImageData.dataSize = visualizedCanvasDataSize;
-	memset(canvas->drawnImageData.dataU8, 0, visualizedCanvasDataSize);
-
-	canvas->arenaFilteredPNG = ArenaInitFromArena(&gameMemory->canvasArena, conversionArenaSize);
-
-	ArenaGroupFree(&gameMemory->conversionArenaGroup);
-	gameMemory->conversionArenaGroup = ArenaGroupInit(MegaByte * 400);
-	ArenaGroupResetAndFill(&gameMemory->conversionArenaGroup, conversionArenaSize);
-
-	UploadAndReplaceTexture(&canvas->drawnImageData, &canvas->textureDrawing);
-
-	if (canvas->textureVisualizedFilteredRootImage.id)
-	{
-		rlUnloadTexture(canvas->textureVisualizedFilteredRootImage.id);
-		canvas->textureVisualizedFilteredRootImage = {};
-	}
-	SetPNGFilterType(canvas, rootImageRaw, gameMemory);
-
-	if (canvas->initialized)
-	{
-		glDeleteBuffers(ARRAY_COUNT(canvas->drawingPboIDs), canvas->drawingPboIDs);
-	}
-	glGenBuffers(ARRAY_COUNT(canvas->drawingPboIDs), canvas->drawingPboIDs);
-	for(u32 i = 0; i < ARRAY_COUNT(canvas->drawingPboIDs); i++) 
-	{
-		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->drawingPboIDs[i]);
-		glBufferData(GL_PIXEL_UNPACK_BUFFER, visualizedCanvasDataSize, NULL, GL_STREAM_DRAW);
-	}
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-
-	if (canvas->initialized)
-	{
-		glDeleteBuffers(ARRAY_COUNT(canvas->finalImagePboIDs), canvas->finalImagePboIDs);
-	}
-	glGenBuffers(ARRAY_COUNT(canvas->finalImagePboIDs), canvas->finalImagePboIDs);
-	for(u32 i = 0; i < ARRAY_COUNT(canvas->finalImagePboIDs); i++) 
-	{
-		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->finalImagePboIDs[i]);
-		glBufferData(GL_PIXEL_UNPACK_BUFFER, rootImageRaw->dim.x * rootImageRaw->dim.y * 4, NULL, GL_STREAM_DRAW);
-	}
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-
-	canvas->finalImageRectDim = iv2{512, 512};
-	canvas->finalImageRectCount = GetDrawingRectCount(rootImageRaw->dim, canvas->finalImageRectDim);
-	canvas->cachedFinalImageRectHashes = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->finalImageRectCount, u32);
-	HashImageRects(rootImageRaw, canvas->finalImageRectDim, &canvas->cachedFinalImageRectHashes);
-
+	//TODO: (Ahmayk) have a better undo plan!
 	ArenaFree(&gameMemory->canvasRollbackArena);
 	gameMemory->canvasRollbackArena = ArenaInit(MegaByte * 800);
-	canvas->rollbackSizeCount = (u32) FloorF32((f32)gameMemory->canvasRollbackArena.size / visualizedCanvasDataSize) - 1;
-	canvas->rollbackImageData = ARENA_PUSH_ARRAY(&gameMemory->canvasRollbackArena, canvas->rollbackSizeCount * visualizedCanvasDataSize, u8);
-	canvas->rollbackIndexStart = 0;
-	canvas->rollbackIndexNext = 0;
-	canvas->rollbackStartHasProgressed = {};
-	canvas->rollbackHasRolledBackOnce = {};
-	canvas->saveRollbackOnNextPress = {};
-	canvas->dataOnCanvas = {};
-	canvas->brush = brush;
 
-	canvas->drawingRectDim = iv2{32, 32};
-	canvas->drawingRectCount = GetDrawingRectCount(canvasDim, canvas->drawingRectDim);
-	canvas->drawingRectDirtyListFrame = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
-	canvas->drawingRectDirtyListProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
-	memset(canvas->drawingRectDirtyListFrame, 0, canvas->drawingRectCount * sizeof(b32));
-	memset(canvas->drawingRectDirtyListProcess, 0, canvas->drawingRectCount * sizeof(b32));
+	ArenaGroupFree(&gameMemory->conversionArenaGroup);
+	u32 conversionArenaGroupSize = MaxU32(MegaByte * 400, conversionArenaSize * 2 + (KiloByte * 16));
+	AlignPow2U32(&conversionArenaSize, 4096);
+	gameMemory->conversionArenaGroup = ArenaGroupInit(conversionArenaGroupSize);
 
-	canvas->initialized = true;
+	if (gameMemory->temporaryArena.memory && 
+		gameMemory->canvasArena.memory &&
+		gameMemory->canvasRollbackArena.memory &&
+		gameMemory->conversionArenaGroup.masterArena.memory)
+	{
+		canvas->drawnImageData.dataU8 = ArenaPushSize(&gameMemory->canvasArena, visualizedCanvasDataSize, {});
+		canvas->drawnImageData.dim = canvasDim;
+		canvas->drawnImageData.dataSize = visualizedCanvasDataSize;
+		memset(canvas->drawnImageData.dataU8, 0, visualizedCanvasDataSize);
+
+		canvas->arenaFilteredPNG = ArenaInitFromArena(&gameMemory->canvasArena, conversionArenaSize);
+
+		ArenaGroupResetAndFill(&gameMemory->conversionArenaGroup, conversionArenaSize);
+
+		UploadAndReplaceTexture(&canvas->drawnImageData, &canvas->textureDrawing);
+
+		if (canvas->textureVisualizedFilteredRootImage.id)
+		{
+			rlUnloadTexture(canvas->textureVisualizedFilteredRootImage.id);
+			canvas->textureVisualizedFilteredRootImage = {};
+		}
+		SetPNGFilterType(canvas, rootImageRaw, gameMemory);
+
+		if (canvas->initialized)
+		{
+			glDeleteBuffers(ARRAY_COUNT(canvas->drawingPboIDs), canvas->drawingPboIDs);
+		}
+		glGenBuffers(ARRAY_COUNT(canvas->drawingPboIDs), canvas->drawingPboIDs);
+		for(u32 i = 0; i < ARRAY_COUNT(canvas->drawingPboIDs); i++) 
+		{
+			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->drawingPboIDs[i]);
+			glBufferData(GL_PIXEL_UNPACK_BUFFER, visualizedCanvasDataSize, NULL, GL_STREAM_DRAW);
+		}
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+		if (canvas->initialized)
+		{
+			glDeleteBuffers(ARRAY_COUNT(canvas->finalImagePboIDs), canvas->finalImagePboIDs);
+		}
+		glGenBuffers(ARRAY_COUNT(canvas->finalImagePboIDs), canvas->finalImagePboIDs);
+		for(u32 i = 0; i < ARRAY_COUNT(canvas->finalImagePboIDs); i++) 
+		{
+			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->finalImagePboIDs[i]);
+			glBufferData(GL_PIXEL_UNPACK_BUFFER, rootImageRaw->dim.x * rootImageRaw->dim.y * 4, NULL, GL_STREAM_DRAW);
+		}
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+		canvas->finalImageRectDim = iv2{512, 512};
+		canvas->finalImageRectCount = GetDrawingRectCount(rootImageRaw->dim, canvas->finalImageRectDim);
+		canvas->cachedFinalImageRectHashes = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->finalImageRectCount, u32);
+		HashImageRects(rootImageRaw, canvas->finalImageRectDim, &canvas->cachedFinalImageRectHashes);
+
+		canvas->rollbackSizeCount = (u32) FloorF32((f32)gameMemory->canvasRollbackArena.size / visualizedCanvasDataSize) - 1;
+		canvas->rollbackImageData = ARENA_PUSH_ARRAY(&gameMemory->canvasRollbackArena, canvas->rollbackSizeCount * visualizedCanvasDataSize, u8);
+		canvas->rollbackIndexStart = 0;
+		canvas->rollbackIndexNext = 0;
+		canvas->rollbackStartHasProgressed = {};
+		canvas->rollbackHasRolledBackOnce = {};
+		canvas->saveRollbackOnNextPress = {};
+		canvas->dataOnCanvas = {};
+		canvas->brush = brush;
+
+		canvas->drawingRectDim = iv2{32, 32};
+		canvas->drawingRectCount = GetDrawingRectCount(canvasDim, canvas->drawingRectDim);
+		canvas->drawingRectDirtyListFrame = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
+		canvas->drawingRectDirtyListProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
+		memset(canvas->drawingRectDirtyListFrame, 0, canvas->drawingRectCount * sizeof(b32));
+		memset(canvas->drawingRectDirtyListProcess, 0, canvas->drawingRectCount * sizeof(b32));
+
+		canvas->initialized = true;
+	}
+	else
+	{
+		ArenaFree(&gameMemory->canvasArena);
+		ArenaFree(&gameMemory->canvasRollbackArena);
+		ArenaGroupFree(&gameMemory->conversionArenaGroup);
+	}
 }
 
-void InitializeNewImage(const char *fileName, GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush, ProcessedImage *processedImages, u32 threadCount)
+b32 InitializeNewImage(const char *fileName, GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush, ProcessedImage *processedImages, u32 threadCount)
 {
+	b32 result = false;
 	*rootImageRaw = LoadDataIntoRawImage(fileName, gameMemory);
 	if (rootImageRaw->dataU8)
 	{
-		UploadAndReplaceTexture(rootImageRaw, loadedTexture);
-
 		InitializeCanvas(canvas, rootImageRaw, currentBrush, gameMemory);
-		for (u32 i = 0; i < threadCount; i++)
+		if (canvas->initialized)
 		{
-			ProcessedImage *processedImage = processedImages + i;
-			processedImage->dirtyRectsInProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
-			processedImage->finalImageRectHashes = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->finalImageRectCount, u32);
+			UploadAndReplaceTexture(rootImageRaw, loadedTexture);
+			for (u32 i = 0; i < threadCount; i++)
+			{
+				ProcessedImage *processedImage = processedImages + i;
+				processedImage->dirtyRectsInProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
+				processedImage->finalImageRectHashes = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->finalImageRectCount, u32);
+			}
+		}
+		else
+		{
+			*rootImageRaw = {};
+			//NOTE: (Ahmayk) The only way canvas init can fail is for this reason.
+			//Not sure how error handling should work yet...will need to change this once there's more than 1 way for this to fail
+			if (rootImageRaw->dataSize > MegaByte * 500)
+			{
+				String notification = STRING("Holy shit, this thing is huge! Sorry, but I failed to allocate the memory I needed to handle that. I'll need to be more memory efficent to handle that monster!");
+				InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
+			}
+			else
+			{
+				String notification = STRING("Failed to allocate the memory I needed to handle the new image! Man, not your day, huh?");
+				InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
+			}
 		}
 	}
+	return result;
 }
 
 void UpdateBpImageOnThread(ProcessedImage *processedImage)

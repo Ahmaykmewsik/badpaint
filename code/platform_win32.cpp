@@ -1005,28 +1005,36 @@ int CALLBACK WinMain(HINSTANCE instance,
 
 	gameMemory.temporaryArena = ArenaInit(MegaByte * 500);
 
-	//NOTE: (Ahmayk) memory is allocated and freed elsewhere when image is loaded
-	//Memory allocated size is chosen based on size of image imported so that our memory
-	//usage scales with the size of the image we're editing (which could be very large)
+	b32 memoryAllocSuccessful = gameMemory.permanentArena.memory && gameMemory.temporaryArena.memory;
+	if (memoryAllocSuccessful)
+	{
+		//NOTE: (Ahmayk) memory is allocated and freed elsewhere when image is loaded
+		//Memory allocated size is chosen based on size of image imported so that our memory
+		//usage scales with the size of the image we're editing (which could be very large)
 
-	CrashHandler(instance, &gameMemory);
+		CrashHandler(instance, &gameMemory);
 
-	//NOTE: Thanks phillip and martins :D
-	char *buffer = NULL;
-	size_t len = 0;
-	errno_t err = _dupenv_s(&buffer, &len, "_NO_DEBUG_HEAP");
-	ASSERT(err == 0 && buffer != NULL); // Ensure no error and variable exists
+		//NOTE: Thanks phillip and martins :D
+		char *buffer = NULL;
+		size_t len = 0;
+		errno_t err = _dupenv_s(&buffer, &len, "_NO_DEBUG_HEAP");
+		ASSERT(err == 0 && buffer != NULL); // Ensure no error and variable exists
 
-	unsigned int threadCount = 8;
+		unsigned int threadCount = 8;
 
-	SYSTEM_INFO systemInfo;
-	GetNativeSystemInfo(&systemInfo);
-	if (systemInfo.dwNumberOfProcessors)
-		threadCount = systemInfo.dwNumberOfProcessors;
+		SYSTEM_INFO systemInfo;
+		GetNativeSystemInfo(&systemInfo);
+		if (systemInfo.dwNumberOfProcessors)
+			threadCount = systemInfo.dwNumberOfProcessors;
 
-	PlatformWorkQueue *threadWorkQueue = SetupThreads(threadCount, &gameMemory);
+		PlatformWorkQueue *threadWorkQueue = SetupThreads(threadCount, &gameMemory);
 
-	RunApp(threadWorkQueue, gameMemory, threadCount);
+		RunApp(threadWorkQueue, gameMemory, threadCount);
+	}
+	else
+	{
+		MessageBoxW(nullptr, L"Failed to start badpaint. Where's your computer's memory, dude? I couldn't allocate what I needed to start the program.", L"you okay? get a drink of water", MB_OK | MB_ICONERROR| MB_SYSTEMMODAL | MB_SETFOREGROUND);
+	}
 
 	return 0;
 }
