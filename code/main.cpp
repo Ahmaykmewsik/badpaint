@@ -1,6 +1,8 @@
 
 #include "headers.h"
 
+#include "font.h"
+
 void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned int threadCount)
 {
 	ImageRawRGBA32 *rootImageRaw = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, ImageRawRGBA32);
@@ -45,8 +47,25 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	SetWindowPosition((u32) RoundF32(windowPosMiddle.x), (u32) RoundF32(windowPosMiddle.y));
 	SetWindowSize(windowDim.x, windowDim.y);
 
-	Font defaultFont = LoadFontEx("./assets/W95FA.otf", 18, 0, 0);
-	Font bigFont = LoadFontEx("./assets/W95FA.otf", 48, 0, 0);
+	Font defaultFont = LoadFontFromMemory(".otf", PAINT_FONT_DATA, ARRAY_COUNT(PAINT_FONT_DATA), 18, 0, 0);
+
+#if 0
+	u32 dataSize;
+    unsigned char *fileData = LoadFileData("./assets/W95FA.otf", &dataSize);
+
+    // NOTE: Text data buffer size is estimated considering image data size in bytes
+    // and requiring 6 char bytes for every byte: "0x00, "
+    char *txtData = (char *)RL_CALLOC(dataSize*6 + 2000, sizeof(char));
+
+    int byteCount = 0;
+    // Get file name from path and convert variable name to uppercase
+    char *varFileName = "foo";
+    byteCount += sprintf(txtData + byteCount, "static unsigned char %s_DATA[%i] = { ", varFileName, dataSize);
+    for (u32 i = 0; i < dataSize - 1; i++) byteCount += sprintf(txtData + byteCount, ((i%20 == 0)? "0x%x,\n" : "0x%x, "), ((unsigned char *)fileData)[i]);
+    byteCount += sprintf(txtData + byteCount, "0x%x };\n", ((unsigned char *)fileData)[dataSize - 1]);
+    SaveFileText("font.h", txtData);
+    RL_FREE(txtData);
+#endif
 
 	Color deleteColor = RED;
 
