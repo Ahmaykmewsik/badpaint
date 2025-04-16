@@ -20,51 +20,55 @@ UiInputs *GetUiInputs()
 	return &G_UI_INPUTS;
 }
 
+void UiInit(Arena *arena)
+{
+	G_UI_STATE.uiBuffers[0].arena = ArenaInitFromArena(arena, MegaByte * 5);
+	G_UI_STATE.uiBuffers[1].arena = ArenaInitFromArena(arena, MegaByte * 5);
+}
+
 void CreateUiBlock(unsigned int flags, u32 hash, String string)
 {
-	int uiBlockArrayIndexThisFrame = GetFrameModIndexThisFrame();
-	ASSERT(G_UI_STATE.uiBlockCount < ARRAY_COUNT(G_UI_STATE.uiBlockes[uiBlockArrayIndexThisFrame]));
-
-	UiBlock *uiBlock = &G_UI_STATE.uiBlockes[uiBlockArrayIndexThisFrame][G_UI_STATE.uiBlockCount];
-	*uiBlock = {};
-	uiBlock->index = G_UI_STATE.uiBlockCount;
-	G_UI_STATE.uiBlockCount++;
-
-	if (G_UI_STATE.parentStackCount)
+	UiBuffer *uiBuffer = &G_UI_STATE.uiBuffers[G_UI_STATE.uiBufferIndex];
+	if (ASSERT(uiBuffer->uiBlockCount < ARRAY_COUNT(uiBuffer->uiBlockes)))
 	{
-		uiBlock->parent = G_UI_STATE.parentStack[G_UI_STATE.parentStackCount - 1];
-		ASSERT(uiBlock->parent);
+		UiBlock *uiBlock = &uiBuffer->uiBlockes[uiBuffer->uiBlockCount++];
+		*uiBlock = {};
 
-		if (uiBlock->parent->firstChild)
+		if (G_UI_STATE.parentStackCount)
 		{
-			ASSERT(uiBlock->parent->lastChild);
-			uiBlock->prev = uiBlock->parent->lastChild;
-			uiBlock->parent->lastChild->next = uiBlock;
+			uiBlock->parent = G_UI_STATE.parentStack[G_UI_STATE.parentStackCount - 1];
+			ASSERT(uiBlock->parent);
+
+			if (uiBlock->parent->firstChild)
+			{
+				ASSERT(uiBlock->parent->lastChild);
+				uiBlock->prev = uiBlock->parent->lastChild;
+				uiBlock->parent->lastChild->next = uiBlock;
+			}
+			else
+			{
+				uiBlock->parent->firstChild = uiBlock;
+			}
+
+			uiBlock->parent->lastChild = uiBlock;
 		}
-		else
+
+		uiBlock->flags = flags;
+		uiBlock->uiSettings = G_UI_STATE.uiSettings;
+		uiBlock->hash = hash;
+
+		if (string.length)
 		{
-			uiBlock->parent->firstChild = uiBlock;
+			uiBlock->string = ReallocString(string, &uiBuffer->arena);
+
+			//TODO: (Ahmayk) how to not depend on raylib here? 
+			ASSERT(uiBlock->uiSettings.font.baseSize);
+			Vector2 textDim = MeasureTextEx(uiBlock->uiSettings.font, C_STRING_NULL_TERMINATED(uiBlock->string), (f32) uiBlock->uiSettings.font.baseSize, 1);
+			uiBlock->textDim = RayVectorToV2(textDim);
 		}
 
-		uiBlock->parent->lastChild = uiBlock;
+		uiBlock->uiInputs = G_UI_INPUTS;
 	}
-
-	uiBlock->flags = flags;
-	uiBlock->uiSettings = G_UI_STATE.uiSettings;
-	uiBlock->frameRendered = G_CURRENT_FRAME;
-	uiBlock->hash = hash;
-
-	if (string.length)
-	{
-		uiBlock->string = ReallocString(string, G_UI_STATE.twoFrameArenaThisFrame);
-
-		//TODO: (Ahmayk) how to not depend on raylib here? 
-		ASSERT(uiBlock->uiSettings.font.baseSize);
-		Vector2 textDim = MeasureTextEx(uiBlock->uiSettings.font, C_STRING_NULL_TERMINATED(uiBlock->string), (f32) uiBlock->uiSettings.font.baseSize, 1);
-		uiBlock->textDim = RayVectorToV2(textDim);
-	}
-
-	uiBlock->uiInputs = G_UI_INPUTS;
 	G_UI_INPUTS = {};
 }
 
@@ -113,30 +117,22 @@ bool IsFlag(UiBlock *uiBlock, unsigned int flags)
 	return result;
 }
 
-unsigned int GetThisUiBlockIndex()
-{
-	unsigned int result = 0;
-
-	int uiBlockArrayIndexThisFrame = GetFrameModIndexThisFrame();
-	if (G_UI_STATE.uiBlockCount)
-		result = G_UI_STATE.uiBlockes[uiBlockArrayIndexThisFrame][G_UI_STATE.uiBlockCount - 1].index;
-
-	return result;
-}
-
 void PushUiParent()
 {
-	ASSERT(G_UI_STATE.parentStackCount < ARRAY_COUNT(G_UI_STATE.parentStack));
-
-	int uiBlockArrayIndexThisFrame = GetFrameModIndexThisFrame();
-	G_UI_STATE.parentStack[G_UI_STATE.parentStackCount] = &G_UI_STATE.uiBlockes[uiBlockArrayIndexThisFrame][G_UI_STATE.uiBlockCount - 1];
-	G_UI_STATE.parentStackCount++;
+	if (ASSERT(G_UI_STATE.parentStackCount < ARRAY_COUNT(G_UI_STATE.parentStack)))
+	{
+		UiBuffer *uiBuffer = &G_UI_STATE.uiBuffers[G_UI_STATE.uiBufferIndex];
+		G_UI_STATE.parentStack[G_UI_STATE.parentStackCount] = &uiBuffer->uiBlockes[uiBuffer->uiBlockCount - 1];
+		G_UI_STATE.parentStackCount++;
+	}
 }
 
 void PopUiParent()
 {
-	ASSERT(G_UI_STATE.parentStackCount > 0);
-	G_UI_STATE.parentStackCount--;
+	if (ASSERT(G_UI_STATE.parentStackCount > 0))
+	{
+		G_UI_STATE.parentStackCount--;
+	}
 }
 
 void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock)
@@ -282,24 +278,6 @@ void CalculateUiPosGivenReletativePositions(UiBlock *uiBlock)
 	}
 }
 
-UiBlock GetValidUiBlockOfIndexLastFrame(unsigned int index)
-{
-	UiBlock result = {};
-
-	if (index)
-	{
-		int uiBlockArrayIndexLastFrame = GetFrameModIndexLastFrame();
-		if (index < ARRAY_COUNT(G_UI_STATE.uiBlockes[uiBlockArrayIndexLastFrame]))
-		{
-			UiBlock uiBlock = G_UI_STATE.uiBlockes[uiBlockArrayIndexLastFrame][index];
-			if (uiBlock.frameRendered == G_CURRENT_FRAME - 1)
-				result = uiBlock;
-		}
-	}
-
-	return result;
-}
-
 Color GetReactiveColor(CommandInput *commandInputs, UiBlock *uiBlockLastFrame, ReactiveUiColor reactiveUiColor, bool disabled)
 {
 	Color result = reactiveUiColor.neutral;
@@ -334,16 +312,12 @@ UiBlock *GetUiBlockOfHashLastFrame(u32 hash)
 {
 	UiBlock *result = {};
 
-	int uiBlockArrayIndex = GetFrameModIndexLastFrame();
-	for (u32 uiBlockIndex = 0; uiBlockIndex < ARRAY_COUNT(G_UI_STATE.uiBlockes[uiBlockArrayIndex]); uiBlockIndex++)
+	UiBuffer *uiBuffer = &G_UI_STATE.uiBuffers[1 - G_UI_STATE.uiBufferIndex];
+	for (u32 i = 0; i < ARRAY_COUNT(uiBuffer->uiBlockes); i++)
 	{
-		UiBlock *uiBlock = &G_UI_STATE.uiBlockes[uiBlockArrayIndex][uiBlockIndex];
-		if (uiBlockIndex != uiBlock->index)
-			break;
-
-		if (uiBlock->hash == hash)
+		if (uiBuffer->uiBlockes[i].hash == hash)
 		{
-			result = uiBlock;
+			result = &uiBuffer->uiBlockes[i];
 			break;
 		}
 	}
@@ -397,59 +371,59 @@ ReactiveUiColorState CreateButtonReactiveUiColorState(Color color)
 	return result;
 }
 
-void UiLayoutBlocks()
+void UiLayoutBlocks(UiBuffer *uiBuffer)
 {
-	int uiBlockArrayIndexThisFrame = GetFrameModIndexThisFrame();
-
-	if (G_UI_STATE.uiBlockCount)
+	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
 	{
-		for (u32 i = 1; i < G_UI_STATE.uiBlockCount; i++)
-		{
-			UiBlock *uiBlock = &G_UI_STATE.uiBlockes[uiBlockArrayIndexThisFrame][i];
+		UiBlock *uiBlock = &uiBuffer->uiBlockes[i];
 
-			for (int j = 0;
-					j < ARRAY_COUNT(uiBlock->uiSettings.uiSizes);
-					j++)
+		for (u32 j = 0; j < ARRAY_COUNT(uiBlock->uiSettings.uiSizes); j++)
+		{
+			UiSize uiSize = uiBlock->uiSettings.uiSizes[j];
+			switch (uiSize.kind)
 			{
-				UiSize uiSize = uiBlock->uiSettings.uiSizes[j];
-				switch (uiSize.kind)
-				{
-					case UI_SIZE_KIND_TEXTURE:
-						{
-							v2 dim = GetTextureDim(uiBlock->uiInputs.texture);
-							uiBlock->rect.dim.elements[j] = dim.elements[j];
-							break;
-						}
-					case UI_SIZE_KIND_PIXELS:
-						{
-							uiBlock->rect.dim.elements[j] = uiSize.value;
-							break;
-						}
-					case UI_SIZE_KIND_TEXT:
-						{
-							uiBlock->rect.dim.elements[j] = uiBlock->textDim.elements[j];
-						}
-					case UI_SIZE_KIND_PERCENT_OF_PARENT:
-					case UI_SIZE_KIND_CHILDREN_OF_SUM:
-					case UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT:
+				case UI_SIZE_KIND_TEXTURE:
+					{
+						v2 dim = GetTextureDim(uiBlock->uiInputs.texture);
+						uiBlock->rect.dim.elements[j] = dim.elements[j];
 						break;
+					}
+				case UI_SIZE_KIND_PIXELS:
+					{
+						uiBlock->rect.dim.elements[j] = uiSize.value;
+						break;
+					}
+				case UI_SIZE_KIND_TEXT:
+					{
+						uiBlock->rect.dim.elements[j] = uiBlock->textDim.elements[j];
+					}
+				case UI_SIZE_KIND_PERCENT_OF_PARENT:
+				case UI_SIZE_KIND_CHILDREN_OF_SUM:
+				case UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT:
+					break;
 
-						InvalidDefaultCase
-				}
-			}
-		}
-
-		for (u32 i = 1; i < G_UI_STATE.uiBlockCount; i++)
-		{
-			UiBlock *uiBlock = &G_UI_STATE.uiBlockes[uiBlockArrayIndexThisFrame][i];
-
-			if (!uiBlock->parent)
-			{
-				CalculateUiUpwardsDependentSizes(uiBlock);
-				CalculateUiDownwardsDependentSizes(uiBlock);
-				CalculateUiRelativePositions(uiBlock);
-				CalculateUiPosGivenReletativePositions(uiBlock);
+					InvalidDefaultCase
 			}
 		}
 	}
+
+	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
+	{
+		UiBlock *uiBlock = &uiBuffer->uiBlockes[i];
+
+		if (!uiBlock->parent)
+		{
+			CalculateUiUpwardsDependentSizes(uiBlock);
+			CalculateUiDownwardsDependentSizes(uiBlock);
+			CalculateUiRelativePositions(uiBlock);
+			CalculateUiPosGivenReletativePositions(uiBlock);
+		}
+	}
+}
+
+void UiEndFrame()
+{
+	UiBuffer *uiBufferLastFrame = &G_UI_STATE.uiBuffers[1 - G_UI_STATE.uiBufferIndex];
+	ArenaReset(&uiBufferLastFrame->arena);
+	G_UI_STATE.uiBufferIndex = 1 - G_UI_STATE.uiBufferIndex;
 }

@@ -993,8 +993,6 @@ int CALLBACK WinMain(HINSTANCE instance,
 	gameMemory.mouseClickArena = ArenaInitFromArena(&gameMemory.permanentArena, MegaByte * 1);
 	gameMemory.circularNotificationBuffer = ArenaInitFromArena(&gameMemory.permanentArena, MegaByte * 1);
 	gameMemory.circularNotificationBuffer.flags |= ARENA_FLAG_CIRCULAR;
-	gameMemory.twoFrameArenaModIndex0 = ArenaInitFromArena(&gameMemory.permanentArena, MegaByte * 5);
-	gameMemory.twoFrameArenaModIndex1 = ArenaInitFromArena(&gameMemory.permanentArena, MegaByte * 5);
 
 	gameMemory.temporaryArena = ArenaInit(MegaByte * 500);
 

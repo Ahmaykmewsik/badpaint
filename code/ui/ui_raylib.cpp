@@ -78,18 +78,14 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 	}
 }
 
-void UiRenderBlocksRaylib(UiState *uiState)
+void UiRenderBlocksRaylib(UiBuffer *uiBuffer)
 {
-	int uiBlockArrayIndexThisFrame = GetFrameModIndexThisFrame();
-	if (uiState->uiBlockCount)
+	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
 	{
-		for (u32 i = 1; i < uiState->uiBlockCount; i++)
+		UiBlock *uiBlock = &uiBuffer->uiBlockes[i];
+		if (!uiBlock->parent)
 		{
-			UiBlock *uiBlock = &uiState->uiBlockes[uiBlockArrayIndexThisFrame][i];
-			if (!uiBlock->parent)
-			{
-				UiRenderBlockRaylib(uiBlock, 0);
-			}
+			UiRenderBlockRaylib(uiBlock, 0);
 		}
 	}
 }

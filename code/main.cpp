@@ -39,6 +39,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		processedImage->index = i;
 	}
 
+	UiInit(&gameMemory.permanentArena);
+
 	UiState *G_UI_STATE = GetUiState();
 	UiInputs *G_UI_INPUTS = GetUiInputs();
 
@@ -160,9 +162,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			__debugbreak();
 		}
 
-		G_UI_STATE->twoFrameArenaLastFrame = GetTwoFrameArenaLastFrame(&gameMemory);
-		G_UI_STATE->twoFrameArenaThisFrame = GetTwoFrameArenaThisFrame(&gameMemory);
-		int uiBlockArrayIndex = GetFrameModIndexLastFrame();
 		windowDim.x = GetScreenWidth();
 		windowDim.y = GetScreenHeight();
 
@@ -213,9 +212,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			}
 		}
 
-		for (u32 i = 0; i < G_UI_STATE->uiBlockCount; i++)
+		UiBuffer *uiBufferLastFrame = &G_UI_STATE->uiBuffers[1 - G_UI_STATE->uiBufferIndex];
+
+		for (u32 i = 0; i < uiBufferLastFrame->uiBlockCount; i++)
 		{
-			UiBlock *uiBlock = &G_UI_STATE->uiBlockes[uiBlockArrayIndex][i];
+			UiBlock *uiBlock = &uiBufferLastFrame->uiBlockes[i];
 			if (IsFlag(uiBlock, UI_FLAG_INTERACTABLE))
 			{
 				uiBlock->cursorRelativePixelPos = mousePixelPos - uiBlock->rect.pos;
@@ -259,9 +260,10 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				commandInput->pressed = IsKeyPressed(key);
 			}
 		}
-		for (u32 i = 0; i < G_UI_STATE->uiBlockCount; i++)
+
+		for (u32 i = 0; i < uiBufferLastFrame->uiBlockCount; i++)
 		{
-			UiBlock *uiBlock = &G_UI_STATE->uiBlockes[uiBlockArrayIndex][i];
+			UiBlock *uiBlock = &uiBufferLastFrame->uiBlockes[i];
 			if (IsFlag(uiBlock, UI_FLAG_INTERACTABLE))
 			{
 				if (uiBlock->uiInputs.command)
@@ -457,7 +459,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					processedImage->arenaPair = arenaPair;
 					memcpy(processedImage->dirtyRectsInProcess, canvas->drawingRectDirtyListProcess, canvas->drawingRectCount * sizeof(b32));
 					canvas->proccessAsap = false;
-					processedImage->frameStarted = G_CURRENT_FRAME;
 					processedImage->active = true;
 					processedImage->processBatchIndex = canvas->processBatchIndex;
 					canvas->processBatchIndex++;
@@ -674,8 +675,9 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		//---------------------RENDER-------------------------
 		//----------------------------------------------------
 
+		UiBuffer *uiBufferCurrent = &G_UI_STATE->uiBuffers[G_UI_STATE->uiBufferIndex];
 		// NOTE: We start at 1 so that we always have a null uiBlock
-		G_UI_STATE->uiBlockCount = 1;
+		uiBufferCurrent->uiBlockCount = 1;
 		G_UI_STATE->uiSettings = {};
 		G_UI_STATE->parentStackCount = {};
 		UiSettings *uiSettings = &G_UI_STATE->uiSettings;
@@ -925,13 +927,13 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		label = STRING(VERSION_NUMBER);
 		CreateUiBlock(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, 0, label);
 
-		UiLayoutBlocks();
+		UiLayoutBlocks(uiBufferCurrent);
 
 		BeginDrawing();
 
 		ClearBackground(Color{127, 127, 127, 255});
 
-		UiRenderBlocksRaylib(G_UI_STATE);
+		UiRenderBlocksRaylib(uiBufferCurrent);
 
 		if (isHoveredOnPaintable)
 		{
@@ -955,10 +957,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		EndDrawing();
 
 		ArenaReset(&gameMemory.temporaryArena);
-		Arena *memoryArenaLastFrame = GetTwoFrameArenaLastFrame(&gameMemory);
-		ArenaReset(memoryArenaLastFrame);
 
-		G_CURRENT_FRAME++;
+		UiEndFrame();
 
 #if 0
 		f64 timeEnd = GetTime();

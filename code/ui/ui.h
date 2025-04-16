@@ -73,8 +73,6 @@ struct UiInputs
 
 struct UiBlock
 {
-	u32 index; //TODO: (Ahmayk) remove
-	u32 frameRendered;
 	u32 hash;
 
 	UiBlock *firstChild;
@@ -102,23 +100,22 @@ struct UiBlock
 #define MAX_UI_BLOCKS 1000
 struct UiBuffer
 {
-	UiBlock uiBlockes[2][MAX_UI_BLOCKS];
+	UiBlock uiBlockes[MAX_UI_BLOCKS];
+	u32 uiBlockCount;
+	Arena arena;
 };
 
 struct UiState
 {
-	UiBlock uiBlockes[2][MAX_UI_BLOCKS];
-	//TODO: does it make sense to have 1 uiBlockCount when we have two buffers?
-	//NOTE: (Ahmayk) No lol
-	u32 uiBlockCount;
+	b32 initialized;
+	UiBuffer uiBuffers[2];
+	u32 uiBufferIndex; 
 
 	UiBlock *parentStack[20];
 	int parentStackCount;
 
 	UiSettings uiSettings;
 
-	Arena *twoFrameArenaLastFrame;
-	Arena *twoFrameArenaThisFrame;
 
 	//NOTE: Ahmayk(Temporary hack)
 	CommandInput *commandInputs;
@@ -143,6 +140,7 @@ struct ReactiveUiColorState
 #define UiDeferLoop(begin, end) for (int CONCAT(_i_, __LINE__) = ((begin), 0); !CONCAT(_i_, __LINE__); CONCAT(_i_, __LINE__) += 1, (end))
 #define UiParent() UiDeferLoop(PushUiParent(), PopUiParent())
 
+void UiInit(Arena *arena);
 UiState *GetUiState();
 UiInputs *GetUiInputs();
 
@@ -157,10 +155,5 @@ Color GetReactiveColor(CommandInput *commandInputs, UiBlock *uiBlockLastFrame, R
 void CreateUiButton(String string, u32 hash, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled = false);
 ReactiveUiColorState CreateButtonReactiveUiColorState(Color color);
 
-void CalculateUiPosGivenReletativePositions(UiBlock *uiBlock);
-void CalculateUiRelativePositions(UiBlock *uiBlock);
-void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock);
-void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock);
-void RenderUiEntries(UiBlock *uiBlock, v2 windowPixelDim, int uiDepth = 0);
-
-void UiLayoutBlocks();
+void UiLayoutBlocks(UiBuffer *uiBuffer);
+void UiEndFrame();
