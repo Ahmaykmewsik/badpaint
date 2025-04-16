@@ -44,12 +44,10 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 			DrawTextPro(uiBlock->uiSettings.font, C_STRING_NULL_TERMINATED(uiBlock->string), V2ToRayVector(pos), {}, 0, (f32) uiBlock->uiSettings.font.baseSize, 1, uiBlock->uiSettings.frontColor);
 		}
 
-		if (IsFlag(uiBlock, UI_FLAG_DRAW_TEXTURE))
+		if (IsFlag(uiBlock, UI_FLAG_DRAW_TEXTURE) && ASSERT(uiBlock->texture.id))
 		{
-			ASSERT(uiBlock->uiInputs.texture.id);
-
-			float scale = uiBlock->rect.dim.x / uiBlock->uiInputs.texture.width;
-			Texture texture = uiBlock->uiInputs.texture;
+			float scale = uiBlock->rect.dim.x / uiBlock->texture.width;
+			Texture texture = uiBlock->texture;
 			Rectangle source = {0.0f, 0.0f, (float)texture.width, (float)texture.height};
 			Rectangle dest = {uiBlock->rect.pos.x, uiBlock->rect.pos.y, (float)texture.width * scale, (float)texture.height * scale};
 
@@ -63,7 +61,7 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 				dest.y += relativePos.y;
 			}
 
-			DrawTexturePro(uiBlock->uiInputs.texture, source, dest, Vector2{0, 0}, 0, WHITE);
+			DrawTexturePro(uiBlock->texture, source, dest, Vector2{0, 0}, 0, WHITE);
 		}
 
 		if (IsFlag(uiBlock, UI_FLAG_DRAW_BORDER))
@@ -82,10 +80,28 @@ void UiRenderBlocksRaylib(UiBuffer *uiBuffer)
 {
 	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
 	{
-		UiBlock *uiBlock = &uiBuffer->uiBlockes[i];
+		UiBlock *uiBlock = &uiBuffer->uiBlocks[i];
 		if (!uiBlock->parent)
 		{
 			UiRenderBlockRaylib(uiBlock, 0);
+		}
+	}
+}
+
+void UiRaylibProcessStrings(UiBuffer *uiBuffer)
+{
+	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
+	{
+		UiBlock *uiBlock = &uiBuffer->uiBlocks[i];
+		if (uiBlock->string.length)
+		{
+			uiBlock->string = ReallocString(uiBlock->string, &uiBuffer->arena);
+			if (ASSERT(uiBlock->uiSettings.font.baseSize))
+			{
+				//TODO: (Ahmayk) move this here so we can pass in string and don't need to reallocate for null pointer
+				Vector2 textDim = MeasureTextEx(uiBlock->uiSettings.font, C_STRING_NULL_TERMINATED(uiBlock->string), (f32) uiBlock->uiSettings.font.baseSize, 1);
+				uiBlock->textDim = RayVectorToV2(textDim);
+			}
 		}
 	}
 }

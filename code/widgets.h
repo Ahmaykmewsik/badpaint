@@ -5,4 +5,4 @@
 
 static float G_TOOLBOX_WIDTH_AND_HEIGHT = 35;
 
-void CreateBrushEffectButton(BRUSH_EFFECT brushEffect, String string, Color baseColor, COMMAND command, Brush *currentBrush);
+UiBlock *CreateBrushEffectButton(BRUSH_EFFECT brushEffect, String string, Color baseColor, COMMAND command, Brush *currentBrush);

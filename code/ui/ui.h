@@ -61,16 +61,6 @@ struct UiSettings
 	Font font;
 };
 
-struct UiInputs
-{
-	f32 value;
-	v2 relativePixelPosition;
-	Texture texture;
-	v2 manualDim;
-	COMMAND command;
-	SLIDER_ACTION sliderAction;
-};
-
 struct UiBlock
 {
 	u32 hash;
@@ -85,7 +75,13 @@ struct UiBlock
 	String string;
 	v2 textDim;
 
-	UiInputs uiInputs;
+	f32 value;
+	v2 relativePixelPosition;
+	Texture texture;
+	v2 manualDim;
+	COMMAND command;
+	SLIDER_ACTION sliderAction;
+
 	UiSettings uiSettings;
 
 	b32 hovered;
@@ -116,7 +112,6 @@ struct UiState
 
 	UiSettings uiSettings;
 
-
 	//NOTE: Ahmayk(Temporary hack)
 	CommandInput *commandInputs;
 };
@@ -142,17 +137,15 @@ struct ReactiveUiColorState
 
 void UiInit(Arena *arena);
 UiState *GetUiState();
-UiInputs *GetUiInputs();
 
 bool IsFlag(UiBlock *uiBlock, unsigned int flags = 0);
 //QUESTION: (Ahmayk) change to pass in ui buffer?
 UiBlock *GetUiBlockOfHashLastFrame(u32 hash);
-void SetUiAxis(UiSize uiSize1, UiSize uiSize2);
-void CreateUiBlock(unsigned int flags = 0, u32 hash = 0, String string = {});
+UiBlock *CreateUiBlock(UiState *uiState, UiSettings *uiSettings);
 void PushUiParent();
 void PopUiParent();
 Color GetReactiveColor(CommandInput *commandInputs, UiBlock *uiBlockLastFrame, ReactiveUiColor reactiveUiColor, bool disabled);
-void CreateUiButton(String string, u32 hash, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled = false);
+UiBlock *CreateUiButton(String string, u32 hash, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled = false);
 ReactiveUiColorState CreateButtonReactiveUiColorState(Color color);
 
 void UiLayoutBlocks(UiBuffer *uiBuffer);

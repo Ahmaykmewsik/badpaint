@@ -7,17 +7,11 @@
 #include "vn_math_external.h"
 
 static UiState G_UI_STATE = {};
-static UiInputs G_UI_INPUTS = {};
 
 //TODO: (Ahmayk) Temporary hack 
 UiState *GetUiState()
 {
 	return &G_UI_STATE;
-}
-
-UiInputs *GetUiInputs()
-{
-	return &G_UI_INPUTS;
 }
 
 void UiInit(Arena *arena)
@@ -26,89 +20,42 @@ void UiInit(Arena *arena)
 	G_UI_STATE.uiBuffers[1].arena = ArenaInitFromArena(arena, MegaByte * 5);
 }
 
-void CreateUiBlock(unsigned int flags, u32 hash, String string)
+UiBlock *CreateUiBlock(UiState *uiState, UiSettings *uiSettings)
 {
-	UiBuffer *uiBuffer = &G_UI_STATE.uiBuffers[G_UI_STATE.uiBufferIndex];
+	UiBlock *result = {};
+	UiBuffer *uiBuffer = &uiState->uiBuffers[uiState->uiBufferIndex];
 	if (ASSERT(uiBuffer->uiBlockCount < ARRAY_COUNT(uiBuffer->uiBlocks)))
 	{
-		UiBlock *uiBlock = &uiBuffer->uiBlocks[uiBuffer->uiBlockCount++];
-		*uiBlock = {};
-
+		result = &uiBuffer->uiBlocks[uiBuffer->uiBlockCount++];
+		*result = {};
+		result->uiSettings = *uiSettings;
 		if (G_UI_STATE.parentStackCount)
 		{
-			uiBlock->parent = G_UI_STATE.parentStack[G_UI_STATE.parentStackCount - 1];
-			ASSERT(uiBlock->parent);
-
-			if (uiBlock->parent->firstChild)
+			result->parent = G_UI_STATE.parentStack[G_UI_STATE.parentStackCount - 1];
+			ASSERT(result->parent);
+			if (result->parent->firstChild)
 			{
-				ASSERT(uiBlock->parent->lastChild);
-				uiBlock->prev = uiBlock->parent->lastChild;
-				uiBlock->parent->lastChild->next = uiBlock;
+				ASSERT(result->parent->lastChild);
+				result->prev = result->parent->lastChild;
+				result->parent->lastChild->next = result;
 			}
 			else
 			{
-				uiBlock->parent->firstChild = uiBlock;
+				result->parent->firstChild = result;
 			}
 
-			uiBlock->parent->lastChild = uiBlock;
+			result->parent->lastChild = result;
 		}
-
-		uiBlock->flags = flags;
-		uiBlock->uiSettings = G_UI_STATE.uiSettings;
-		uiBlock->hash = hash;
-
-		if (string.length)
-		{
-			uiBlock->string = ReallocString(string, &uiBuffer->arena);
-
-			//TODO: (Ahmayk) how to not depend on raylib here? 
-			ASSERT(uiBlock->uiSettings.font.baseSize);
-			Vector2 textDim = MeasureTextEx(uiBlock->uiSettings.font, C_STRING_NULL_TERMINATED(uiBlock->string), (f32) uiBlock->uiSettings.font.baseSize, 1);
-			uiBlock->textDim = RayVectorToV2(textDim);
-		}
-
-		uiBlock->uiInputs = G_UI_INPUTS;
 	}
-	G_UI_INPUTS = {};
-}
 
-void CreateUiText(String string)
-{
-	if (string.length)
+	if (!result)
 	{
-		CreateUiBlock(UI_FLAG_DRAW_TEXT, 0, string);
+		static UiBlock stub = {};
+		result = &stub;
+		*result = {};
 	}
-}
 
-void CreateUiTextWithBackground(String string, unsigned int flags = 0)
-{
-	if (string.length)
-	{
-		CreateUiBlock(UI_FLAG_DRAW_TEXT | UI_FLAG_DRAW_BACKGROUND | flags, 0, string);
-	}
-}
-
-void SetUiAxis(UiSize uiSize1, UiSize uiSize2)
-{
-	G_UI_STATE.uiSettings.uiSizes[0] = uiSize1;
-	G_UI_STATE.uiSettings.uiSizes[1] = uiSize2;
-}
-
-void SetUiAxisToPixelDim(v2 pixelDim)
-{
-	SetUiAxis({UI_SIZE_KIND_PIXELS, pixelDim.x}, {UI_SIZE_KIND_PIXELS, pixelDim.y});
-}
-
-void SetUiTimlineRowAxisPercentOfX(float percentOfParentX)
-{
-	G_UI_STATE.uiSettings.uiSizes[0] = UiSize{UI_SIZE_KIND_PERCENT_OF_PARENT, percentOfParentX};
-	G_UI_STATE.uiSettings.uiSizes[1] = UiSize{UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
-}
-
-void PushPixelSize(v2 pixelSize)
-{
-	G_UI_STATE.uiSettings.uiSizes[0] = {UI_SIZE_KIND_PIXELS, pixelSize.x};
-	G_UI_STATE.uiSettings.uiSizes[1] = {UI_SIZE_KIND_PIXELS, pixelSize.x};
+	return result;
 }
 
 bool IsFlag(UiBlock *uiBlock, unsigned int flags)
@@ -143,8 +90,8 @@ void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock)
 				uiBlock->uiSettings.uiSizes[1].kind == UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT)
 		{
 			ASSERT(uiBlock->parent);
-			ASSERT(uiBlock->uiInputs.texture.width && uiBlock->uiInputs.texture.height);
-			v2 textureDim = GetTextureDim(uiBlock->uiInputs.texture);
+			ASSERT(uiBlock->texture.width && uiBlock->texture.height);
+			v2 textureDim = GetTextureDim(uiBlock->texture);
 
 			float scaleX = 1;
 			float scaleY = 1;
@@ -243,7 +190,7 @@ void CalculateUiRelativePositions(UiBlock *uiBlock)
 	{
 		if (IsFlag(uiBlock, UI_FLAG_MANUAL_POSITION) || (!uiBlock->parent || IsFlag(uiBlock->parent, UI_FLAG_CHILDREN_MANUAL_POSITION)))
 		{
-			uiBlock->computedRelativePixelPos = uiBlock->uiInputs.relativePixelPosition;
+			uiBlock->computedRelativePixelPos = uiBlock->relativePixelPosition;
 		}
 		else if (uiBlock->parent && IsFlag(uiBlock, UI_FLAG_CENTER_IN_PARENT))
 		{
@@ -289,7 +236,7 @@ Color GetReactiveColor(CommandInput *commandInputs, UiBlock *uiBlockLastFrame, R
 		bool down = uiBlockLastFrame->down;
 		bool hovered = uiBlockLastFrame->hovered;
 
-		COMMAND command = uiBlockLastFrame->uiInputs.command;
+		COMMAND command = uiBlockLastFrame->command;
 		if (down || (command && IsCommandDown(commandInputs, command)))
 			result = reactiveUiColor.down;
 		else if (hovered)
@@ -332,7 +279,7 @@ UiBlock *GetUiBlockOfHashLastFrame(u32 hash)
     return result;
 }
 
-void CreateUiButton(String string, u32 hash, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled)
+UiBlock *CreateUiButton(String string, u32 hash, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled)
 {
 	ReactiveUiColor reactiveUiColor = (active)
 		? reactiveUiColorState.active
@@ -345,8 +292,11 @@ void CreateUiButton(String string, u32 hash, ReactiveUiColorState reactiveUiColo
 	uiSettings->detailColor = BLACK;
 	uiSettings->borderColor = (active) ? BLACK : GRAY;
 
-	unsigned int flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED | UI_FLAG_INTERACTABLE;
-	CreateUiBlock(flags, hash, string);
+	UiBlock *result = CreateUiBlock(&G_UI_STATE, uiSettings);
+	result->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED | UI_FLAG_INTERACTABLE;
+	result->hash = hash;
+	result->string = string;
+	return result;
 }
 
 Color AddConstantToColor(Color color, i8 constant)
@@ -376,7 +326,6 @@ void UiLayoutBlocks(UiBuffer *uiBuffer)
 	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
 	{
 		UiBlock *uiBlock = &uiBuffer->uiBlocks[i];
-
 		for (u32 j = 0; j < ARRAY_COUNT(uiBlock->uiSettings.uiSizes); j++)
 		{
 			UiSize uiSize = uiBlock->uiSettings.uiSizes[j];
@@ -384,7 +333,7 @@ void UiLayoutBlocks(UiBuffer *uiBuffer)
 			{
 				case UI_SIZE_KIND_TEXTURE:
 					{
-						v2 dim = GetTextureDim(uiBlock->uiInputs.texture);
+						v2 dim = GetTextureDim(uiBlock->texture);
 						uiBlock->rect.dim.elements[j] = dim.elements[j];
 						break;
 					}
@@ -395,7 +344,10 @@ void UiLayoutBlocks(UiBuffer *uiBuffer)
 					}
 				case UI_SIZE_KIND_TEXT:
 					{
-						uiBlock->rect.dim.elements[j] = uiBlock->textDim.elements[j];
+						if (ASSERT(uiBlock->string.length && !IsZeroV2(uiBlock->textDim)))
+						{
+							uiBlock->rect.dim.elements[j] = uiBlock->textDim.elements[j];
+						}
 					}
 				case UI_SIZE_KIND_PERCENT_OF_PARENT:
 				case UI_SIZE_KIND_CHILDREN_OF_SUM:
