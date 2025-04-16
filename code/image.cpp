@@ -1,6 +1,20 @@
 #pragma once
 
-unsigned char *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, Arena *arena)
+#include "image.h"
+#include "platform_win32.h"
+
+#include "../includes/raylib/src/external/stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "../includes/raylib/src/external/stb_image_write.h"
+
+#include "../includes/lodepng.h"
+#include "../includes/lodepng.c"
+
+#include "../includes/raylib/src/rlgl.h"
+
+#include "../includes/raylib/src/external/glad.h" // GLAD extensions loading library, includes OpenGL headers
+
+u8 *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, Arena *arena)
 {
 	unsigned char *data = NULL;
 	*bytesRead = 0;
@@ -857,13 +871,14 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 	ArenaPairFreeOldest(&processedImage->arenaPair);
 	HashImageRects(&processedImage->finalProcessedImageRaw, canvas->finalImageRectDim, &processedImage->finalImageRectHashes);
 	// Print("Converted to final PNG on thead " + IntToString(processedImage->index));
+	processedImage->processingComplete = true;
 }
 
 void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas)
 {
 	processedImage->active = false;
 	processedImage->frameStarted = 0;
-	processedImage->frameFinished = 0;
+	processedImage->processingComplete = false;
 	processedImage->finalProcessedImageRaw = {};
 	ArenaPairFreeAll(&processedImage->arenaPair);
 }
@@ -890,7 +905,6 @@ PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread)
 	ASSERT(processedImage);
 
 	UpdateBpImageOnThread(processedImage);
-	processedImage->frameFinished = G_CURRENT_FRAME;
 	// Print("Finished on thread " + IntToString(processedImage->index));
 }
 

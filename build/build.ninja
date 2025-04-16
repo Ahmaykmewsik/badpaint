@@ -11,7 +11,7 @@ warnings = $warnings /wd4100
 # enable local variable initialized but not referneced
 warnings = $warnings /wd4189
 
-flags = $flags $warnings -nologo -EHsc -FS -DOS_WINDOWS
+flags = $flags $warnings -nologo -EHsc -Zi -FS -DOS_WINDOWS
 
 includes = -I ../includes -I ../code -I ../code/base
 libraries = ./libraries/builtLibraries.lib user32.lib shell32.lib gdi32.lib winmm.lib kernel32.lib Ole32.lib winhttp.lib dbghelp.lib comctl32.lib onecore.lib opengl32.lib
@@ -32,11 +32,12 @@ build multithreading.obj: compile ../code/base/multithreading.cpp | $directory_n
 build platform_win32.obj: compile ../code/platform_win32.cpp | $directory_name
 build main.obj: compile ../code/main.cpp | $directory_name
 build input.obj: compile ../code/input.cpp | $directory_name
+build image.obj: compile ../code/image.cpp | $directory_name
 
 rule link
   command = link /DEBUG /nologo $in $libraries /PDB:$directory_name/badpaint.pdb /OUT:$out
   description = Linking...
   deps = msvc
-build $directory_name/badpaint.exe: link memory.obj profiler.obj vn_math.obj vn_string.obj multithreading.obj platform_win32.obj main.obj input.obj | $directory_name
+build $directory_name/badpaint.exe: link memory.obj profiler.obj vn_math.obj vn_string.obj multithreading.obj platform_win32.obj main.obj input.obj image.obj | $directory_name
 
 default $directory_name/badpaint.exe

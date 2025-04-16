@@ -1,1 +1,1 @@
-ninja && remedybg.exe start-debugging
+clear && ninja && remedybg.exe start-debugging

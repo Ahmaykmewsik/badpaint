@@ -1,4 +1,9 @@
 
+#include "main.h"
+#include "input.h"
+#include "../includes/raylib/src/raylib.h"
+#include "platform_win32.h"
+
 enum PNG_FILTER_TYPE : i32
 {
 	PNG_FILTER_TYPE_NONE = 0,
@@ -95,7 +100,19 @@ struct ProcessedImage
 	ArenaPair arenaPair;
 	ImageRawRGBA32 finalProcessedImageRaw;
 	unsigned int frameStarted;
-	unsigned int frameFinished;
+	b32 processingComplete;
 	b32 *dirtyRectsInProcess;
 	u32 *finalImageRectHashes;
 };
+
+u8 *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, Arena *arena);
+ImageRawRGBA32 LoadDataIntoRawImage(u8 *fileData, u32 fileSize, GameMemory *gameMemory);
+b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush, ProcessedImage *processedImages, u32 threadCount);
+bool ExportImage(Image image, String filepath);
+b32 CanvasDrawCircleStroke(Canvas *canvas, iv2 startPos, iv2 endPos, u32 radius, Color color);
+void SetPNGFilterType(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *gameMemory);
+ProcessedImage *GetFreeProcessedImage(ProcessedImage *processedImages, unsigned int threadCount);
+void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas);
+RectIV2 GetDrawingRectFromIndex(iv2 imageDim, iv2 rectDim, u32 i);
+
+PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread);

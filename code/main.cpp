@@ -4,17 +4,8 @@
 //NOTE: (Ahmayk) hack to allow raw openGL calls in our code 
 #include "../includes/raylib/src/external/glad.h" // GLAD extensions loading library, includes OpenGL headers
 
-#include "../includes/raylib/src/external/stb_image.h"
-
 #include "../includes/raylib/src/raylib.h"
-#include "../includes/raylib/src/rlgl.h"
 #include "../includes//raylib//src/external/glfw/include/GLFW/glfw3.h"
-
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "../includes/raylib/src/external/stb_image_write.h"
-
-#include "../includes/lodepng.h"
-#include "../includes/lodepng.c"
 
 #include "vn_math_external.h"
 #include "input.h"
@@ -23,7 +14,6 @@
 #include "platform_win32.h"
 #include "main.h"
 
-#include "image.cpp"
 #include "ui.cpp"
 
 #include "assets/font.h"
@@ -50,7 +40,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	G_UI_INPUTS = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, UiInputs);
 	G_UI_STATE = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, UiState);
 
-	SetTraceLogLevel(RL_LOG_NONE);
+	SetTraceLogLevel(LOG_NONE);
 
 	InitWindow(200, 200, "badpaint");
 
@@ -101,9 +91,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	currentBrush.size = 10;
 
 	Texture loadedTexture = {};
-
-	stbi_write_force_png_filter = 5;
-	int pngFilterLastFrame = stbi_write_force_png_filter;
 
 	COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE].key = KEY_E;
 	COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE].key = KEY_R;
@@ -492,7 +479,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		for (u32 threadIndex = 0; threadIndex < threadCount; threadIndex++)
 		{
 			ProcessedImage *processedImageOfIndex = processedImages + threadIndex;
-			if (processedImageOfIndex->active && processedImageOfIndex->frameFinished > 0)
+			if (processedImageOfIndex->active && processedImageOfIndex->processingComplete)
 			{
 				for (u32 rectIndex = 0; rectIndex < canvas->drawingRectCount; rectIndex++)
 				{
@@ -1028,7 +1015,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		ArenaReset(memoryArenaLastFrame);
 
 		G_CURRENT_FRAME++;
-		pngFilterLastFrame = stbi_write_force_png_filter;
 
 #if 0
 		f64 timeEnd = GetTime();
