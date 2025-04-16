@@ -1,6 +1,9 @@
 
 #include "base/base.h"
 
+//NOTE: (Ahmayk) hack to allow raw openGL calls in our code 
+#include "../includes/raylib/src/external/glad.h" // GLAD extensions loading library, includes OpenGL headers
+
 #include "../includes/raylib/src/external/stb_image.h"
 
 #include "../includes/raylib/src/raylib.h"
