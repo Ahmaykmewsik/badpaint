@@ -436,78 +436,6 @@ UiBlock *GetUiBlockLastFrameOfStringKey(String stringKey)
 	return result;
 }
 
-v2 GetCeneteredPosInRectV2(RectV2 rect, v2 dim)
-{
-	dim.x = ClampF32(0, dim.x, rect.dim.x);
-	dim.y = ClampF32(0, dim.y, rect.dim.y);
-	v2 result = (rect.dim * 0.5f) - (dim * 0.5f);
-	return result;
-}
-
-void RenderUiEntries(UiBlock *uiBlock, v2 windowPixelDim, int uiDepth)
-{
-	if (uiBlock)
-	{
-		int drawOrder = 0;
-
-		if (IsFlag(uiBlock, UI_FLAG_DRAW_BACKGROUND) && uiBlock->uiSettings.backColor.a)
-		{
-			uiBlock->rect.dim.x = ClampF32(0, uiBlock->rect.dim.x, windowPixelDim.x);
-			uiBlock->rect.dim.y = ClampF32(0, uiBlock->rect.dim.y, windowPixelDim.y);
-			Rectangle rect = RectToRayRectangle(uiBlock->rect);
-			DrawRectangleRec(rect, uiBlock->uiSettings.backColor);
-		}
-
-		if (IsFlag(uiBlock, UI_FLAG_DRAW_TEXT))
-		{
-			v2 pos = uiBlock->rect.pos;
-
-			if (IsFlag(uiBlock, UI_FLAG_ALIGN_TEXT_CENTERED))
-			{
-				pos += GetCeneteredPosInRectV2(uiBlock->rect, uiBlock->textDim);
-			}
-			else if (IsFlag(uiBlock, UI_FLAG_ALIGN_TEXT_RIGHT))
-			{
-				pos.x += uiBlock->rect.dim.x - uiBlock->textDim.x;
-			}
-
-			DrawTextPro(uiBlock->uiSettings.font, C_STRING_NULL_TERMINATED(uiBlock->string), V2ToRayVector(pos), {}, 0, (f32) uiBlock->uiSettings.font.baseSize, 1, uiBlock->uiSettings.frontColor);
-		}
-
-		if (IsFlag(uiBlock, UI_FLAG_DRAW_TEXTURE))
-		{
-			ASSERT(uiBlock->uiInputs.texture.id);
-
-			float scale = uiBlock->rect.dim.x / uiBlock->uiInputs.texture.width;
-			Texture texture = uiBlock->uiInputs.texture;
-			Rectangle source = {0.0f, 0.0f, (float)texture.width, (float)texture.height};
-			Rectangle dest = {uiBlock->rect.pos.x, uiBlock->rect.pos.y, (float)texture.width * scale, (float)texture.height * scale};
-
-			if (IsFlag(uiBlock, UI_FLAG_ALIGN_TEXTURE_CENTERED))
-			{
-				v2 dim;
-				dim.x = dest.width;
-				dim.y = dest.height;
-				v2 relativePos = GetCeneteredPosInRectV2(uiBlock->rect, dim);
-				dest.x += relativePos.x;
-				dest.y += relativePos.y;
-			}
-
-			DrawTexturePro(uiBlock->uiInputs.texture, source, dest, Vector2{0, 0}, 0, WHITE);
-		}
-
-		if (IsFlag(uiBlock, UI_FLAG_DRAW_BORDER))
-		{
-			RectV2 rect = uiBlock->rect;
-			//TODO: (Ahmayk) Bleh. Need to have concept in UI of pixel-perfect positioning vs not
-			DrawRectangleLines((u32)rect.pos.x, (u32)rect.pos.y, (u32)rect.dim.x, (u32)rect.dim.y, uiBlock->uiSettings.borderColor);
-		}
-
-		RenderUiEntries(uiBlock->firstChild, windowPixelDim, uiDepth + 2);
-		RenderUiEntries(uiBlock->next, windowPixelDim, uiDepth);
-	}
-}
-
 void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled)
 {
 	ReactiveUiColor reactiveUiColor = (active)
@@ -545,4 +473,61 @@ ReactiveUiColorState CreateButtonReactiveUiColorState(Color color)
 	result.nonActive.hovered = AddConstantToColor(color, -20);
 	result.nonActive.neutral = AddConstantToColor(color, -50);
 	return result;
+}
+
+void UiLayoutBlocks()
+{
+	int uiBlockArrayIndexThisFrame = GetFrameModIndexThisFrame();
+
+	if (G_UI_STATE.uiBlockCount)
+	{
+		for (u32 i = 1; i < G_UI_STATE.uiBlockCount; i++)
+		{
+			UiBlock *uiBlock = &G_UI_STATE.uiBlockes[uiBlockArrayIndexThisFrame][i];
+
+			for (int j = 0;
+					j < ARRAY_COUNT(uiBlock->uiSettings.uiSizes);
+					j++)
+			{
+				UiSize uiSize = uiBlock->uiSettings.uiSizes[j];
+				switch (uiSize.kind)
+				{
+					case UI_SIZE_KIND_TEXTURE:
+						{
+							v2 dim = GetTextureDim(uiBlock->uiInputs.texture);
+							uiBlock->rect.dim.elements[j] = dim.elements[j];
+							break;
+						}
+					case UI_SIZE_KIND_PIXELS:
+						{
+							uiBlock->rect.dim.elements[j] = uiSize.value;
+							break;
+						}
+					case UI_SIZE_KIND_TEXT:
+						{
+							uiBlock->rect.dim.elements[j] = uiBlock->textDim.elements[j];
+						}
+					case UI_SIZE_KIND_PERCENT_OF_PARENT:
+					case UI_SIZE_KIND_CHILDREN_OF_SUM:
+					case UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT:
+						break;
+
+						InvalidDefaultCase
+				}
+			}
+		}
+
+		for (u32 i = 1; i < G_UI_STATE.uiBlockCount; i++)
+		{
+			UiBlock *uiBlock = &G_UI_STATE.uiBlockes[uiBlockArrayIndexThisFrame][i];
+
+			if (!uiBlock->parent)
+			{
+				CalculateUiUpwardsDependentSizes(uiBlock);
+				CalculateUiDownwardsDependentSizes(uiBlock);
+				CalculateUiRelativePositions(uiBlock);
+				CalculateUiPosGivenReletativePositions(uiBlock);
+			}
+		}
+	}
 }

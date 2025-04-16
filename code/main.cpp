@@ -8,6 +8,7 @@
 #include "../includes//raylib//src/external/glfw/include/GLFW/glfw3.h"
 
 #include "ui/ui.h"
+#include "ui/ui_raylib.h"
 #include "widgets.h"
 #include "vn_math_external.h"
 #include "input.h"
@@ -17,6 +18,8 @@
 
 #include "assets/font.h"
 #include "assets/defaultImage.h"
+
+#include <cstring>  //memcpy
 
 void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned int threadCount)
 {
@@ -674,10 +677,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		UiSettings *uiSettings = &G_UI_STATE->uiSettings;
 		G_UI_STATE->commandInputs = commandInputs;
 
-		BeginDrawing();
-
-		ClearBackground(Color{127, 127, 127, 255});
-
 		uiSettings->font = defaultFont;
 
 		float titleBarHeight = 20;
@@ -922,60 +921,13 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		label = STRING(VERSION_NUMBER);
 		CreateUiBlock(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, label);
 
-		int uiBlockArrayIndexThisFrame = GetFrameModIndexThisFrame();
+		UiLayoutBlocks();
 
-		if (G_UI_STATE->uiBlockCount)
-		{
-			for (u32 i = 1; i < G_UI_STATE->uiBlockCount; i++)
-			{
-				UiBlock *uiBlock = &G_UI_STATE->uiBlockes[uiBlockArrayIndexThisFrame][i];
+		BeginDrawing();
 
-				for (int j = 0;
-						j < ARRAY_COUNT(uiBlock->uiSettings.uiSizes);
-						j++)
-				{
-					UiSize uiSize = uiBlock->uiSettings.uiSizes[j];
-					switch (uiSize.kind)
-					{
-						case UI_SIZE_KIND_TEXTURE:
-							{
-								v2 dim = GetTextureDim(uiBlock->uiInputs.texture);
-								uiBlock->rect.dim.elements[j] = dim.elements[j];
-								break;
-							}
-						case UI_SIZE_KIND_PIXELS:
-							{
-								uiBlock->rect.dim.elements[j] = uiSize.value;
-								break;
-							}
-						case UI_SIZE_KIND_TEXT:
-							{
-								uiBlock->rect.dim.elements[j] = uiBlock->textDim.elements[j];
-							}
-						case UI_SIZE_KIND_PERCENT_OF_PARENT:
-						case UI_SIZE_KIND_CHILDREN_OF_SUM:
-						case UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT:
-							break;
+		ClearBackground(Color{127, 127, 127, 255});
 
-							InvalidDefaultCase
-					}
-				}
-			}
-
-			for (u32 i = 1; i < G_UI_STATE->uiBlockCount; i++)
-			{
-				UiBlock *uiBlock = &G_UI_STATE->uiBlockes[uiBlockArrayIndexThisFrame][i];
-
-				if (!uiBlock->parent)
-				{
-					CalculateUiUpwardsDependentSizes(uiBlock);
-					CalculateUiDownwardsDependentSizes(uiBlock);
-					CalculateUiRelativePositions(uiBlock);
-					CalculateUiPosGivenReletativePositions(uiBlock);
-					RenderUiEntries(uiBlock, windowDim);
-				}
-			}
-		}
+		UiRenderBlocksRaylib(G_UI_STATE);
 
 		if (isHoveredOnPaintable)
 		{

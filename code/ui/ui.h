@@ -107,14 +107,15 @@ struct UiHashEntry
 	String keyString;
 };
 
+#define MAX_UI_BLOCKS 1000
 struct UiState
 {
-#define MAX_UI_BOXES 1000
-	UiBlock uiBlockes[2][MAX_UI_BOXES];
+	UiBlock uiBlockes[2][MAX_UI_BLOCKS];
 	//TODO: does it make sense to have 1 uiBlockCount when we have two buffers?
+	//NOTE: (Ahmayk) No lol
 	u32 uiBlockCount;
 
-	UiHashEntry uiHashEntries[MAX_UI_BOXES];
+	UiHashEntry uiHashEntries[MAX_UI_BLOCKS];
 
 	UiBlock *parentStack[20];
 	int parentStackCount;
@@ -165,3 +166,5 @@ void CalculateUiRelativePositions(UiBlock *uiBlock);
 void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock);
 void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock);
 void RenderUiEntries(UiBlock *uiBlock, v2 windowPixelDim, int uiDepth = 0);
+
+void UiLayoutBlocks();
