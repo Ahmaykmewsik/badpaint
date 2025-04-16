@@ -19,7 +19,7 @@ enum UI_SIZE_KIND
 struct UiSize
 {
 	UI_SIZE_KIND kind;
-	float value;
+	f32 value;
 };
 
 enum UI_AXIS
@@ -50,8 +50,8 @@ enum UI_FLAGS
 
 struct UiSettings
 {
-	float startValue;
-	float endValue;
+	f32 startValue;
+	f32 endValue;
 	UiSize uiSizes[UI_AXIS_COUNT];
 	//TODO: Think of different names for these colors I'm always forgetting which goes to what
 	Color backColor;
@@ -63,7 +63,7 @@ struct UiSettings
 
 struct UiInputs
 {
-	float value;
+	f32 value;
 	v2 relativePixelPosition;
 	Texture texture;
 	v2 manualDim;
@@ -73,8 +73,8 @@ struct UiInputs
 
 struct UiBlock
 {
-	unsigned int index; //TODO: (Ahmayk) remove
-	unsigned int frameRendered;
+	u32 index; //TODO: (Ahmayk) remove
+	u32 frameRendered;
 	u32 hash;
 
 	UiBlock *firstChild;
