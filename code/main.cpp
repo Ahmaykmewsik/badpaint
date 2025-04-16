@@ -23,7 +23,6 @@
 #include "platform_win32.h"
 #include "main.h"
 
-#include "input.cpp"
 #include "image.cpp"
 #include "ui.cpp"
 
@@ -106,11 +105,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	stbi_write_force_png_filter = 5;
 	int pngFilterLastFrame = stbi_write_force_png_filter;
 
-	G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE].key = KEY_E;
-	G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE].key = KEY_R;
-	G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX].key = KEY_A;
-	G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT].key = KEY_S;
-	G_COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM].key = KEY_N;
+	COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE].key = KEY_E;
+	COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE].key = KEY_R;
+	COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX].key = KEY_A;
+	COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT].key = KEY_S;
+	COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM].key = KEY_N;
 
 	v2 pressedMousePos = {};
 	String draggedUiStringKey = {};
@@ -240,7 +239,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				i < COMMAND_COUNT;
 				i++)
 		{
-			CommandState *state = G_COMMAND_STATES + i;
+			CommandState *state = COMMAND_STATES + i;
 			KeyboardKey key = state->key;
 			if (key)
 			{
@@ -271,7 +270,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 					if (uiBox->uiInputs.command)
 					{
-						CommandState *state = G_COMMAND_STATES + uiBox->uiInputs.command;
+						CommandState *state = COMMAND_STATES + uiBox->uiInputs.command;
 						state->down |= uiBox->down;
 						state->pressed |= uiBox->pressed;
 					}
@@ -652,11 +651,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 								//alpha != 0 -> is being processed currently
 								if (canvasPixel.a != 0)
 								{
-									*outPixel = G_BRUSH_EFFECT_COLORS_PROCESSING[canvasPixel.r];
+									*outPixel = BRUSH_EFFECT_COLORS_PROCESSING[canvasPixel.r];
 								}
 								else
 								{
-									*outPixel = G_BRUSH_EFFECT_COLORS_PRIMARY[canvasPixel.r];
+									*outPixel = BRUSH_EFFECT_COLORS_PRIMARY[canvasPixel.r];
 								}
 							}
 						}
@@ -830,20 +829,20 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			UiParent()
 			{
 				CreateBrushEffectButton(BRUSH_EFFECT_ERASE, STRING("Ers"), Color{245, 245, 245, 255}, COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE, &currentBrush);
-				CreateBrushEffectButton(BRUSH_EFFECT_REMOVE, STRING("Rmv"), G_BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_REMOVE], COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE, &currentBrush);
+				CreateBrushEffectButton(BRUSH_EFFECT_REMOVE, STRING("Rmv"), BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_REMOVE], COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE, &currentBrush);
 			}
 			SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
 			CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
 			UiParent()
 			{
-				CreateBrushEffectButton(BRUSH_EFFECT_MAX, STRING("Max"), G_BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_MAX], COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX, &currentBrush);
-				CreateBrushEffectButton(BRUSH_EFFECT_SHIFT, STRING("Sft"), G_BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_SHIFT], COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT, &currentBrush);
+				CreateBrushEffectButton(BRUSH_EFFECT_MAX, STRING("Max"), BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_MAX], COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX, &currentBrush);
+				CreateBrushEffectButton(BRUSH_EFFECT_SHIFT, STRING("Sft"), BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_SHIFT], COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT, &currentBrush);
 			}
 			SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
 			CreateUiBox(UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
 			UiParent()
 			{
-				CreateBrushEffectButton(BRUSH_EFFECT_RANDOM, STRING("Rnd"), G_BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_RANDOM], COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM, &currentBrush);
+				CreateBrushEffectButton(BRUSH_EFFECT_RANDOM, STRING("Rnd"), BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_RANDOM], COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM, &currentBrush);
 			}
 
 			// SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
@@ -887,7 +886,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 			SetUiAxis({UI_SIZE_KIND_PIXELS, toolbarWidth}, {UI_SIZE_KIND_PIXELS, toolbarWidth});
 
-			uiSettings->backColor = G_BRUSH_EFFECT_COLORS_PRIMARY[currentBrush.brushEffect];
+			uiSettings->backColor = BRUSH_EFFECT_COLORS_PRIMARY[currentBrush.brushEffect];
 			if (currentBrush.brushEffect == BRUSH_EFFECT_ERASE)
 				uiSettings->backColor = Color{245, 245, 245, 255};
 			uiSettings->borderColor = BLACK;
@@ -1009,7 +1008,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			if (canvasUiBox)
 			{
 				v2 hoverPos = canvasUiBox->rect.pos + (canvasUiBox->rect.dim * normalizedRelativePos);
-				Color hoverCursorColor = G_BRUSH_EFFECT_COLORS_PROCESSING[currentBrush.brushEffect];
+				Color hoverCursorColor = BRUSH_EFFECT_COLORS_PROCESSING[currentBrush.brushEffect];
 				f32 size = currentBrush.size * SafeDivideF32(canvasUiBox->rect.dim.x, (f32) canvas->drawnImageData.dim.x);
 				DrawCircle((i32)hoverPos.x, (i32)hoverPos.y, size, hoverCursorColor);
 			}

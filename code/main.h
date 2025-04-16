@@ -1,6 +1,6 @@
 #pragma once 
 
-void RunApp(PlatformWorkQueue *platformWorkQueue, GameMemory gameMemory, unsigned int threadCount);
+#include <base.h>
 
 #define VERSION_NUMBER "v0.0.3"
 
@@ -61,3 +61,6 @@ inline Arena *GetTwoFrameArenaLastFrame(GameMemory *gameMemory)
 
 	return result;
 }
+
+struct PlatformWorkQueue;
+void RunApp(PlatformWorkQueue *platformWorkQueue, GameMemory gameMemory, unsigned int threadCount);

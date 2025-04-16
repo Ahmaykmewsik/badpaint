@@ -1,14 +1,17 @@
 #pragma once
 
+#include "input.h"
+#include "main.h"
+
 bool IsCommandDown(COMMAND command)
 {
-    bool result = G_COMMAND_STATES[command].down;
+    bool result = COMMAND_STATES[command].down;
     return result;
 }
 
 bool IsCommandPressed(COMMAND command)
 {
-    bool result = G_COMMAND_STATES[command].pressed;
+    bool result = COMMAND_STATES[command].pressed;
     return result;
 }
 

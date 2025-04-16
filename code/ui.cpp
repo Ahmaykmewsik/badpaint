@@ -338,7 +338,7 @@ Color GetReactiveColor(UiBox *uiBoxLastFrame, ReactiveUiColor reactiveUiColor, b
 
 		COMMAND command = uiBoxLastFrame->uiInputs.command;
 		if (command)
-			down = G_COMMAND_STATES[command].down;
+			down = COMMAND_STATES[command].down;
 
 		if (down)
 			result = reactiveUiColor.down;

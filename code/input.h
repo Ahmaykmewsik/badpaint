@@ -1,5 +1,8 @@
 #pragma once
 
+#include <base.h>
+#include "../includes/raylib/src/raylib.h"
+
 enum COMMAND
 {
     COMMAND_NULL,
@@ -21,7 +24,7 @@ struct CommandState
     float value;
 };
 
-static CommandState G_COMMAND_STATES[COMMAND_COUNT];
+static CommandState COMMAND_STATES[COMMAND_COUNT];
 
 enum BRUSH_EFFECT : u32
 {
@@ -32,7 +35,7 @@ enum BRUSH_EFFECT : u32
     BRUSH_EFFECT_RANDOM = 4,
 };
 
-static Color G_BRUSH_EFFECT_COLORS_PRIMARY[] =
+static Color BRUSH_EFFECT_COLORS_PRIMARY[] =
 {
 	{ 0, 0, 0, 0},
 	{ 230, 41, 55, 187 }, // RED
@@ -40,7 +43,7 @@ static Color G_BRUSH_EFFECT_COLORS_PRIMARY[] =
 	{ 0, 121, 241, 187 }, //BLUE
 	{ 200, 122, 255, 187 }, //PURPLE
 };
-static Color G_BRUSH_EFFECT_COLORS_PROCESSING[] =
+static Color BRUSH_EFFECT_COLORS_PROCESSING[] =
 {
 	{ 255, 255, 255, 127},
 	{ 230, 41, 55, 127 }, // RED
@@ -68,3 +71,7 @@ struct Slider
     float min;
     float max;
 };
+
+bool IsCommandDown(COMMAND command);
+bool IsCommandPressed(COMMAND command);
+void InitNotificationMessage(String string, Arena *circularNotificationBuffer);
