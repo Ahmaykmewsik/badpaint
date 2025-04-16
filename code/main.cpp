@@ -94,7 +94,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 	Texture loadedTexture = {};
 	v2 pressedMousePos = {};
-	String draggedUiStringKey = {};
+	//TODO: (Ahmayk) Remove
+	u32 draggedHash = {};
 
 	Slider brushSizeSlider = {};
 	brushSizeSlider.sliderAction = SLIDER_ACTION_BRUSH_SIZE;
@@ -169,7 +170,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
 		{
 			ArenaReset(&gameMemory.mouseClickArena);
-			draggedUiStringKey = {};
+			draggedHash = {};
 
 			if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
 				pressedMousePos = mousePixelPos;
@@ -224,13 +225,13 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					uiBlock->hovered = true;
 					uiBlock->pressed = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
 					uiBlock->down = IsMouseButtonDown(MOUSE_LEFT_BUTTON);
-					if (uiBlock->pressed && uiBlock->keyString.length)
+					if (uiBlock->pressed)
 					{
-						draggedUiStringKey = ReallocString(uiBlock->keyString, &gameMemory.mouseClickArena);
+						draggedHash = uiBlock->hash;
 					}
 				}
 
-				if (uiBlock->uiInputs.sliderAction && draggedUiStringKey == uiBlock->keyString)
+				if (uiBlock->uiInputs.sliderAction && draggedHash == uiBlock->hash)
 				{
 					float normPressedPosInRect = (pressedMousePos.x - uiBlock->rect.pos.x) / uiBlock->rect.dim.x;
 					float normDifference = (pressedMousePos.x - mousePixelPos.x) / uiBlock->rect.dim.x;
@@ -316,8 +317,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			}
 		}
 
-		UiBlock *canvasUiBlock = GetUiBlockLastFrameOfStringKey(G_CANVAS_STRING_TAG_CHARS);
-		UiBlock *finalTextureUiBlock = GetUiBlockLastFrameOfStringKey(STRING("finalTexture"));
+		u32 HASH_CANVAS = Murmur3String("canvas");
+		u32 HASH_FINAL_TEXTURE = Murmur3String("finalTexture");
+
+		UiBlock *canvasUiBlock = GetUiBlockOfHashLastFrame(HASH_CANVAS);
+		UiBlock *finalTextureUiBlock = GetUiBlockOfHashLastFrame(HASH_FINAL_TEXTURE);
 
 		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && canvas->saveRollbackOnNextPress)
 		{
@@ -709,20 +713,20 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						{
 							G_UI_INPUTS->texture = loadedTexture;
 							SetUiAxis({UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT}, {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT});
-							CreateUiBlock(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE, STRING(G_UI_HASH_TAG) + STRING("finalTexture"));
+							CreateUiBlock(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE, HASH_FINAL_TEXTURE);
 						}
 						else
 						{
 							String string = STRING("Congulations! You broke the image. (undo with Ctrl-Z)");
 							SetUiAxis({UI_SIZE_KIND_TEXT, 1}, {UI_SIZE_KIND_TEXT, 1});
-							CreateUiBlock(UI_FLAG_DRAW_TEXT | UI_FLAG_CENTER_IN_PARENT, string);
+							CreateUiBlock(UI_FLAG_DRAW_TEXT | UI_FLAG_CENTER_IN_PARENT, 0, string);
 						}
 					}
 					else
 					{
 						String string = STRING("Drop any image into the window for editing.");
 						SetUiAxis({UI_SIZE_KIND_TEXT, 1}, {UI_SIZE_KIND_TEXT, 1});
-						CreateUiBlock(UI_FLAG_DRAW_TEXT | UI_FLAG_CENTER_IN_PARENT, string);
+						CreateUiBlock(UI_FLAG_DRAW_TEXT | UI_FLAG_CENTER_IN_PARENT, 0, string);
 					}
 				}
 				SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5});
@@ -739,7 +743,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					{
 						G_UI_INPUTS->texture = canvas->textureDrawing;
 						SetUiAxis({UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT}, {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT});
-						CreateUiBlock(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE, STRING(G_UI_HASH_TAG) + G_CANVAS_STRING_TAG_CHARS);
+						CreateUiBlock(UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE, HASH_CANVAS);
 					}
 				}
 			}
@@ -834,14 +838,14 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 			uiSettings->backColor = Color{191, 191, 191, 255};
 			SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_TEXT});
-			CreateUiBlock(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED, U32ToString(currentBrush.size, StringArena()));
+			CreateUiBlock(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED, 0, U32ToString(currentBrush.size, StringArena()));
 
 			ReactiveUiColor uiColorParent = {};
 			uiColorParent.down = Color{220, 220, 220, 255};
 			uiColorParent.hovered = Color{200, 200, 200, 255};
 			uiColorParent.neutral = Color{180, 180, 180, 255};
-			String stringKey = STRING("brushSizeSlider");
-			UiBlock *sliderUiBlock = GetUiBlockLastFrameOfStringKey(stringKey);
+			u32 hashBrushSizeSlider = Murmur3String("brushSizeSlider");
+			UiBlock *sliderUiBlock = GetUiBlockOfHashLastFrame(hashBrushSizeSlider);
 			uiSettings->backColor = GetReactiveColor(commandInputs, sliderUiBlock, uiColorParent, false);
 			G_UI_INPUTS->sliderAction = SLIDER_ACTION_BRUSH_SIZE;
 
@@ -850,7 +854,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			G_UI_INPUTS->value = value;
 
 			SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, 1}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT * 0.5f});
-			CreateUiBlock(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_INTERACTABLE | UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER, G_UI_HASH_TAG + stringKey);
+			CreateUiBlock(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_INTERACTABLE | UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER, hashBrushSizeSlider);
 			UiParent()
 			{
 				SetUiAxis({UI_SIZE_KIND_PERCENT_OF_PARENT, value}, {UI_SIZE_KIND_PERCENT_OF_PARENT, 1});
@@ -878,7 +882,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			uiSettings->frontColor = Color{255, 255, 255, (unsigned char)(notificationMessage->alpha * 255)};
 			uiSettings->backColor = Color{100, 100, 100, (unsigned char)(notificationMessage->alpha * 255)};
 			G_UI_INPUTS->relativePixelPosition = v2{0, titleBarHeight};
-			CreateUiBlock(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, notificationMessage->string);
+			CreateUiBlock(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, 0, notificationMessage->string);
 
 			notificationMessage->alpha -= 0.001f;
 			if (notificationMessage->alpha <= 0)
@@ -893,33 +897,33 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		String fpsString = STRING("FPS: ") + U32ToString(fps, StringArena());
 		if (fps < 60)
 			uiSettings->frontColor = RED;
-		CreateUiBlock(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, fpsString);
+		CreateUiBlock(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, 0, fpsString);
 
 		uiSettings->frontColor = DARKGRAY;
 		G_UI_INPUTS->relativePixelPosition = v2{windowDim.x * 0.07f, 2};
 		String label = STRING("Use 0-5 to toggle differnet PNG filter algorythms");
-		CreateUiBlock(UI_FLAG_DRAW_TEXT, label);
+		CreateUiBlock(UI_FLAG_DRAW_TEXT, 0, label);
 
 		uiSettings->frontColor = BLACK;
 		G_UI_INPUTS->relativePixelPosition = v2{windowDim.x * 0.45f, 2};
 		label = STRING("PNG Filter: ") + PNG_FILTER_NAMES[canvas->currentPNGFilterType];
-		CreateUiBlock(UI_FLAG_DRAW_TEXT, label);
+		CreateUiBlock(UI_FLAG_DRAW_TEXT, 0, label);
 
 		SetUiAxis({UI_SIZE_KIND_PIXELS, 200}, {UI_SIZE_KIND_TEXT});
 		G_UI_INPUTS->relativePixelPosition = v2{windowDim.x * 0.8f, 2};
-		label = STRING("EXPORT IMAGE") + G_UI_HASH_TAG + "export";
+		label = STRING("EXPORT IMAGE");
 		G_UI_INPUTS->command = COMMAND_EXPORT_IMAGE;
 		ReactiveUiColorState uiColorState = {};
 		uiColorState.nonActive.down = DARKGREEN;
 		uiColorState.nonActive.hovered = Color{10, 238, 58, 255};
 		uiColorState.nonActive.neutral = GREEN;
-		CreateUiButton(label, uiColorState, false, false);
+		CreateUiButton(label, Murmur3String("exportImage"), uiColorState, false, false);
 
 		SetUiAxis({UI_SIZE_KIND_PIXELS, (f32) windowDim.x}, {UI_SIZE_KIND_TEXT});
 		G_UI_INPUTS->relativePixelPosition = v2{-5, (f32) windowDim.y - 20};
 		uiSettings->frontColor = DARKGRAY;
 		label = STRING(VERSION_NUMBER);
-		CreateUiBlock(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, label);
+		CreateUiBlock(UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, 0, label);
 
 		UiLayoutBlocks();
 

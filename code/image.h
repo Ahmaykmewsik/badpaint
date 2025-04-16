@@ -45,8 +45,6 @@ struct ImagePNGChecksumed
 	iv2 dim;
 };
 
-static String G_CANVAS_STRING_TAG_CHARS = STRING("canvas");
-
 struct Canvas
 {
 	b32 initialized;

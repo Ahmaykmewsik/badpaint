@@ -5,8 +5,6 @@
 //TODO: (Ahmayk) remove dependency
 #include <input.h>
 
-static const char *G_UI_HASH_TAG = "##";
-
 enum UI_SIZE_KIND
 {
 	UI_SIZE_KIND_NULL,
@@ -75,8 +73,9 @@ struct UiInputs
 
 struct UiBlock
 {
-	unsigned int index;
+	unsigned int index; //TODO: (Ahmayk) remove
 	unsigned int frameRendered;
+	u32 hash;
 
 	UiBlock *firstChild;
 	UiBlock *lastChild;
@@ -86,7 +85,6 @@ struct UiBlock
 
 	u64 flags;
 	String string;
-	String keyString;
 	v2 textDim;
 
 	UiInputs uiInputs;
@@ -101,21 +99,18 @@ struct UiBlock
 	RectV2 rect;
 };
 
-struct UiHashEntry
+#define MAX_UI_BLOCKS 1000
+struct UiBuffer
 {
-	UiBlock *uiBlock;
-	String keyString;
+	UiBlock uiBlockes[2][MAX_UI_BLOCKS];
 };
 
-#define MAX_UI_BLOCKS 1000
 struct UiState
 {
 	UiBlock uiBlockes[2][MAX_UI_BLOCKS];
 	//TODO: does it make sense to have 1 uiBlockCount when we have two buffers?
 	//NOTE: (Ahmayk) No lol
 	u32 uiBlockCount;
-
-	UiHashEntry uiHashEntries[MAX_UI_BLOCKS];
 
 	UiBlock *parentStack[20];
 	int parentStackCount;
@@ -152,13 +147,14 @@ UiState *GetUiState();
 UiInputs *GetUiInputs();
 
 bool IsFlag(UiBlock *uiBlock, unsigned int flags = 0);
-UiBlock *GetUiBlockLastFrameOfStringKey(String stringKey);
+//QUESTION: (Ahmayk) change to pass in ui buffer?
+UiBlock *GetUiBlockOfHashLastFrame(u32 hash);
 void SetUiAxis(UiSize uiSize1, UiSize uiSize2);
-void CreateUiBlock(unsigned int flags = 0, String string = {});
+void CreateUiBlock(unsigned int flags = 0, u32 hash = 0, String string = {});
 void PushUiParent();
 void PopUiParent();
 Color GetReactiveColor(CommandInput *commandInputs, UiBlock *uiBlockLastFrame, ReactiveUiColor reactiveUiColor, bool disabled);
-void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled = false);
+void CreateUiButton(String string, u32 hash, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled = false);
 ReactiveUiColorState CreateButtonReactiveUiColorState(Color color);
 
 void CalculateUiPosGivenReletativePositions(UiBlock *uiBlock);

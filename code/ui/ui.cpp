@@ -20,7 +20,7 @@ UiInputs *GetUiInputs()
 	return &G_UI_INPUTS;
 }
 
-void CreateUiBlock(unsigned int flags, String string)
+void CreateUiBlock(unsigned int flags, u32 hash, String string)
 {
 	int uiBlockArrayIndexThisFrame = GetFrameModIndexThisFrame();
 	ASSERT(G_UI_STATE.uiBlockCount < ARRAY_COUNT(G_UI_STATE.uiBlockes[uiBlockArrayIndexThisFrame]));
@@ -52,28 +52,13 @@ void CreateUiBlock(unsigned int flags, String string)
 	uiBlock->flags = flags;
 	uiBlock->uiSettings = G_UI_STATE.uiSettings;
 	uiBlock->frameRendered = G_CURRENT_FRAME;
+	uiBlock->hash = hash;
 
-	StringArray stringSplitByHashTag = {};
 	if (string.length)
 	{
-		uiBlock->string = string;
+		uiBlock->string = ReallocString(string, G_UI_STATE.twoFrameArenaThisFrame);
 
-		stringSplitByHashTag = SplitStringOnceByTag(uiBlock->string, STRING(G_UI_HASH_TAG), G_UI_STATE.twoFrameArenaThisFrame);
-
-		if (stringSplitByHashTag.count == 2)
-		{
-			uiBlock->string = stringSplitByHashTag.strings[0];
-			uiBlock->keyString = stringSplitByHashTag.strings[1];
-		}
-		else if (stringSplitByHashTag.count == 1)
-		{
-			uiBlock->string = ReallocString(uiBlock->string, G_UI_STATE.twoFrameArenaThisFrame);
-		}
-		else
-		{
-			InvalidCodePath;
-		}
-
+		//TODO: (Ahmayk) how to not depend on raylib here? 
 		ASSERT(uiBlock->uiSettings.font.baseSize);
 		Vector2 textDim = MeasureTextEx(uiBlock->uiSettings.font, C_STRING_NULL_TERMINATED(uiBlock->string), (f32) uiBlock->uiSettings.font.baseSize, 1);
 		uiBlock->textDim = RayVectorToV2(textDim);
@@ -81,34 +66,13 @@ void CreateUiBlock(unsigned int flags, String string)
 
 	uiBlock->uiInputs = G_UI_INPUTS;
 	G_UI_INPUTS = {};
-
-	if (stringSplitByHashTag.count > 1)
-	{
-		String keyString = stringSplitByHashTag.strings[1];
-		if (keyString.length)
-		{
-			unsigned int hashValue = Murmur3String(C_STRING_NULL_TERMINATED(keyString), 0);
-
-			for (u32 i = 0; i < keyString.length; i++)
-			{
-				unsigned int index = (hashValue + i) % ARRAY_COUNT(G_UI_STATE.uiHashEntries);
-				UiHashEntry *uiHashEntry = &G_UI_STATE.uiHashEntries[index];
-				if (!uiHashEntry->uiBlock || uiHashEntry->uiBlock->frameRendered < G_CURRENT_FRAME)
-				{
-					uiHashEntry->uiBlock = uiBlock;
-					uiHashEntry->keyString = keyString;
-					break;
-				}
-			}
-		}
-	}
 }
 
 void CreateUiText(String string)
 {
 	if (string.length)
 	{
-		CreateUiBlock(UI_FLAG_DRAW_TEXT, string);
+		CreateUiBlock(UI_FLAG_DRAW_TEXT, 0, string);
 	}
 }
 
@@ -116,7 +80,7 @@ void CreateUiTextWithBackground(String string, unsigned int flags = 0)
 {
 	if (string.length)
 	{
-		CreateUiBlock(UI_FLAG_DRAW_TEXT | UI_FLAG_DRAW_BACKGROUND | flags, string);
+		CreateUiBlock(UI_FLAG_DRAW_TEXT | UI_FLAG_DRAW_BACKGROUND | flags, 0, string);
 	}
 }
 
@@ -366,56 +330,7 @@ Color GetReactiveColorWithState(CommandInput *commandInputs, UiBlock *uiBlockLas
 	return result;
 }
 
-String GetUiBlockKeyStringOfString(String string)
-{
-	String result = {};
-
-	StringArray stringArray = SplitStringOnceByTag(string, STRING(G_UI_HASH_TAG), StringArena());
-
-	if (stringArray.count > 1)
-		result = stringArray.strings[1];
-
-	return result;
-}
-
-UiBlock *GetUiBlockOfStringKeyLastFrame(String stringKey)
-{
-	UiBlock *result = {};
-
-	if (stringKey.length)
-	{
-		unsigned int hashvalue = Murmur3String(C_STRING_NULL_TERMINATED(stringKey), 0);
-
-		for (u32 i = 0; i < stringKey.length; i++)
-		{
-			unsigned int index = (hashvalue + i) % ARRAY_COUNT(G_UI_STATE.uiHashEntries);
-			UiHashEntry *uiHashEntry = &G_UI_STATE.uiHashEntries[index];
-			if (uiHashEntry->uiBlock && uiHashEntry->keyString == stringKey && uiHashEntry->uiBlock->frameRendered == G_CURRENT_FRAME - 1)
-			{
-				result = uiHashEntry->uiBlock;
-				break;
-			}
-		}
-	}
-
-	return result;
-}
-
-UiBlock *GetUiBlockOfStringLastFrame(String string)
-{
-	String keyString = GetUiBlockKeyStringOfString(string);
-	UiBlock *result = GetUiBlockOfStringKeyLastFrame(keyString);
-	return result;
-}
-
-String CreateScriptStringKey(unsigned int scriptLineNumber)
-{
-	String result = STRING("scriptEditor_line") + U32ToString(scriptLineNumber, StringArena());
-	return result;
-}
-
-//TODO: this could be a hash
-UiBlock *GetUiBlockLastFrameOfStringKey(String stringKey)
+UiBlock *GetUiBlockOfHashLastFrame(u32 hash)
 {
 	UiBlock *result = {};
 
@@ -426,22 +341,29 @@ UiBlock *GetUiBlockLastFrameOfStringKey(String stringKey)
 		if (uiBlockIndex != uiBlock->index)
 			break;
 
-		if (uiBlock->keyString == stringKey)
+		if (uiBlock->hash == hash)
 		{
 			result = uiBlock;
 			break;
 		}
 	}
 
-	return result;
+	if (!result)
+	{
+		static UiBlock stub = {};
+		result = &stub;
+		stub = {};
+    }
+
+    return result;
 }
 
-void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled)
+void CreateUiButton(String string, u32 hash, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled)
 {
 	ReactiveUiColor reactiveUiColor = (active)
 		? reactiveUiColorState.active
 		: reactiveUiColorState.nonActive;
-	UiBlock *uiBlockLastFrame = GetUiBlockOfStringLastFrame(string);
+	UiBlock *uiBlockLastFrame = GetUiBlockOfHashLastFrame(hash);
 	G_UI_STATE.uiSettings.backColor = GetReactiveColor(G_UI_STATE.commandInputs, uiBlockLastFrame, reactiveUiColor, disabled);
 
 	UiSettings *uiSettings = &G_UI_STATE.uiSettings;
@@ -450,7 +372,7 @@ void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bo
 	uiSettings->borderColor = (active) ? BLACK : GRAY;
 
 	unsigned int flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED | UI_FLAG_INTERACTABLE;
-	CreateUiBlock(flags, string);
+	CreateUiBlock(flags, hash, string);
 }
 
 Color AddConstantToColor(Color color, i8 constant)
