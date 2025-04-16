@@ -14,7 +14,7 @@ enum PNG_FILTER_TYPE : i32
 	PNG_FILTER_TYPE_OPTIMAL = 5,
 };
 
-static const char *G_PNG_FILTER_NAMES[] = {"None", "Sub", "Up", "Average", "Paeth", "Optimal"};
+static const char *PNG_FILTER_NAMES[] = {"None", "Sub", "Up", "Average", "Paeth", "Optimal"};
 
 struct ImageRawRGBA32
 {

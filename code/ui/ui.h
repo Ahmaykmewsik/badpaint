@@ -73,16 +73,16 @@ struct UiInputs
 	SLIDER_ACTION sliderAction;
 };
 
-struct UiBox
+struct UiBlock
 {
 	unsigned int index;
 	unsigned int frameRendered;
 
-	UiBox *firstChild;
-	UiBox *lastChild;
-	UiBox *next;
-	UiBox *prev;
-	UiBox *parent;
+	UiBlock *firstChild;
+	UiBlock *lastChild;
+	UiBlock *next;
+	UiBlock *prev;
+	UiBlock *parent;
 
 	u64 flags;
 	String string;
@@ -103,20 +103,20 @@ struct UiBox
 
 struct UiHashEntry
 {
-	UiBox *uiBox;
+	UiBlock *uiBlock;
 	String keyString;
 };
 
 struct UiState
 {
 #define MAX_UI_BOXES 1000
-	UiBox uiBoxes[2][MAX_UI_BOXES];
-	//TODO: does it make sense to have 1 uiBoxCount when we have two buffers?
-	u32 uiBoxCount;
+	UiBlock uiBlockes[2][MAX_UI_BOXES];
+	//TODO: does it make sense to have 1 uiBlockCount when we have two buffers?
+	u32 uiBlockCount;
 
 	UiHashEntry uiHashEntries[MAX_UI_BOXES];
 
-	UiBox *parentStack[20];
+	UiBlock *parentStack[20];
 	int parentStackCount;
 
 	UiSettings uiSettings;
@@ -150,18 +150,18 @@ struct ReactiveUiColorState
 UiState *GetUiState();
 UiInputs *GetUiInputs();
 
-bool IsFlag(UiBox *uiBox, unsigned int flags = 0);
-UiBox *GetUiBoxLastFrameOfStringKey(String stringKey);
+bool IsFlag(UiBlock *uiBlock, unsigned int flags = 0);
+UiBlock *GetUiBlockLastFrameOfStringKey(String stringKey);
 void SetUiAxis(UiSize uiSize1, UiSize uiSize2);
-void CreateUiBox(unsigned int flags = 0, String string = {});
+void CreateUiBlock(unsigned int flags = 0, String string = {});
 void PushUiParent();
 void PopUiParent();
-Color GetReactiveColor(CommandInput *commandInputs, UiBox *uiBoxLastFrame, ReactiveUiColor reactiveUiColor, bool disabled);
+Color GetReactiveColor(CommandInput *commandInputs, UiBlock *uiBlockLastFrame, ReactiveUiColor reactiveUiColor, bool disabled);
 void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled = false);
 ReactiveUiColorState CreateButtonReactiveUiColorState(Color color);
 
-void CalculateUiPosGivenReletativePositions(UiBox *uiBox);
-void CalculateUiRelativePositions(UiBox *uiBox);
-void CalculateUiUpwardsDependentSizes(UiBox *uiBox);
-void CalculateUiDownwardsDependentSizes(UiBox *uiBox);
-void RenderUiEntries(UiBox *uiBox, v2 windowPixelDim, int uiDepth = 0);
+void CalculateUiPosGivenReletativePositions(UiBlock *uiBlock);
+void CalculateUiRelativePositions(UiBlock *uiBlock);
+void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock);
+void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock);
+void RenderUiEntries(UiBlock *uiBlock, v2 windowPixelDim, int uiDepth = 0);

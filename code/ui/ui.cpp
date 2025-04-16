@@ -20,66 +20,66 @@ UiInputs *GetUiInputs()
 	return &G_UI_INPUTS;
 }
 
-void CreateUiBox(unsigned int flags, String string)
+void CreateUiBlock(unsigned int flags, String string)
 {
-	int uiBoxArrayIndexThisFrame = GetFrameModIndexThisFrame();
-	ASSERT(G_UI_STATE.uiBoxCount < ARRAY_COUNT(G_UI_STATE.uiBoxes[uiBoxArrayIndexThisFrame]));
+	int uiBlockArrayIndexThisFrame = GetFrameModIndexThisFrame();
+	ASSERT(G_UI_STATE.uiBlockCount < ARRAY_COUNT(G_UI_STATE.uiBlockes[uiBlockArrayIndexThisFrame]));
 
-	UiBox *uiBox = &G_UI_STATE.uiBoxes[uiBoxArrayIndexThisFrame][G_UI_STATE.uiBoxCount];
-	*uiBox = {};
-	uiBox->index = G_UI_STATE.uiBoxCount;
-	G_UI_STATE.uiBoxCount++;
+	UiBlock *uiBlock = &G_UI_STATE.uiBlockes[uiBlockArrayIndexThisFrame][G_UI_STATE.uiBlockCount];
+	*uiBlock = {};
+	uiBlock->index = G_UI_STATE.uiBlockCount;
+	G_UI_STATE.uiBlockCount++;
 
 	if (G_UI_STATE.parentStackCount)
 	{
-		uiBox->parent = G_UI_STATE.parentStack[G_UI_STATE.parentStackCount - 1];
-		ASSERT(uiBox->parent);
+		uiBlock->parent = G_UI_STATE.parentStack[G_UI_STATE.parentStackCount - 1];
+		ASSERT(uiBlock->parent);
 
-		if (uiBox->parent->firstChild)
+		if (uiBlock->parent->firstChild)
 		{
-			ASSERT(uiBox->parent->lastChild);
-			uiBox->prev = uiBox->parent->lastChild;
-			uiBox->parent->lastChild->next = uiBox;
+			ASSERT(uiBlock->parent->lastChild);
+			uiBlock->prev = uiBlock->parent->lastChild;
+			uiBlock->parent->lastChild->next = uiBlock;
 		}
 		else
 		{
-			uiBox->parent->firstChild = uiBox;
+			uiBlock->parent->firstChild = uiBlock;
 		}
 
-		uiBox->parent->lastChild = uiBox;
+		uiBlock->parent->lastChild = uiBlock;
 	}
 
-	uiBox->flags = flags;
-	uiBox->uiSettings = G_UI_STATE.uiSettings;
-	uiBox->frameRendered = G_CURRENT_FRAME;
+	uiBlock->flags = flags;
+	uiBlock->uiSettings = G_UI_STATE.uiSettings;
+	uiBlock->frameRendered = G_CURRENT_FRAME;
 
 	StringArray stringSplitByHashTag = {};
 	if (string.length)
 	{
-		uiBox->string = string;
+		uiBlock->string = string;
 
-		stringSplitByHashTag = SplitStringOnceByTag(uiBox->string, STRING(G_UI_HASH_TAG), G_UI_STATE.twoFrameArenaThisFrame);
+		stringSplitByHashTag = SplitStringOnceByTag(uiBlock->string, STRING(G_UI_HASH_TAG), G_UI_STATE.twoFrameArenaThisFrame);
 
 		if (stringSplitByHashTag.count == 2)
 		{
-			uiBox->string = stringSplitByHashTag.strings[0];
-			uiBox->keyString = stringSplitByHashTag.strings[1];
+			uiBlock->string = stringSplitByHashTag.strings[0];
+			uiBlock->keyString = stringSplitByHashTag.strings[1];
 		}
 		else if (stringSplitByHashTag.count == 1)
 		{
-			uiBox->string = ReallocString(uiBox->string, G_UI_STATE.twoFrameArenaThisFrame);
+			uiBlock->string = ReallocString(uiBlock->string, G_UI_STATE.twoFrameArenaThisFrame);
 		}
 		else
 		{
 			InvalidCodePath;
 		}
 
-		ASSERT(uiBox->uiSettings.font.baseSize);
-		Vector2 textDim = MeasureTextEx(uiBox->uiSettings.font, C_STRING_NULL_TERMINATED(uiBox->string), (f32) uiBox->uiSettings.font.baseSize, 1);
-		uiBox->textDim = RayVectorToV2(textDim);
+		ASSERT(uiBlock->uiSettings.font.baseSize);
+		Vector2 textDim = MeasureTextEx(uiBlock->uiSettings.font, C_STRING_NULL_TERMINATED(uiBlock->string), (f32) uiBlock->uiSettings.font.baseSize, 1);
+		uiBlock->textDim = RayVectorToV2(textDim);
 	}
 
-	uiBox->uiInputs = G_UI_INPUTS;
+	uiBlock->uiInputs = G_UI_INPUTS;
 	G_UI_INPUTS = {};
 
 	if (stringSplitByHashTag.count > 1)
@@ -93,9 +93,9 @@ void CreateUiBox(unsigned int flags, String string)
 			{
 				unsigned int index = (hashValue + i) % ARRAY_COUNT(G_UI_STATE.uiHashEntries);
 				UiHashEntry *uiHashEntry = &G_UI_STATE.uiHashEntries[index];
-				if (!uiHashEntry->uiBox || uiHashEntry->uiBox->frameRendered < G_CURRENT_FRAME)
+				if (!uiHashEntry->uiBlock || uiHashEntry->uiBlock->frameRendered < G_CURRENT_FRAME)
 				{
-					uiHashEntry->uiBox = uiBox;
+					uiHashEntry->uiBlock = uiBlock;
 					uiHashEntry->keyString = keyString;
 					break;
 				}
@@ -108,7 +108,7 @@ void CreateUiText(String string)
 {
 	if (string.length)
 	{
-		CreateUiBox(UI_FLAG_DRAW_TEXT, string);
+		CreateUiBlock(UI_FLAG_DRAW_TEXT, string);
 	}
 }
 
@@ -116,7 +116,7 @@ void CreateUiTextWithBackground(String string, unsigned int flags = 0)
 {
 	if (string.length)
 	{
-		CreateUiBox(UI_FLAG_DRAW_TEXT | UI_FLAG_DRAW_BACKGROUND | flags, string);
+		CreateUiBlock(UI_FLAG_DRAW_TEXT | UI_FLAG_DRAW_BACKGROUND | flags, string);
 	}
 }
 
@@ -143,19 +143,19 @@ void PushPixelSize(v2 pixelSize)
 	G_UI_STATE.uiSettings.uiSizes[1] = {UI_SIZE_KIND_PIXELS, pixelSize.x};
 }
 
-bool IsFlag(UiBox *uiBox, unsigned int flags)
+bool IsFlag(UiBlock *uiBlock, unsigned int flags)
 {
-	bool result = uiBox->flags & flags;
+	bool result = uiBlock->flags & flags;
 	return result;
 }
 
-unsigned int GetThisUiBoxIndex()
+unsigned int GetThisUiBlockIndex()
 {
 	unsigned int result = 0;
 
-	int uiBoxArrayIndexThisFrame = GetFrameModIndexThisFrame();
-	if (G_UI_STATE.uiBoxCount)
-		result = G_UI_STATE.uiBoxes[uiBoxArrayIndexThisFrame][G_UI_STATE.uiBoxCount - 1].index;
+	int uiBlockArrayIndexThisFrame = GetFrameModIndexThisFrame();
+	if (G_UI_STATE.uiBlockCount)
+		result = G_UI_STATE.uiBlockes[uiBlockArrayIndexThisFrame][G_UI_STATE.uiBlockCount - 1].index;
 
 	return result;
 }
@@ -164,8 +164,8 @@ void PushUiParent()
 {
 	ASSERT(G_UI_STATE.parentStackCount < ARRAY_COUNT(G_UI_STATE.parentStack));
 
-	int uiBoxArrayIndexThisFrame = GetFrameModIndexThisFrame();
-	G_UI_STATE.parentStack[G_UI_STATE.parentStackCount] = &G_UI_STATE.uiBoxes[uiBoxArrayIndexThisFrame][G_UI_STATE.uiBoxCount - 1];
+	int uiBlockArrayIndexThisFrame = GetFrameModIndexThisFrame();
+	G_UI_STATE.parentStack[G_UI_STATE.parentStackCount] = &G_UI_STATE.uiBlockes[uiBlockArrayIndexThisFrame][G_UI_STATE.uiBlockCount - 1];
 	G_UI_STATE.parentStackCount++;
 }
 
@@ -175,42 +175,42 @@ void PopUiParent()
 	G_UI_STATE.parentStackCount--;
 }
 
-void CalculateUiUpwardsDependentSizes(UiBox *uiBox)
+void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock)
 {
-	if (uiBox)
+	if (uiBlock)
 	{
-		if (uiBox->uiSettings.uiSizes[0].kind == UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT ||
-				uiBox->uiSettings.uiSizes[1].kind == UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT)
+		if (uiBlock->uiSettings.uiSizes[0].kind == UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT ||
+				uiBlock->uiSettings.uiSizes[1].kind == UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT)
 		{
-			ASSERT(uiBox->parent);
-			ASSERT(uiBox->uiInputs.texture.width && uiBox->uiInputs.texture.height);
-			v2 textureDim = GetTextureDim(uiBox->uiInputs.texture);
+			ASSERT(uiBlock->parent);
+			ASSERT(uiBlock->uiInputs.texture.width && uiBlock->uiInputs.texture.height);
+			v2 textureDim = GetTextureDim(uiBlock->uiInputs.texture);
 
 			float scaleX = 1;
 			float scaleY = 1;
-			if (uiBox->parent->rect.dim.x)
-				scaleX = uiBox->parent->rect.dim.x / textureDim.x;
-			if (uiBox->parent->rect.dim.y)
-				scaleY = uiBox->parent->rect.dim.y / textureDim.y;
+			if (uiBlock->parent->rect.dim.x)
+				scaleX = uiBlock->parent->rect.dim.x / textureDim.x;
+			if (uiBlock->parent->rect.dim.y)
+				scaleY = uiBlock->parent->rect.dim.y / textureDim.y;
 
 			float scale = MinF32(scaleX, scaleY);
 
-			uiBox->rect.dim = textureDim * scale;
+			uiBlock->rect.dim = textureDim * scale;
 		}
 		else
 		{
 			for (int j = 0;
-					j < ARRAY_COUNT(uiBox->uiSettings.uiSizes);
+					j < ARRAY_COUNT(uiBlock->uiSettings.uiSizes);
 					j++)
 			{
-				UiSize uiSize = uiBox->uiSettings.uiSizes[j];
+				UiSize uiSize = uiBlock->uiSettings.uiSizes[j];
 				switch (uiSize.kind)
 				{
 					case UI_SIZE_KIND_PERCENT_OF_PARENT:
 						{
-							if (uiBox->parent && uiBox->parent->rect.dim.elements[j])
+							if (uiBlock->parent && uiBlock->parent->rect.dim.elements[j])
 							{
-								uiBox->rect.dim.elements[j] = (uiBox->parent->rect.dim.elements[j] * uiSize.value);
+								uiBlock->rect.dim.elements[j] = (uiBlock->parent->rect.dim.elements[j] * uiSize.value);
 							}
 							break;
 						}
@@ -224,34 +224,34 @@ void CalculateUiUpwardsDependentSizes(UiBox *uiBox)
 			}
 		}
 
-		CalculateUiUpwardsDependentSizes(uiBox->firstChild);
-		CalculateUiUpwardsDependentSizes(uiBox->next);
+		CalculateUiUpwardsDependentSizes(uiBlock->firstChild);
+		CalculateUiUpwardsDependentSizes(uiBlock->next);
 	}
 }
 
-void CalculateUiDownwardsDependentSizes(UiBox *uiBox)
+void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock)
 {
-	if (uiBox)
+	if (uiBlock)
 	{
-		CalculateUiDownwardsDependentSizes(uiBox->firstChild);
-		CalculateUiDownwardsDependentSizes(uiBox->next);
+		CalculateUiDownwardsDependentSizes(uiBlock->firstChild);
+		CalculateUiDownwardsDependentSizes(uiBlock->next);
 
-		bool isHorizontal = IsFlag(uiBox, UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
+		bool isHorizontal = IsFlag(uiBlock, UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
 
 		for (int j = 0;
-				j < ARRAY_COUNT(uiBox->uiSettings.uiSizes);
+				j < ARRAY_COUNT(uiBlock->uiSettings.uiSizes);
 				j++)
 		{
-			UiSize uiSize = uiBox->uiSettings.uiSizes[j];
+			UiSize uiSize = uiBlock->uiSettings.uiSizes[j];
 			switch (uiSize.kind)
 			{
 				case UI_SIZE_KIND_CHILDREN_OF_SUM:
 					{
 						float sumOrMaxOfChildren = 0;
-						UiBox *child = uiBox->firstChild;
+						UiBlock *child = uiBlock->firstChild;
 						while (child)
 						{
-							ASSERT(child != uiBox);
+							ASSERT(child != uiBlock);
 
 							((j == 0 && isHorizontal) || (j == 1 && !isHorizontal))
 								? sumOrMaxOfChildren += child->rect.dim.elements[j]
@@ -259,10 +259,10 @@ void CalculateUiDownwardsDependentSizes(UiBox *uiBox)
 
 							child = child->next;
 						}
-						uiBox->rect.dim.elements[j] = sumOrMaxOfChildren;
+						uiBlock->rect.dim.elements[j] = sumOrMaxOfChildren;
 
-						if (j == ARRAY_COUNT(uiBox->uiSettings.uiSizes) - 1)
-							CalculateUiUpwardsDependentSizes(uiBox->firstChild);
+						if (j == ARRAY_COUNT(uiBlock->uiSettings.uiSizes) - 1)
+							CalculateUiUpwardsDependentSizes(uiBlock->firstChild);
 						break;
 					}
 				case UI_SIZE_KIND_PERCENT_OF_PARENT:
@@ -277,77 +277,77 @@ void CalculateUiDownwardsDependentSizes(UiBox *uiBox)
 	}
 }
 
-void CalculateUiRelativePositions(UiBox *uiBox)
+void CalculateUiRelativePositions(UiBlock *uiBlock)
 {
-	if (uiBox)
+	if (uiBlock)
 	{
-		if (IsFlag(uiBox, UI_FLAG_MANUAL_POSITION) || (!uiBox->parent || IsFlag(uiBox->parent, UI_FLAG_CHILDREN_MANUAL_POSITION)))
+		if (IsFlag(uiBlock, UI_FLAG_MANUAL_POSITION) || (!uiBlock->parent || IsFlag(uiBlock->parent, UI_FLAG_CHILDREN_MANUAL_POSITION)))
 		{
-			uiBox->computedRelativePixelPos = uiBox->uiInputs.relativePixelPosition;
+			uiBlock->computedRelativePixelPos = uiBlock->uiInputs.relativePixelPosition;
 		}
-		else if (uiBox->parent && IsFlag(uiBox, UI_FLAG_CENTER_IN_PARENT))
+		else if (uiBlock->parent && IsFlag(uiBlock, UI_FLAG_CENTER_IN_PARENT))
 		{
-			uiBox->computedRelativePixelPos = PositionInCenterV2(uiBox->parent->rect.dim, uiBox->rect.dim);
+			uiBlock->computedRelativePixelPos = PositionInCenterV2(uiBlock->parent->rect.dim, uiBlock->rect.dim);
 		}
-		else if (uiBox->prev)
+		else if (uiBlock->prev)
 		{
-			uiBox->computedRelativePixelPos = uiBox->prev->computedRelativePixelPos;
+			uiBlock->computedRelativePixelPos = uiBlock->prev->computedRelativePixelPos;
 
-			if (uiBox->parent && IsFlag(uiBox->parent, UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT))
-				uiBox->computedRelativePixelPos.x += uiBox->prev->rect.dim.x;
+			if (uiBlock->parent && IsFlag(uiBlock->parent, UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT))
+				uiBlock->computedRelativePixelPos.x += uiBlock->prev->rect.dim.x;
 			else
-				uiBox->computedRelativePixelPos.y += uiBox->prev->rect.dim.y;
+				uiBlock->computedRelativePixelPos.y += uiBlock->prev->rect.dim.y;
 		}
 
-		CalculateUiRelativePositions(uiBox->firstChild);
-		CalculateUiRelativePositions(uiBox->next);
+		CalculateUiRelativePositions(uiBlock->firstChild);
+		CalculateUiRelativePositions(uiBlock->next);
 	}
 }
 
-void CalculateUiPosGivenReletativePositions(UiBox *uiBox)
+void CalculateUiPosGivenReletativePositions(UiBlock *uiBlock)
 {
-	if (uiBox)
+	if (uiBlock)
 	{
-		if (uiBox->parent)
-			uiBox->computedRelativePixelPos += uiBox->parent->computedRelativePixelPos;
+		if (uiBlock->parent)
+			uiBlock->computedRelativePixelPos += uiBlock->parent->computedRelativePixelPos;
 
-		uiBox->rect.pos = uiBox->computedRelativePixelPos;
+		uiBlock->rect.pos = uiBlock->computedRelativePixelPos;
 
-		CalculateUiPosGivenReletativePositions(uiBox->firstChild);
-		CalculateUiPosGivenReletativePositions(uiBox->next);
+		CalculateUiPosGivenReletativePositions(uiBlock->firstChild);
+		CalculateUiPosGivenReletativePositions(uiBlock->next);
 	}
 }
 
-UiBox GetValidUiBoxOfIndexLastFrame(unsigned int index)
+UiBlock GetValidUiBlockOfIndexLastFrame(unsigned int index)
 {
-	UiBox result = {};
+	UiBlock result = {};
 
 	if (index)
 	{
-		int uiBoxArrayIndexLastFrame = GetFrameModIndexLastFrame();
-		if (index < ARRAY_COUNT(G_UI_STATE.uiBoxes[uiBoxArrayIndexLastFrame]))
+		int uiBlockArrayIndexLastFrame = GetFrameModIndexLastFrame();
+		if (index < ARRAY_COUNT(G_UI_STATE.uiBlockes[uiBlockArrayIndexLastFrame]))
 		{
-			UiBox uiBox = G_UI_STATE.uiBoxes[uiBoxArrayIndexLastFrame][index];
-			if (uiBox.frameRendered == G_CURRENT_FRAME - 1)
-				result = uiBox;
+			UiBlock uiBlock = G_UI_STATE.uiBlockes[uiBlockArrayIndexLastFrame][index];
+			if (uiBlock.frameRendered == G_CURRENT_FRAME - 1)
+				result = uiBlock;
 		}
 	}
 
 	return result;
 }
 
-Color GetReactiveColor(CommandInput *commandInputs, UiBox *uiBoxLastFrame, ReactiveUiColor reactiveUiColor, bool disabled)
+Color GetReactiveColor(CommandInput *commandInputs, UiBlock *uiBlockLastFrame, ReactiveUiColor reactiveUiColor, bool disabled)
 {
 	Color result = reactiveUiColor.neutral;
 
 	if (disabled)
 		result = reactiveUiColor.disabled;
-	else if (uiBoxLastFrame)
+	else if (uiBlockLastFrame)
 	{
-		bool down = uiBoxLastFrame->down;
-		bool hovered = uiBoxLastFrame->hovered;
+		bool down = uiBlockLastFrame->down;
+		bool hovered = uiBlockLastFrame->hovered;
 
-		COMMAND command = uiBoxLastFrame->uiInputs.command;
+		COMMAND command = uiBlockLastFrame->uiInputs.command;
 		if (down || (command && IsCommandDown(commandInputs, command)))
 			result = reactiveUiColor.down;
 		else if (hovered)
@@ -357,16 +357,16 @@ Color GetReactiveColor(CommandInput *commandInputs, UiBox *uiBoxLastFrame, React
 	return result;
 }
 
-Color GetReactiveColorWithState(CommandInput *commandInputs, UiBox *uiBoxLastFrame, ReactiveUiColorState reactiveUiColorState, bool disabled, bool active)
+Color GetReactiveColorWithState(CommandInput *commandInputs, UiBlock *uiBlockLastFrame, ReactiveUiColorState reactiveUiColorState, bool disabled, bool active)
 {
 	ReactiveUiColor reactiveUiColor = (active)
 		? reactiveUiColorState.active
 		: reactiveUiColorState.nonActive;
-	Color result = GetReactiveColor(commandInputs, uiBoxLastFrame, reactiveUiColor, disabled);
+	Color result = GetReactiveColor(commandInputs, uiBlockLastFrame, reactiveUiColor, disabled);
 	return result;
 }
 
-String GetUiBoxKeyStringOfString(String string)
+String GetUiBlockKeyStringOfString(String string)
 {
 	String result = {};
 
@@ -378,9 +378,9 @@ String GetUiBoxKeyStringOfString(String string)
 	return result;
 }
 
-UiBox *GetUiBoxOfStringKeyLastFrame(String stringKey)
+UiBlock *GetUiBlockOfStringKeyLastFrame(String stringKey)
 {
-	UiBox *result = {};
+	UiBlock *result = {};
 
 	if (stringKey.length)
 	{
@@ -390,9 +390,9 @@ UiBox *GetUiBoxOfStringKeyLastFrame(String stringKey)
 		{
 			unsigned int index = (hashvalue + i) % ARRAY_COUNT(G_UI_STATE.uiHashEntries);
 			UiHashEntry *uiHashEntry = &G_UI_STATE.uiHashEntries[index];
-			if (uiHashEntry->uiBox && uiHashEntry->keyString == stringKey && uiHashEntry->uiBox->frameRendered == G_CURRENT_FRAME - 1)
+			if (uiHashEntry->uiBlock && uiHashEntry->keyString == stringKey && uiHashEntry->uiBlock->frameRendered == G_CURRENT_FRAME - 1)
 			{
-				result = uiHashEntry->uiBox;
+				result = uiHashEntry->uiBlock;
 				break;
 			}
 		}
@@ -401,10 +401,10 @@ UiBox *GetUiBoxOfStringKeyLastFrame(String stringKey)
 	return result;
 }
 
-UiBox *GetUiBoxOfStringLastFrame(String string)
+UiBlock *GetUiBlockOfStringLastFrame(String string)
 {
-	String keyString = GetUiBoxKeyStringOfString(string);
-	UiBox *result = GetUiBoxOfStringKeyLastFrame(keyString);
+	String keyString = GetUiBlockKeyStringOfString(string);
+	UiBlock *result = GetUiBlockOfStringKeyLastFrame(keyString);
 	return result;
 }
 
@@ -415,20 +415,20 @@ String CreateScriptStringKey(unsigned int scriptLineNumber)
 }
 
 //TODO: this could be a hash
-UiBox *GetUiBoxLastFrameOfStringKey(String stringKey)
+UiBlock *GetUiBlockLastFrameOfStringKey(String stringKey)
 {
-	UiBox *result = {};
+	UiBlock *result = {};
 
-	int uiBoxArrayIndex = GetFrameModIndexLastFrame();
-	for (u32 uiBoxIndex = 0; uiBoxIndex < ARRAY_COUNT(G_UI_STATE.uiBoxes[uiBoxArrayIndex]); uiBoxIndex++)
+	int uiBlockArrayIndex = GetFrameModIndexLastFrame();
+	for (u32 uiBlockIndex = 0; uiBlockIndex < ARRAY_COUNT(G_UI_STATE.uiBlockes[uiBlockArrayIndex]); uiBlockIndex++)
 	{
-		UiBox *uiBox = &G_UI_STATE.uiBoxes[uiBoxArrayIndex][uiBoxIndex];
-		if (uiBoxIndex != uiBox->index)
+		UiBlock *uiBlock = &G_UI_STATE.uiBlockes[uiBlockArrayIndex][uiBlockIndex];
+		if (uiBlockIndex != uiBlock->index)
 			break;
 
-		if (uiBox->keyString == stringKey)
+		if (uiBlock->keyString == stringKey)
 		{
-			result = uiBox;
+			result = uiBlock;
 			break;
 		}
 	}
@@ -444,67 +444,67 @@ v2 GetCeneteredPosInRectV2(RectV2 rect, v2 dim)
 	return result;
 }
 
-void RenderUiEntries(UiBox *uiBox, v2 windowPixelDim, int uiDepth)
+void RenderUiEntries(UiBlock *uiBlock, v2 windowPixelDim, int uiDepth)
 {
-	if (uiBox)
+	if (uiBlock)
 	{
 		int drawOrder = 0;
 
-		if (IsFlag(uiBox, UI_FLAG_DRAW_BACKGROUND) && uiBox->uiSettings.backColor.a)
+		if (IsFlag(uiBlock, UI_FLAG_DRAW_BACKGROUND) && uiBlock->uiSettings.backColor.a)
 		{
-			uiBox->rect.dim.x = ClampF32(0, uiBox->rect.dim.x, windowPixelDim.x);
-			uiBox->rect.dim.y = ClampF32(0, uiBox->rect.dim.y, windowPixelDim.y);
-			Rectangle rect = RectToRayRectangle(uiBox->rect);
-			DrawRectangleRec(rect, uiBox->uiSettings.backColor);
+			uiBlock->rect.dim.x = ClampF32(0, uiBlock->rect.dim.x, windowPixelDim.x);
+			uiBlock->rect.dim.y = ClampF32(0, uiBlock->rect.dim.y, windowPixelDim.y);
+			Rectangle rect = RectToRayRectangle(uiBlock->rect);
+			DrawRectangleRec(rect, uiBlock->uiSettings.backColor);
 		}
 
-		if (IsFlag(uiBox, UI_FLAG_DRAW_TEXT))
+		if (IsFlag(uiBlock, UI_FLAG_DRAW_TEXT))
 		{
-			v2 pos = uiBox->rect.pos;
+			v2 pos = uiBlock->rect.pos;
 
-			if (IsFlag(uiBox, UI_FLAG_ALIGN_TEXT_CENTERED))
+			if (IsFlag(uiBlock, UI_FLAG_ALIGN_TEXT_CENTERED))
 			{
-				pos += GetCeneteredPosInRectV2(uiBox->rect, uiBox->textDim);
+				pos += GetCeneteredPosInRectV2(uiBlock->rect, uiBlock->textDim);
 			}
-			else if (IsFlag(uiBox, UI_FLAG_ALIGN_TEXT_RIGHT))
+			else if (IsFlag(uiBlock, UI_FLAG_ALIGN_TEXT_RIGHT))
 			{
-				pos.x += uiBox->rect.dim.x - uiBox->textDim.x;
+				pos.x += uiBlock->rect.dim.x - uiBlock->textDim.x;
 			}
 
-			DrawTextPro(uiBox->uiSettings.font, C_STRING_NULL_TERMINATED(uiBox->string), V2ToRayVector(pos), {}, 0, (f32) uiBox->uiSettings.font.baseSize, 1, uiBox->uiSettings.frontColor);
+			DrawTextPro(uiBlock->uiSettings.font, C_STRING_NULL_TERMINATED(uiBlock->string), V2ToRayVector(pos), {}, 0, (f32) uiBlock->uiSettings.font.baseSize, 1, uiBlock->uiSettings.frontColor);
 		}
 
-		if (IsFlag(uiBox, UI_FLAG_DRAW_TEXTURE))
+		if (IsFlag(uiBlock, UI_FLAG_DRAW_TEXTURE))
 		{
-			ASSERT(uiBox->uiInputs.texture.id);
+			ASSERT(uiBlock->uiInputs.texture.id);
 
-			float scale = uiBox->rect.dim.x / uiBox->uiInputs.texture.width;
-			Texture texture = uiBox->uiInputs.texture;
+			float scale = uiBlock->rect.dim.x / uiBlock->uiInputs.texture.width;
+			Texture texture = uiBlock->uiInputs.texture;
 			Rectangle source = {0.0f, 0.0f, (float)texture.width, (float)texture.height};
-			Rectangle dest = {uiBox->rect.pos.x, uiBox->rect.pos.y, (float)texture.width * scale, (float)texture.height * scale};
+			Rectangle dest = {uiBlock->rect.pos.x, uiBlock->rect.pos.y, (float)texture.width * scale, (float)texture.height * scale};
 
-			if (IsFlag(uiBox, UI_FLAG_ALIGN_TEXTURE_CENTERED))
+			if (IsFlag(uiBlock, UI_FLAG_ALIGN_TEXTURE_CENTERED))
 			{
 				v2 dim;
 				dim.x = dest.width;
 				dim.y = dest.height;
-				v2 relativePos = GetCeneteredPosInRectV2(uiBox->rect, dim);
+				v2 relativePos = GetCeneteredPosInRectV2(uiBlock->rect, dim);
 				dest.x += relativePos.x;
 				dest.y += relativePos.y;
 			}
 
-			DrawTexturePro(uiBox->uiInputs.texture, source, dest, Vector2{0, 0}, 0, WHITE);
+			DrawTexturePro(uiBlock->uiInputs.texture, source, dest, Vector2{0, 0}, 0, WHITE);
 		}
 
-		if (IsFlag(uiBox, UI_FLAG_DRAW_BORDER))
+		if (IsFlag(uiBlock, UI_FLAG_DRAW_BORDER))
 		{
-			RectV2 rect = uiBox->rect;
+			RectV2 rect = uiBlock->rect;
 			//TODO: (Ahmayk) Bleh. Need to have concept in UI of pixel-perfect positioning vs not
-			DrawRectangleLines((u32)rect.pos.x, (u32)rect.pos.y, (u32)rect.dim.x, (u32)rect.dim.y, uiBox->uiSettings.borderColor);
+			DrawRectangleLines((u32)rect.pos.x, (u32)rect.pos.y, (u32)rect.dim.x, (u32)rect.dim.y, uiBlock->uiSettings.borderColor);
 		}
 
-		RenderUiEntries(uiBox->firstChild, windowPixelDim, uiDepth + 2);
-		RenderUiEntries(uiBox->next, windowPixelDim, uiDepth);
+		RenderUiEntries(uiBlock->firstChild, windowPixelDim, uiDepth + 2);
+		RenderUiEntries(uiBlock->next, windowPixelDim, uiDepth);
 	}
 }
 
@@ -513,8 +513,8 @@ void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bo
 	ReactiveUiColor reactiveUiColor = (active)
 		? reactiveUiColorState.active
 		: reactiveUiColorState.nonActive;
-	UiBox *uiBoxLastFrame = GetUiBoxOfStringLastFrame(string);
-	G_UI_STATE.uiSettings.backColor = GetReactiveColor(G_UI_STATE.commandInputs, uiBoxLastFrame, reactiveUiColor, disabled);
+	UiBlock *uiBlockLastFrame = GetUiBlockOfStringLastFrame(string);
+	G_UI_STATE.uiSettings.backColor = GetReactiveColor(G_UI_STATE.commandInputs, uiBlockLastFrame, reactiveUiColor, disabled);
 
 	UiSettings *uiSettings = &G_UI_STATE.uiSettings;
 	uiSettings->frontColor = BLACK;
@@ -522,7 +522,7 @@ void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bo
 	uiSettings->borderColor = (active) ? BLACK : GRAY;
 
 	unsigned int flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED | UI_FLAG_INTERACTABLE;
-	CreateUiBox(flags, string);
+	CreateUiBlock(flags, string);
 }
 
 Color AddConstantToColor(Color color, i8 constant)
