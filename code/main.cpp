@@ -7,14 +7,13 @@
 #include "../includes/raylib/src/raylib.h"
 #include "../includes//raylib//src/external/glfw/include/GLFW/glfw3.h"
 
+#include "ui/ui.h"
+#include "widgets.h"
 #include "vn_math_external.h"
 #include "input.h"
-#include "ui.h"
 #include "image.h"
 #include "platform_win32.h"
 #include "main.h"
-
-#include "ui.cpp"
 
 #include "assets/font.h"
 #include "assets/defaultImage.h"
@@ -37,8 +36,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		processedImage->index = i;
 	}
 
-	G_UI_INPUTS = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, UiInputs);
-	G_UI_STATE = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, UiState);
+	UiState *G_UI_STATE = GetUiState();
+	UiInputs *G_UI_INPUTS = GetUiInputs();
 
 	SetTraceLogLevel(LOG_NONE);
 

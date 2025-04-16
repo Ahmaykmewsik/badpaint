@@ -1,5 +1,10 @@
 #pragma once
 
+#include <base.h>
+
+//TODO: (Ahmayk) remove dependency
+#include <input.h>
+
 static const char *G_UI_HASH_TAG = "##";
 
 enum UI_SIZE_KIND
@@ -68,8 +73,6 @@ struct UiInputs
 	SLIDER_ACTION sliderAction;
 };
 
-static UiInputs *G_UI_INPUTS = {};
-
 struct UiBox
 {
 	unsigned int index;
@@ -122,8 +125,6 @@ struct UiState
 	Arena *twoFrameArenaThisFrame;
 };
 
-static UiState *G_UI_STATE = {};
-
 struct ReactiveUiColor
 {
 	Color neutral;
@@ -137,3 +138,28 @@ struct ReactiveUiColorState
 	ReactiveUiColor active;
 	ReactiveUiColor nonActive;
 };
+
+#define CONCAT_IMPL(x, y) x##y
+#define CONCAT(x, y) CONCAT_IMPL(x, y)
+#define UiDeferLoop(begin, end) for (int CONCAT(_i_, __LINE__) = ((begin), 0); !CONCAT(_i_, __LINE__); CONCAT(_i_, __LINE__) += 1, (end))
+#define UiParent() UiDeferLoop(PushUiParent(), PopUiParent())
+
+UiState *GetUiState();
+UiInputs *GetUiInputs();
+
+bool IsFlag(UiBox *uiBox, unsigned int flags = 0);
+UiBox *GetUiBoxLastFrameOfStringKey(String stringKey);
+void SetUiAxis(UiSize uiSize1, UiSize uiSize2);
+void CreateUiBox(unsigned int flags = 0, String string = {});
+void PushUiParent();
+void PopUiParent();
+Color GetReactiveColor(UiBox *uiBoxLastFrame, ReactiveUiColor reactiveUiColor, bool disabled);
+void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled = false);
+ReactiveUiColorState CreateButtonReactiveUiColorState(Color color);
+
+void CalculateUiPosGivenReletativePositions(UiBox *uiBox);
+void CalculateUiRelativePositions(UiBox *uiBox);
+void CalculateUiUpwardsDependentSizes(UiBox *uiBox);
+void CalculateUiDownwardsDependentSizes(UiBox *uiBox);
+void RenderUiEntries(UiBox *uiBox, v2 windowPixelDim, int uiDepth = 0);
+

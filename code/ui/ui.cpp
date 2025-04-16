@@ -1,21 +1,38 @@
 #pragma once
 
-void CreateUiBox(unsigned int flags = 0, String string = {})
+#include "ui/ui.h"
+
+//TODO: (Ahmayk) remove dependency
+#include "main.h"
+#include "vn_math_external.h"
+
+static UiState G_UI_STATE = {};
+static UiInputs G_UI_INPUTS = {};
+
+//TODO: (Ahmayk) Temporary hack 
+UiState *GetUiState()
 {
-	ASSERT(G_UI_INPUTS);
-	ASSERT(G_UI_STATE);
+	return &G_UI_STATE;
+}
 
+UiInputs *GetUiInputs()
+{
+	return &G_UI_INPUTS;
+}
+
+void CreateUiBox(unsigned int flags, String string)
+{
 	int uiBoxArrayIndexThisFrame = GetFrameModIndexThisFrame();
-	ASSERT(G_UI_STATE->uiBoxCount < ARRAY_COUNT(G_UI_STATE->uiBoxes[uiBoxArrayIndexThisFrame]));
+	ASSERT(G_UI_STATE.uiBoxCount < ARRAY_COUNT(G_UI_STATE.uiBoxes[uiBoxArrayIndexThisFrame]));
 
-	UiBox *uiBox = &G_UI_STATE->uiBoxes[uiBoxArrayIndexThisFrame][G_UI_STATE->uiBoxCount];
+	UiBox *uiBox = &G_UI_STATE.uiBoxes[uiBoxArrayIndexThisFrame][G_UI_STATE.uiBoxCount];
 	*uiBox = {};
-	uiBox->index = G_UI_STATE->uiBoxCount;
-	G_UI_STATE->uiBoxCount++;
+	uiBox->index = G_UI_STATE.uiBoxCount;
+	G_UI_STATE.uiBoxCount++;
 
-	if (G_UI_STATE->parentStackCount)
+	if (G_UI_STATE.parentStackCount)
 	{
-		uiBox->parent = G_UI_STATE->parentStack[G_UI_STATE->parentStackCount - 1];
+		uiBox->parent = G_UI_STATE.parentStack[G_UI_STATE.parentStackCount - 1];
 		ASSERT(uiBox->parent);
 
 		if (uiBox->parent->firstChild)
@@ -33,7 +50,7 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
 	}
 
 	uiBox->flags = flags;
-	uiBox->uiSettings = G_UI_STATE->uiSettings;
+	uiBox->uiSettings = G_UI_STATE.uiSettings;
 	uiBox->frameRendered = G_CURRENT_FRAME;
 
 	StringArray stringSplitByHashTag = {};
@@ -41,7 +58,7 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
 	{
 		uiBox->string = string;
 
-		stringSplitByHashTag = SplitStringOnceByTag(uiBox->string, STRING(G_UI_HASH_TAG), G_UI_STATE->twoFrameArenaThisFrame);
+		stringSplitByHashTag = SplitStringOnceByTag(uiBox->string, STRING(G_UI_HASH_TAG), G_UI_STATE.twoFrameArenaThisFrame);
 
 		if (stringSplitByHashTag.count == 2)
 		{
@@ -50,7 +67,7 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
 		}
 		else if (stringSplitByHashTag.count == 1)
 		{
-			uiBox->string = ReallocString(uiBox->string, G_UI_STATE->twoFrameArenaThisFrame);
+			uiBox->string = ReallocString(uiBox->string, G_UI_STATE.twoFrameArenaThisFrame);
 		}
 		else
 		{
@@ -62,8 +79,8 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
 		uiBox->textDim = RayVectorToV2(textDim);
 	}
 
-	uiBox->uiInputs = *G_UI_INPUTS;
-	*G_UI_INPUTS = {};
+	uiBox->uiInputs = G_UI_INPUTS;
+	G_UI_INPUTS = {};
 
 	if (stringSplitByHashTag.count > 1)
 	{
@@ -74,8 +91,8 @@ void CreateUiBox(unsigned int flags = 0, String string = {})
 
 			for (u32 i = 0; i < keyString.length; i++)
 			{
-				unsigned int index = (hashValue + i) % ARRAY_COUNT(G_UI_STATE->uiHashEntries);
-				UiHashEntry *uiHashEntry = &G_UI_STATE->uiHashEntries[index];
+				unsigned int index = (hashValue + i) % ARRAY_COUNT(G_UI_STATE.uiHashEntries);
+				UiHashEntry *uiHashEntry = &G_UI_STATE.uiHashEntries[index];
 				if (!uiHashEntry->uiBox || uiHashEntry->uiBox->frameRendered < G_CURRENT_FRAME)
 				{
 					uiHashEntry->uiBox = uiBox;
@@ -105,8 +122,8 @@ void CreateUiTextWithBackground(String string, unsigned int flags = 0)
 
 void SetUiAxis(UiSize uiSize1, UiSize uiSize2)
 {
-	G_UI_STATE->uiSettings.uiSizes[0] = uiSize1;
-	G_UI_STATE->uiSettings.uiSizes[1] = uiSize2;
+	G_UI_STATE.uiSettings.uiSizes[0] = uiSize1;
+	G_UI_STATE.uiSettings.uiSizes[1] = uiSize2;
 }
 
 void SetUiAxisToPixelDim(v2 pixelDim)
@@ -116,17 +133,17 @@ void SetUiAxisToPixelDim(v2 pixelDim)
 
 void SetUiTimlineRowAxisPercentOfX(float percentOfParentX)
 {
-	G_UI_STATE->uiSettings.uiSizes[0] = UiSize{UI_SIZE_KIND_PERCENT_OF_PARENT, percentOfParentX};
-	G_UI_STATE->uiSettings.uiSizes[1] = UiSize{UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
+	G_UI_STATE.uiSettings.uiSizes[0] = UiSize{UI_SIZE_KIND_PERCENT_OF_PARENT, percentOfParentX};
+	G_UI_STATE.uiSettings.uiSizes[1] = UiSize{UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 }
 
 void PushPixelSize(v2 pixelSize)
 {
-	G_UI_STATE->uiSettings.uiSizes[0] = {UI_SIZE_KIND_PIXELS, pixelSize.x};
-	G_UI_STATE->uiSettings.uiSizes[1] = {UI_SIZE_KIND_PIXELS, pixelSize.x};
+	G_UI_STATE.uiSettings.uiSizes[0] = {UI_SIZE_KIND_PIXELS, pixelSize.x};
+	G_UI_STATE.uiSettings.uiSizes[1] = {UI_SIZE_KIND_PIXELS, pixelSize.x};
 }
 
-bool IsFlag(UiBox *uiBox, unsigned int flags = 0)
+bool IsFlag(UiBox *uiBox, unsigned int flags)
 {
 	bool result = uiBox->flags & flags;
 	return result;
@@ -137,32 +154,26 @@ unsigned int GetThisUiBoxIndex()
 	unsigned int result = 0;
 
 	int uiBoxArrayIndexThisFrame = GetFrameModIndexThisFrame();
-	if (G_UI_STATE->uiBoxCount)
-		result = G_UI_STATE->uiBoxes[uiBoxArrayIndexThisFrame][G_UI_STATE->uiBoxCount - 1].index;
+	if (G_UI_STATE.uiBoxCount)
+		result = G_UI_STATE.uiBoxes[uiBoxArrayIndexThisFrame][G_UI_STATE.uiBoxCount - 1].index;
 
 	return result;
 }
 
 void PushUiParent()
 {
-	ASSERT(G_UI_STATE->parentStackCount < ARRAY_COUNT(G_UI_STATE->parentStack));
+	ASSERT(G_UI_STATE.parentStackCount < ARRAY_COUNT(G_UI_STATE.parentStack));
 
 	int uiBoxArrayIndexThisFrame = GetFrameModIndexThisFrame();
-	G_UI_STATE->parentStack[G_UI_STATE->parentStackCount] = &G_UI_STATE->uiBoxes[uiBoxArrayIndexThisFrame][G_UI_STATE->uiBoxCount - 1];
-	G_UI_STATE->parentStackCount++;
+	G_UI_STATE.parentStack[G_UI_STATE.parentStackCount] = &G_UI_STATE.uiBoxes[uiBoxArrayIndexThisFrame][G_UI_STATE.uiBoxCount - 1];
+	G_UI_STATE.parentStackCount++;
 }
 
 void PopUiParent()
 {
-	ASSERT(G_UI_STATE->parentStackCount > 0);
-	G_UI_STATE->parentStackCount--;
+	ASSERT(G_UI_STATE.parentStackCount > 0);
+	G_UI_STATE.parentStackCount--;
 }
-
-#define CONCAT_IMPL(x, y) x##y
-#define CONCAT(x, y) CONCAT_IMPL(x, y)
-#define UiDeferLoop(begin, end) for (int CONCAT(_i_, __LINE__) = ((begin), 0); !CONCAT(_i_, __LINE__); CONCAT(_i_, __LINE__) += 1, (end))
-
-#define UiParent() UiDeferLoop(PushUiParent(), PopUiParent())
 
 void CalculateUiUpwardsDependentSizes(UiBox *uiBox)
 {
@@ -314,9 +325,9 @@ UiBox GetValidUiBoxOfIndexLastFrame(unsigned int index)
 	if (index)
 	{
 		int uiBoxArrayIndexLastFrame = GetFrameModIndexLastFrame();
-		if (index < ARRAY_COUNT(G_UI_STATE->uiBoxes[uiBoxArrayIndexLastFrame]))
+		if (index < ARRAY_COUNT(G_UI_STATE.uiBoxes[uiBoxArrayIndexLastFrame]))
 		{
-			UiBox uiBox = G_UI_STATE->uiBoxes[uiBoxArrayIndexLastFrame][index];
+			UiBox uiBox = G_UI_STATE.uiBoxes[uiBoxArrayIndexLastFrame][index];
 			if (uiBox.frameRendered == G_CURRENT_FRAME - 1)
 				result = uiBox;
 		}
@@ -380,8 +391,8 @@ UiBox *GetUiBoxOfStringKeyLastFrame(String stringKey)
 
 		for (u32 i = 0; i < stringKey.length; i++)
 		{
-			unsigned int index = (hashvalue + i) % ARRAY_COUNT(G_UI_STATE->uiHashEntries);
-			UiHashEntry *uiHashEntry = &G_UI_STATE->uiHashEntries[index];
+			unsigned int index = (hashvalue + i) % ARRAY_COUNT(G_UI_STATE.uiHashEntries);
+			UiHashEntry *uiHashEntry = &G_UI_STATE.uiHashEntries[index];
 			if (uiHashEntry->uiBox && uiHashEntry->keyString == stringKey && uiHashEntry->uiBox->frameRendered == G_CURRENT_FRAME - 1)
 			{
 				result = uiHashEntry->uiBox;
@@ -412,9 +423,9 @@ UiBox *GetUiBoxLastFrameOfStringKey(String stringKey)
 	UiBox *result = {};
 
 	int uiBoxArrayIndex = GetFrameModIndexLastFrame();
-	for (u32 uiBoxIndex = 0; uiBoxIndex < ARRAY_COUNT(G_UI_STATE->uiBoxes[uiBoxArrayIndex]); uiBoxIndex++)
+	for (u32 uiBoxIndex = 0; uiBoxIndex < ARRAY_COUNT(G_UI_STATE.uiBoxes[uiBoxArrayIndex]); uiBoxIndex++)
 	{
-		UiBox *uiBox = &G_UI_STATE->uiBoxes[uiBoxArrayIndex][uiBoxIndex];
+		UiBox *uiBox = &G_UI_STATE.uiBoxes[uiBoxArrayIndex][uiBoxIndex];
 		if (uiBoxIndex != uiBox->index)
 			break;
 
@@ -436,7 +447,7 @@ v2 GetCeneteredPosInRectV2(RectV2 rect, v2 dim)
 	return result;
 }
 
-void RenderUiEntries(UiBox *uiBox, v2 windowPixelDim, int uiDepth = 0)
+void RenderUiEntries(UiBox *uiBox, v2 windowPixelDim, int uiDepth)
 {
 	if (uiBox)
 	{
@@ -500,15 +511,15 @@ void RenderUiEntries(UiBox *uiBox, v2 windowPixelDim, int uiDepth = 0)
 	}
 }
 
-void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled = false)
+void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled)
 {
 	ReactiveUiColor reactiveUiColor = (active)
 		? reactiveUiColorState.active
 		: reactiveUiColorState.nonActive;
 	UiBox *uiBoxLastFrame = GetUiBoxOfStringLastFrame(string);
-	G_UI_STATE->uiSettings.backColor = GetReactiveColor(uiBoxLastFrame, reactiveUiColor, disabled);
+	G_UI_STATE.uiSettings.backColor = GetReactiveColor(uiBoxLastFrame, reactiveUiColor, disabled);
 
-	UiSettings *uiSettings = &G_UI_STATE->uiSettings;
+	UiSettings *uiSettings = &G_UI_STATE.uiSettings;
 	uiSettings->frontColor = BLACK;
 	uiSettings->detailColor = BLACK;
 	uiSettings->borderColor = (active) ? BLACK : GRAY;
@@ -537,16 +548,4 @@ ReactiveUiColorState CreateButtonReactiveUiColorState(Color color)
 	result.nonActive.hovered = AddConstantToColor(color, -20);
 	result.nonActive.neutral = AddConstantToColor(color, -50);
 	return result;
-}
-
-static float G_TOOLBOX_WIDTH_AND_HEIGHT = 35;
-
-void CreateBrushEffectButton(BRUSH_EFFECT brushEffect, String string, Color baseColor, COMMAND command, Brush *currentBrush)
-{
-	SetUiAxis({UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT}, {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT});
-	String stringButton = string + G_UI_HASH_TAG + U32ToString(brushEffect, StringArena());
-	ReactiveUiColorState uiColorState = CreateButtonReactiveUiColorState(baseColor);
-	bool active = currentBrush->brushEffect == brushEffect;
-	G_UI_INPUTS->command = command;
-	CreateUiButton(stringButton, uiColorState, active, false);
 }

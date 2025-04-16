@@ -30,14 +30,16 @@ build vn_math.obj: compile ../code/base/vn_math.cpp | $directory_name
 build vn_string.obj: compile ../code/base/vn_string.cpp | $directory_name
 build multithreading.obj: compile ../code/base/multithreading.cpp | $directory_name
 build platform_win32.obj: compile ../code/platform_win32.cpp | $directory_name
+build ui.obj: compile ../code/ui/ui.cpp | $directory_name
 build main.obj: compile ../code/main.cpp | $directory_name
 build input.obj: compile ../code/input.cpp | $directory_name
 build image.obj: compile ../code/image.cpp | $directory_name
+build widgets.obj: compile ../code/widgets.cpp | $directory_name
 
 rule link
   command = link /DEBUG /nologo $in $libraries /PDB:$directory_name/badpaint.pdb /OUT:$out
   description = Linking...
   deps = msvc
-build $directory_name/badpaint.exe: link memory.obj profiler.obj vn_math.obj vn_string.obj multithreading.obj platform_win32.obj main.obj input.obj image.obj | $directory_name
+build $directory_name/badpaint.exe: link memory.obj profiler.obj vn_math.obj vn_string.obj multithreading.obj platform_win32.obj main.obj input.obj image.obj ui.obj widgets.obj | $directory_name
 
 default $directory_name/badpaint.exe
