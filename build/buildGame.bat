@@ -1,8 +1,8 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-set MODE= -Od -DDEBUG_MODE
-REM set MODE= -O2
+REM set MODE= -Od -DDEBUG_MODE
+set MODE= -O2
 
 REM max warnings, warnings are errors
 set WARNINGS=-W4 -WX
