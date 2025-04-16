@@ -872,19 +872,19 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER);
 		}
 
-		if (G_NOTIFICATION_MESSAGE.length)
+		NotificationMessage *notificationMessage = GetNotificationMessage();
+		if (notificationMessage->string.length)
 		{
 			SetUiAxis({UI_SIZE_KIND_PIXELS, (f32) windowDim.x}, {UI_SIZE_KIND_TEXT});
-			uiSettings->frontColor = Color{255, 255, 255, (unsigned char)(G_NOTIFICATION_ALPHA * 255)};
-			uiSettings->backColor = Color{100, 100, 100, (unsigned char)(G_NOTIFICATION_ALPHA * 255)};
+			uiSettings->frontColor = Color{255, 255, 255, (unsigned char)(notificationMessage->alpha * 255)};
+			uiSettings->backColor = Color{100, 100, 100, (unsigned char)(notificationMessage->alpha * 255)};
 			G_UI_INPUTS->relativePixelPosition = v2{0, titleBarHeight};
-			CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, G_NOTIFICATION_MESSAGE);
+			CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT, notificationMessage->string);
 
-			G_NOTIFICATION_ALPHA -= 0.001f;
-			if (G_NOTIFICATION_ALPHA <= 0)
+			notificationMessage->alpha -= 0.001f;
+			if (notificationMessage->alpha <= 0)
 			{
-				G_NOTIFICATION_MESSAGE = {};
-				G_NOTIFICATION_ALPHA = {};
+				notificationMessage->alpha = {};
 			}
 		}
 

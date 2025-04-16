@@ -78,6 +78,14 @@ struct CommandInput
 	b32 pressed;
 };
 
+//TODO: (Ahmayk) Replace this stupid shit once we have better UI
+struct NotificationMessage
+{
+	String string;
+	f32 alpha;
+};
+
 bool IsCommandDown(CommandInput *commandInputs, COMMAND command);
 bool IsCommandPressed(CommandInput *commandInputs, COMMAND command);
 void InitNotificationMessage(String string, Arena *circularNotificationBuffer);
+NotificationMessage *GetNotificationMessage();

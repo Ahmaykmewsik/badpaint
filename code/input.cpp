@@ -3,6 +3,8 @@
 #include "input.h"
 #include "main.h"
 
+static NotificationMessage notificationMessage = {}; 
+
 bool IsCommandDown(CommandInput *commandInputs, COMMAND command)
 {
     bool result = commandInputs[command].down;
@@ -17,6 +19,11 @@ bool IsCommandPressed(CommandInput *commandInputs, COMMAND command)
 
 void InitNotificationMessage(String string, Arena *circularNotificationBuffer)
 {
-    G_NOTIFICATION_MESSAGE = ReallocString(string, circularNotificationBuffer);
-    G_NOTIFICATION_ALPHA = 1.0;
+    notificationMessage.string = ReallocString(string, circularNotificationBuffer);
+	notificationMessage.alpha = 1.0f;
+}
+
+NotificationMessage *GetNotificationMessage()
+{
+	return &notificationMessage;
 }
