@@ -2,7 +2,7 @@
 # **badpaint**
 *An experimental real-time image corruption editor*
 
-https://github.com/Ahmaykmewsik/badpaint/assets/6686290/3d97b0c9-4557-444a-8a15-e29e99a30e05
+https://github.com/user-attachments/assets/e85cd2e3-699d-442d-93ca-c736b1315b6b
 
 *"It's like ms paint but bad" - Steve Jobs*
 
