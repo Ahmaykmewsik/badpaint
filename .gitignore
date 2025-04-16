@@ -46,3 +46,4 @@ build/_build_cache.cmd
 /builds
 /releases
 code/nonRepo.h
+/local
