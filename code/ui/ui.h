@@ -100,7 +100,7 @@ struct UiBlock
 #define MAX_UI_BLOCKS 1000
 struct UiBuffer
 {
-	UiBlock uiBlockes[MAX_UI_BLOCKS];
+	UiBlock uiBlocks[MAX_UI_BLOCKS];
 	u32 uiBlockCount;
 	Arena arena;
 };

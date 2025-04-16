@@ -29,9 +29,9 @@ void UiInit(Arena *arena)
 void CreateUiBlock(unsigned int flags, u32 hash, String string)
 {
 	UiBuffer *uiBuffer = &G_UI_STATE.uiBuffers[G_UI_STATE.uiBufferIndex];
-	if (ASSERT(uiBuffer->uiBlockCount < ARRAY_COUNT(uiBuffer->uiBlockes)))
+	if (ASSERT(uiBuffer->uiBlockCount < ARRAY_COUNT(uiBuffer->uiBlocks)))
 	{
-		UiBlock *uiBlock = &uiBuffer->uiBlockes[uiBuffer->uiBlockCount++];
+		UiBlock *uiBlock = &uiBuffer->uiBlocks[uiBuffer->uiBlockCount++];
 		*uiBlock = {};
 
 		if (G_UI_STATE.parentStackCount)
@@ -122,7 +122,7 @@ void PushUiParent()
 	if (ASSERT(G_UI_STATE.parentStackCount < ARRAY_COUNT(G_UI_STATE.parentStack)))
 	{
 		UiBuffer *uiBuffer = &G_UI_STATE.uiBuffers[G_UI_STATE.uiBufferIndex];
-		G_UI_STATE.parentStack[G_UI_STATE.parentStackCount] = &uiBuffer->uiBlockes[uiBuffer->uiBlockCount - 1];
+		G_UI_STATE.parentStack[G_UI_STATE.parentStackCount] = &uiBuffer->uiBlocks[uiBuffer->uiBlockCount - 1];
 		G_UI_STATE.parentStackCount++;
 	}
 }
@@ -313,11 +313,11 @@ UiBlock *GetUiBlockOfHashLastFrame(u32 hash)
 	UiBlock *result = {};
 
 	UiBuffer *uiBuffer = &G_UI_STATE.uiBuffers[1 - G_UI_STATE.uiBufferIndex];
-	for (u32 i = 0; i < ARRAY_COUNT(uiBuffer->uiBlockes); i++)
+	for (u32 i = 0; i < ARRAY_COUNT(uiBuffer->uiBlocks); i++)
 	{
-		if (uiBuffer->uiBlockes[i].hash == hash)
+		if (uiBuffer->uiBlocks[i].hash == hash)
 		{
-			result = &uiBuffer->uiBlockes[i];
+			result = &uiBuffer->uiBlocks[i];
 			break;
 		}
 	}
@@ -375,7 +375,7 @@ void UiLayoutBlocks(UiBuffer *uiBuffer)
 {
 	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
 	{
-		UiBlock *uiBlock = &uiBuffer->uiBlockes[i];
+		UiBlock *uiBlock = &uiBuffer->uiBlocks[i];
 
 		for (u32 j = 0; j < ARRAY_COUNT(uiBlock->uiSettings.uiSizes); j++)
 		{
@@ -409,7 +409,7 @@ void UiLayoutBlocks(UiBuffer *uiBuffer)
 
 	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
 	{
-		UiBlock *uiBlock = &uiBuffer->uiBlockes[i];
+		UiBlock *uiBlock = &uiBuffer->uiBlocks[i];
 
 		if (!uiBlock->parent)
 		{
