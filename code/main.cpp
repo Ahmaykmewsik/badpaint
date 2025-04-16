@@ -90,13 +90,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	currentBrush.size = 10;
 
 	Texture loadedTexture = {};
-
-	COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE].key = KEY_E;
-	COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE].key = KEY_R;
-	COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX].key = KEY_A;
-	COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT].key = KEY_S;
-	COMMAND_STATES[COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM].key = KEY_N;
-
 	v2 pressedMousePos = {};
 	String draggedUiStringKey = {};
 
@@ -216,32 +209,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			}
 		}
 
-		if (IsKeyDown(KEY_E))
-		{
-			int foo = 4;
-		}
-
-		for (int i = 0;
-				i < COMMAND_COUNT;
-				i++)
-		{
-			CommandState *state = COMMAND_STATES + i;
-			KeyboardKey key = state->key;
-			if (key)
-			{
-				state->down = IsKeyDown(key);
-				state->pressed = IsKeyPressed(key);
-			}
-			else
-			{
-				state->down = false;
-				state->pressed = false;
-			}
-		}
-
-		for (int i = 0;
-				i < G_UI_STATE->uiBoxCount;
-				i++)
+		for (u32 i = 0; i < G_UI_STATE->uiBoxCount; i++)
 		{
 			UiBox *uiBox = &G_UI_STATE->uiBoxes[uiBoxArrayIndex][i];
 			if (IsFlag(uiBox, UI_FLAG_INTERACTABLE))
@@ -253,14 +221,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					uiBox->hovered = true;
 					uiBox->pressed = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
 					uiBox->down = IsMouseButtonDown(MOUSE_LEFT_BUTTON);
-
-					if (uiBox->uiInputs.command)
-					{
-						CommandState *state = COMMAND_STATES + uiBox->uiInputs.command;
-						state->down |= uiBox->down;
-						state->pressed |= uiBox->pressed;
-					}
-
 					if (uiBox->pressed && uiBox->keyString.length)
 					{
 						draggedUiStringKey = ReallocString(uiBox->keyString, &gameMemory.mouseClickArena);
@@ -279,18 +239,50 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			}
 		}
 
-		if (IsCommandPressed(COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE))
+		CommandInput commandInputs[COMMAND_COUNT] = {};
+
+		for (u32 i = 0; i < COMMAND_COUNT; i++)
+		{
+			CommandInput *commandInput = &commandInputs[i];
+			KeyboardKey key = {};
+			if (ASSERT(i < ARRAY_COUNT(COMMAND_KEY_BINDINGS)))
+			{
+				key = COMMAND_KEY_BINDINGS[i];
+			}
+			if (key)
+			{
+				commandInput->down = IsKeyDown(key);
+				commandInput->pressed = IsKeyPressed(key);
+			}
+		}
+		for (u32 i = 0; i < G_UI_STATE->uiBoxCount; i++)
+		{
+			UiBox *uiBox = &G_UI_STATE->uiBoxes[uiBoxArrayIndex][i];
+			if (IsFlag(uiBox, UI_FLAG_INTERACTABLE))
+			{
+				if (uiBox->uiInputs.command)
+				{
+					CommandInput *commandInput = commandInputs + uiBox->uiInputs.command;
+					commandInput->down |= uiBox->down;
+					commandInput->pressed |= uiBox->pressed;
+					uiBox->down |= commandInput->down;
+					uiBox->pressed |= commandInput->pressed;
+				}
+			}
+		}
+
+		if (IsCommandPressed(commandInputs, COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE))
 			currentBrush.brushEffect = BRUSH_EFFECT_ERASE;
-		if (IsCommandPressed(COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE))
+		if (IsCommandPressed(commandInputs, COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE))
 			currentBrush.brushEffect = BRUSH_EFFECT_REMOVE;
-		if (IsCommandPressed(COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX))
+		if (IsCommandPressed(commandInputs, COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX))
 			currentBrush.brushEffect = BRUSH_EFFECT_MAX;
-		if (IsCommandPressed(COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT))
+		if (IsCommandPressed(commandInputs, COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT))
 			currentBrush.brushEffect = BRUSH_EFFECT_SHIFT;
-		if (IsCommandPressed(COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM))
+		if (IsCommandPressed(commandInputs, COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM))
 			currentBrush.brushEffect = BRUSH_EFFECT_RANDOM;
 
-		if (IsCommandPressed(COMMAND_EXPORT_IMAGE))
+		if (IsCommandPressed(commandInputs, COMMAND_EXPORT_IMAGE))
 		{
 			if (loadedTexture.height && loadedTexture.width)
 			{
@@ -680,6 +672,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		G_UI_STATE->uiSettings = {};
 		G_UI_STATE->parentStackCount = {};
 		UiSettings *uiSettings = &G_UI_STATE->uiSettings;
+		G_UI_STATE->commandInputs = commandInputs;
 
 		BeginDrawing();
 
@@ -850,7 +843,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			uiColorParent.neutral = Color{180, 180, 180, 255};
 			String stringKey = STRING("brushSizeSlider");
 			UiBox *sliderUiBox = GetUiBoxLastFrameOfStringKey(stringKey);
-			uiSettings->backColor = GetReactiveColor(sliderUiBox, uiColorParent, false);
+			uiSettings->backColor = GetReactiveColor(commandInputs, sliderUiBox, uiColorParent, false);
 			G_UI_INPUTS->sliderAction = SLIDER_ACTION_BRUSH_SIZE;
 
 			Slider slider = brushSizeSlider;
@@ -866,7 +859,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				uiColorChild.down = Color{20, 131, 255, 255};
 				uiColorChild.hovered = Color{10, 131, 251, 255};
 				uiColorChild.neutral = Color{0, 121, 241, 255};
-				uiSettings->backColor = GetReactiveColor(sliderUiBox, uiColorChild, false);
+				uiSettings->backColor = GetReactiveColor(commandInputs, sliderUiBox, uiColorChild, false);
 				CreateUiBox(UI_FLAG_DRAW_BACKGROUND | UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER);
 			}
 
@@ -933,9 +926,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 		if (G_UI_STATE->uiBoxCount)
 		{
-			for (int i = 1;
-					i < G_UI_STATE->uiBoxCount;
-					i++)
+			for (u32 i = 1; i < G_UI_STATE->uiBoxCount; i++)
 			{
 				UiBox *uiBox = &G_UI_STATE->uiBoxes[uiBoxArrayIndexThisFrame][i];
 
@@ -971,9 +962,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				}
 			}
 
-			for (int i = 1;
-					i < G_UI_STATE->uiBoxCount;
-					i++)
+			for (u32 i = 1; i < G_UI_STATE->uiBoxCount; i++)
 			{
 				UiBox *uiBox = &G_UI_STATE->uiBoxes[uiBoxArrayIndexThisFrame][i];
 

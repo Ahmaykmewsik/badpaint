@@ -336,7 +336,7 @@ UiBox GetValidUiBoxOfIndexLastFrame(unsigned int index)
 	return result;
 }
 
-Color GetReactiveColor(UiBox *uiBoxLastFrame, ReactiveUiColor reactiveUiColor, bool disabled)
+Color GetReactiveColor(CommandInput *commandInputs, UiBox *uiBoxLastFrame, ReactiveUiColor reactiveUiColor, bool disabled)
 {
 	Color result = reactiveUiColor.neutral;
 
@@ -348,10 +348,7 @@ Color GetReactiveColor(UiBox *uiBoxLastFrame, ReactiveUiColor reactiveUiColor, b
 		bool hovered = uiBoxLastFrame->hovered;
 
 		COMMAND command = uiBoxLastFrame->uiInputs.command;
-		if (command)
-			down = COMMAND_STATES[command].down;
-
-		if (down)
+		if (down || (command && IsCommandDown(commandInputs, command)))
 			result = reactiveUiColor.down;
 		else if (hovered)
 			result = reactiveUiColor.hovered;
@@ -360,12 +357,12 @@ Color GetReactiveColor(UiBox *uiBoxLastFrame, ReactiveUiColor reactiveUiColor, b
 	return result;
 }
 
-Color GetReactiveColorWithState(UiBox *uiBoxLastFrame, ReactiveUiColorState reactiveUiColorState, bool disabled, bool active)
+Color GetReactiveColorWithState(CommandInput *commandInputs, UiBox *uiBoxLastFrame, ReactiveUiColorState reactiveUiColorState, bool disabled, bool active)
 {
 	ReactiveUiColor reactiveUiColor = (active)
 		? reactiveUiColorState.active
 		: reactiveUiColorState.nonActive;
-	Color result = GetReactiveColor(uiBoxLastFrame, reactiveUiColor, disabled);
+	Color result = GetReactiveColor(commandInputs, uiBoxLastFrame, reactiveUiColor, disabled);
 	return result;
 }
 
@@ -517,7 +514,7 @@ void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bo
 		? reactiveUiColorState.active
 		: reactiveUiColorState.nonActive;
 	UiBox *uiBoxLastFrame = GetUiBoxOfStringLastFrame(string);
-	G_UI_STATE.uiSettings.backColor = GetReactiveColor(uiBoxLastFrame, reactiveUiColor, disabled);
+	G_UI_STATE.uiSettings.backColor = GetReactiveColor(G_UI_STATE.commandInputs, uiBoxLastFrame, reactiveUiColor, disabled);
 
 	UiSettings *uiSettings = &G_UI_STATE.uiSettings;
 	uiSettings->frontColor = BLACK;

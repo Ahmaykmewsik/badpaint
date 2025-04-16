@@ -3,15 +3,15 @@
 #include "input.h"
 #include "main.h"
 
-bool IsCommandDown(COMMAND command)
+bool IsCommandDown(CommandInput *commandInputs, COMMAND command)
 {
-    bool result = COMMAND_STATES[command].down;
+    bool result = commandInputs[command].down;
     return result;
 }
 
-bool IsCommandPressed(COMMAND command)
+bool IsCommandPressed(CommandInput *commandInputs, COMMAND command)
 {
-    bool result = COMMAND_STATES[command].pressed;
+    bool result = commandInputs[command].pressed;
     return result;
 }
 

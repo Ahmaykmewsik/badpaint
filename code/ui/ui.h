@@ -92,9 +92,9 @@ struct UiBox
 	UiInputs uiInputs;
 	UiSettings uiSettings;
 
-	bool hovered;
-	bool pressed;
-	bool down;
+	b32 hovered;
+	b32 pressed;
+	b32 down;
 	v2 cursorRelativePixelPos;
 
 	v2 computedRelativePixelPos;
@@ -112,7 +112,7 @@ struct UiState
 #define MAX_UI_BOXES 1000
 	UiBox uiBoxes[2][MAX_UI_BOXES];
 	//TODO: does it make sense to have 1 uiBoxCount when we have two buffers?
-	int uiBoxCount;
+	u32 uiBoxCount;
 
 	UiHashEntry uiHashEntries[MAX_UI_BOXES];
 
@@ -123,6 +123,9 @@ struct UiState
 
 	Arena *twoFrameArenaLastFrame;
 	Arena *twoFrameArenaThisFrame;
+
+	//NOTE: Ahmayk(Temporary hack)
+	CommandInput *commandInputs;
 };
 
 struct ReactiveUiColor
@@ -153,7 +156,7 @@ void SetUiAxis(UiSize uiSize1, UiSize uiSize2);
 void CreateUiBox(unsigned int flags = 0, String string = {});
 void PushUiParent();
 void PopUiParent();
-Color GetReactiveColor(UiBox *uiBoxLastFrame, ReactiveUiColor reactiveUiColor, bool disabled);
+Color GetReactiveColor(CommandInput *commandInputs, UiBox *uiBoxLastFrame, ReactiveUiColor reactiveUiColor, bool disabled);
 void CreateUiButton(String string, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled = false);
 ReactiveUiColorState CreateButtonReactiveUiColorState(Color color);
 
@@ -162,4 +165,3 @@ void CalculateUiRelativePositions(UiBox *uiBox);
 void CalculateUiUpwardsDependentSizes(UiBox *uiBox);
 void CalculateUiDownwardsDependentSizes(UiBox *uiBox);
 void RenderUiEntries(UiBox *uiBox, v2 windowPixelDim, int uiDepth = 0);
-

@@ -3,7 +3,7 @@
 #include <base.h>
 #include "../includes/raylib/src/raylib.h"
 
-enum COMMAND
+enum COMMAND : u32
 {
     COMMAND_NULL,
     COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE,
@@ -15,16 +15,16 @@ enum COMMAND
     COMMAND_COUNT,
 };
 
-struct CommandState
-{
-    KeyboardKey key;
-    bool down;
-    bool pressed;
-    bool sentValue;
-    float value;
+//NOTE: (Ahmayk) This needs to be redesigned to include key modifiers 
+static KeyboardKey COMMAND_KEY_BINDINGS[] = {
+	KEY_NULL,
+	KEY_E,
+	KEY_R,
+	KEY_A,
+	KEY_S,
+	KEY_N,
+	KEY_NULL,
 };
-
-static CommandState COMMAND_STATES[COMMAND_COUNT];
 
 enum BRUSH_EFFECT : u32
 {
@@ -72,6 +72,12 @@ struct Slider
     float max;
 };
 
-bool IsCommandDown(COMMAND command);
-bool IsCommandPressed(COMMAND command);
+struct CommandInput
+{
+	b32 down;
+	b32 pressed;
+};
+
+bool IsCommandDown(CommandInput *commandInputs, COMMAND command);
+bool IsCommandPressed(CommandInput *commandInputs, COMMAND command);
 void InitNotificationMessage(String string, Arena *circularNotificationBuffer);
