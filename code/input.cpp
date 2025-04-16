@@ -1,9 +1,5 @@
 #pragma once
 
-#if __clang__
-#include "headers.h"
-#endif
-
 bool IsCommandDown(COMMAND command)
 {
     bool result = G_COMMAND_STATES[command].down;

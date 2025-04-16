@@ -1,9 +1,5 @@
 #pragma once
 
-#if __clang__
-#include "headers.h"
-#endif
-
 unsigned char *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, Arena *arena)
 {
 	unsigned char *data = NULL;

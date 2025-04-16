@@ -1,9 +1,4 @@
 
-#if __clang__
-#include "headersNondependent.h"
-#include "input.h"
-#endif
-
 enum PNG_FILTER_TYPE : i32
 {
 	PNG_FILTER_TYPE_NONE = 0,

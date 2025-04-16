@@ -1,9 +1,5 @@
 #pragma once
 
-#if __clang__
-#include "headersNondependent.h"
-#endif
-
 inline Vector2 V2ToRayVector(v2 v)
 {
 	return Vector2{v.x, v.y};

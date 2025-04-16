@@ -1,8 +1,31 @@
 
-#include "headers.h"
+#include "base/base.h"
 
-#include "font.h"
-#include "defaultImage.h"
+#include "../includes/raylib/src/external/stb_image.h"
+
+#include "../includes/raylib/src/raylib.h"
+#include "../includes/raylib/src/rlgl.h"
+#include "../includes//raylib//src/external/glfw/include/GLFW/glfw3.h"
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "../includes/raylib/src/external/stb_image_write.h"
+
+#include "../includes/lodepng.h"
+#include "../includes/lodepng.c"
+
+#include "vn_math_external.h"
+#include "input.h"
+#include "ui.h"
+#include "image.h"
+#include "platform_win32.h"
+#include "main.h"
+
+#include "input.cpp"
+#include "image.cpp"
+#include "ui.cpp"
+
+#include "assets/font.h"
+#include "assets/defaultImage.h"
 
 void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned int threadCount)
 {

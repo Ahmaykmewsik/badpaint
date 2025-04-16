@@ -1,5 +1,6 @@
 #include <base/macros.h>
 #include <base/memory.h>
+#include <base/vn_math.h>
 
 void AlignPow2U32(u32 *value, u32 alignment)
 {

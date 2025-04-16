@@ -1,6 +1,8 @@
 
 #include <base/macros.h>
 
+#include <stdio.h> // printf
+
 //NOTE: (Ahmayk) this is just something simple to work in a pinch for now
 
 #if OS_WINDOWS

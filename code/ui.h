@@ -1,10 +1,5 @@
 #pragma once
 
-#if __clang__
-#include "headersNondependent.h"
-#include "input.h"
-#endif
-
 static const char *G_UI_HASH_TAG = "##";
 
 enum UI_SIZE_KIND

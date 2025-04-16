@@ -1,9 +1,5 @@
 #pragma once
 
-#if __clang__
-#include "headersNondependent.h"
-#endif
-
 enum COMMAND
 {
     COMMAND_NULL,
