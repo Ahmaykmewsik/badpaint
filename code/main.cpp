@@ -68,11 +68,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 	Font defaultFont = LoadFontFromMemory(".otf", PAINT_FONT_DATA, ARRAY_COUNT(PAINT_FONT_DATA), 18, 0, 0);
 
-	RaylibRenderData raylibRenderData = {};
-	raylibRenderData.fonts = ARENA_PUSH_ARRAY(&gameMemory.permanentArena, 1, Font);
-	raylibRenderData.fonts[0] = defaultFont;
-	raylibRenderData.fontCount++;
-
 	Color deleteColor = RED;
 
 	Brush currentBrush = {};
@@ -633,7 +628,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 		UiFont defaultUiFont = {};
 		defaultUiFont.id = defaultFont.texture.id;
-		defaultUiFont.baseSize = defaultFont.baseSize;
+		defaultUiFont.data = &defaultFont;
 
 		float titleBarHeight = 20;
 
@@ -909,14 +904,14 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			b->uiFont = defaultUiFont;
 		}
 
-		UiRaylibProcessStrings(uiBufferCurrent, &raylibRenderData);
+		UiRaylibProcessStrings(uiBufferCurrent);
 		UiLayoutBlocks(uiBufferCurrent);
 
 		BeginDrawing();
 
 		ClearBackground(Color{127, 127, 127, 255});
 
-		UiRenderBlocksRaylib(uiBufferCurrent, &raylibRenderData);
+		UiRenderBlocksRaylib(uiBufferCurrent);
 
 		if (isHoveredOnPaintable)
 		{

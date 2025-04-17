@@ -60,7 +60,7 @@ struct UiSettings
 struct UiFont
 {
 	u32 id;
-	u32 baseSize;
+	void *data;
 };
 
 struct UiBlock

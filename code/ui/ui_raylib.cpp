@@ -14,30 +14,7 @@ v2 GetCeneteredPosInRectV2(RectV2 rect, v2 dim)
 	return result;
 }
 
-Font *FindRaylibFont(UiFont uiFont, RaylibRenderData *raylibRenderData)
-{
-	Font *result = {};
-
-	for (u32 i = 0; i < raylibRenderData->fontCount; i++)
-	{
-		if (raylibRenderData->fonts[i].texture.id == uiFont.id)
-		{
-			result = &raylibRenderData->fonts[i];
-			break;
-		}
-	}
-
-	if (!ASSERT(result))
-	{
-		static Font stub;
-		result = &stub;
-		*result = {};
-	}
-
-	return result;
-}
-
-void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth, RaylibRenderData *raylibRenderData)
+void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 {
 	if (uiBlock)
 	{
@@ -64,9 +41,11 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth, RaylibRenderData *raylib
 				pos.x += uiBlock->rect.dim.x - uiBlock->textDim.x;
 			}
 
-			Font *font = FindRaylibFont(uiBlock->uiFont, raylibRenderData);
-
-			DrawTextPro(*font, C_STRING_NULL_TERMINATED(uiBlock->string), V2ToRayVector(pos), {}, 0, (f32) uiBlock->uiFont.baseSize, 1, uiBlock->uiSettings.frontColor);
+			Font *font = (Font*) uiBlock->uiFont.data; 
+			if (ASSERT(font) && ASSERT(uiBlock->uiFont.id == (u32) font->texture.id))
+			{
+				DrawTextPro(*font, C_STRING_NULL_TERMINATED(uiBlock->string), V2ToRayVector(pos), {}, 0, (f32) font->baseSize, 1, uiBlock->uiSettings.frontColor);
+			}
 		}
 
 		if (IsFlag(uiBlock, UI_FLAG_DRAW_TEXTURE) && ASSERT(uiBlock->texture.id))
@@ -96,24 +75,24 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth, RaylibRenderData *raylib
 			DrawRectangleLines((u32)rect.pos.x, (u32)rect.pos.y, (u32)rect.dim.x, (u32)rect.dim.y, uiBlock->uiSettings.borderColor);
 		}
 
-		UiRenderBlockRaylib(uiBlock->firstChild, uiDepth + 2, raylibRenderData);
-		UiRenderBlockRaylib(uiBlock->next, uiDepth, raylibRenderData);
+		UiRenderBlockRaylib(uiBlock->firstChild, uiDepth + 2);
+		UiRenderBlockRaylib(uiBlock->next, uiDepth);
 	}
 }
 
-void UiRenderBlocksRaylib(UiBuffer *uiBuffer, RaylibRenderData *raylibRenderData)
+void UiRenderBlocksRaylib(UiBuffer *uiBuffer)
 {
 	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
 	{
 		UiBlock *uiBlock = &uiBuffer->uiBlocks[i];
 		if (!uiBlock->parent)
 		{
-			UiRenderBlockRaylib(uiBlock, 0, raylibRenderData);
+			UiRenderBlockRaylib(uiBlock, 0);
 		}
 	}
 }
 
-void UiRaylibProcessStrings(UiBuffer *uiBuffer, RaylibRenderData *raylibRenderData)
+void UiRaylibProcessStrings(UiBuffer *uiBuffer)
 {
 	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
 	{
@@ -121,11 +100,11 @@ void UiRaylibProcessStrings(UiBuffer *uiBuffer, RaylibRenderData *raylibRenderDa
 		if (uiBlock->string.length)
 		{
 			uiBlock->string = ReallocString(uiBlock->string, &uiBuffer->arena);
-			if (ASSERT(uiBlock->uiFont.baseSize) && ASSERT(uiBlock->uiFont.id))
+			Font *font = (Font*) uiBlock->uiFont.data;
+			if (ASSERT(font) && ASSERT(uiBlock->uiFont.id == (u32) font->texture.id))
 			{
-				Font *font = FindRaylibFont(uiBlock->uiFont, raylibRenderData);
 				//TODO: (Ahmayk) move this here so we can pass in string and don't need to reallocate for null pointer
-				Vector2 textDim = MeasureTextEx(*font, C_STRING_NULL_TERMINATED(uiBlock->string), (f32) uiBlock->uiFont.baseSize, 1);
+				Vector2 textDim = MeasureTextEx(*font, C_STRING_NULL_TERMINATED(uiBlock->string), (f32) font->baseSize, 1);
 				uiBlock->textDim = RayVectorToV2(textDim);
 			}
 		}
