@@ -123,7 +123,7 @@ struct UiState
 
 UiState *UiInit(Arena *arena);
 UiBlock *GetUiBlockOfHashLastFrame(UiState *uiState, u32 hash);
-UiBlock *CreateUiBlock(UiState *uiState);
+UiBlock *UiCreateBlock(UiState *uiState);
 void UiPushParent(UiState *uiState, UiBlock *uiBlock);
 void UiPopParent(UiState *uiState, UiBlock *uiBlock);
 void UiLayoutBlocks(UiBuffer *uiBuffer);

@@ -14,7 +14,7 @@ UiState *UiInit(Arena *arena)
 	return result;
 }
 
-UiBlock *CreateUiBlock(UiState *uiState)
+UiBlock *UiCreateBlock(UiState *uiState)
 {
 	UiBlock *result = {};
 	UiBuffer *uiBuffer = &uiState->uiBuffers[uiState->uiBufferIndex];

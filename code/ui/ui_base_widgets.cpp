@@ -29,7 +29,7 @@ ColorU32 GetReactiveColorU32(CommandInput *commandInputs, UiBlock *uiBlockLastFr
 
 UiBlock *CreateUiButton(UiState *uiState, String string, u32 hash, UiFont uiFont, UiReactiveColorStates uiReactiveColorStates, b32 active, b32 disabled, CommandInput *commandInputs)
 {
-	UiBlock *result = CreateUiBlock(uiState);
+	UiBlock *result = UiCreateBlock(uiState);
 	result->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED | UI_FLAG_INTERACTABLE;
 	result->hash = hash;
 	result->string = string;
