@@ -72,25 +72,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	raylibRenderData.fonts = ARENA_PUSH_ARRAY(&gameMemory.permanentArena, 1, Font);
 	raylibRenderData.fonts[0] = defaultFont;
 	raylibRenderData.fontCount++;
-	//Font largeFont = LoadFontFromMemory(".otf", PAINT_FONT_DATA, ARRAY_COUNT(PAINT_FONT_DATA), 32, 0, 0);
-
-#if 0
-	u32 dataSize;
-    unsigned char *fileData = LoadFileData("./assets/defaultImage.png", &dataSize);
-
-    // NOTE: Text data buffer size is estimated considering image data size in bytes
-    // and requiring 6 char bytes for every byte: "0x00, "
-    char *txtData = (char *)RL_CALLOC(dataSize*6 + 2000, sizeof(char));
-
-    int byteCount = 0;
-    // Get file name from path and convert variable name to uppercase
-    char *varFileName = "foo";
-    byteCount += sprintf(txtData + byteCount, "static unsigned char %s_DATA[%i] = { ", varFileName, dataSize);
-    for (u32 i = 0; i < dataSize - 1; i++) byteCount += sprintf(txtData + byteCount, ((i%20 == 0)? "0x%x,\n" : "0x%x, "), ((unsigned char *)fileData)[i]);
-    byteCount += sprintf(txtData + byteCount, "0x%x };\n", ((unsigned char *)fileData)[dataSize - 1]);
-    SaveFileText("defaultImage.h", txtData);
-    RL_FREE(txtData);
-#endif
 
 	Color deleteColor = RED;
 
@@ -108,43 +89,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	brushSizeSlider.unsignedIntToChange = &currentBrush.size;
 	brushSizeSlider.min = 1;
 	brushSizeSlider.max = 50;
-
-#if 0
-	iv2 imageDefaultDim = {680, 384}; 
-	gameMemory.rootImageArena = ArenaInit(imageDefaultDim.x * imageDefaultDim.y * 4);
-	if (gameMemory.rootImageArena.memory)
-	{
-		rootImageRaw->dim = imageDefaultDim;
-		rootImageRaw->dataSize = imageDefaultDim.x * imageDefaultDim.y * 4;
-		rootImageRaw->dataU8 = (u8*) ArenaPushSize(&gameMemory.rootImageArena, rootImageRaw->dataSize, {});
-
-		Font font = defaultFont; 
-		Color topColor = Color{0, 115, 198, 255};
-		Color bottomColor = Color{30, 139, 217, 255};
-		//Image imageDefault = GenImageChecked(imageDefaultDim.x, imageDefaultDim.y, 8, 8, WHITE, LIGHTGRAY);
-		Image imageDefault = GenImageGradientV(imageDefaultDim.x, imageDefaultDim.y, topColor, bottomColor);
-		//Image imageDefault = GenImagePerlinNoise(imageDefaultDim.x, imageDefaultDim.y, 69, 69, 8);
-		//Image imageDefault = GenImageColor(imageDefaultDim.x, imageDefaultDim.y, );
-		//ImageColorTint(&imageDefault, Color{1, 27, 208, 255});
-		//ImageColorBrightness(&imageDefault, 40);
-		const char *defaultText = "Drop any image into this window to paint it!";
-		Vector2 textRayVector2 = MeasureTextEx(font, defaultText, (f32) font.baseSize, 1);
-		iv2 textPos;
-		textPos.x = (i32) RoundF32((imageDefaultDim.x * 0.5f) - (textRayVector2.x * 0.5f));
-		textPos.y = (i32) RoundF32((imageDefaultDim.y * 0.5f) - (textRayVector2.y * 0.5f));
-		Vector2 textPosRayVector = {(f32)textPos.x, (f32)textPos.y};
-		iv2 margins = {80, 8};
-		RectIV2 bgRect;
-		bgRect.pos = textPos - margins; 
-		bgRect.dim.x = (i32) textRayVector2.x + (margins.x * 2);
-		bgRect.dim.y = (i32) textRayVector2.y + (margins.y * 2);
-		ImageDrawRectangle(&imageDefault, bgRect.pos.x, bgRect.pos.y, bgRect.dim.x, bgRect.dim.y, WHITE);
-		ImageDrawTextEx(&imageDefault, font, defaultText, textPosRayVector, (f32) font.baseSize, 1.0f, BLACK);
-		memcpy(rootImageRaw->dataU8, imageDefault.data, rootImageRaw->dataSize);
-		UnloadImage(imageDefault);
-		InitializeNewImage(&gameMemory, rootImageRaw, canvas, &loadedTexture, &currentBrush, processedImages, threadCount);
-	}
-#endif
 
 	*rootImageRaw = LoadDataIntoRawImage(&DEFAULT_IMAGE_DATA[0], ARRAY_COUNT(DEFAULT_IMAGE_DATA), &gameMemory);
 	if (rootImageRaw->dataSize)
