@@ -6,18 +6,12 @@
 #include "main.h"
 #include "vn_math_external.h"
 
-static UiState G_UI_STATE = {};
-
-//TODO: (Ahmayk) Temporary hack 
-UiState *GetUiState()
+UiState *UiInit(Arena *arena)
 {
-	return &G_UI_STATE;
-}
-
-void UiInit(Arena *arena)
-{
-	G_UI_STATE.uiBuffers[0].arena = ArenaInitFromArena(arena, MegaByte * 5);
-	G_UI_STATE.uiBuffers[1].arena = ArenaInitFromArena(arena, MegaByte * 5);
+	UiState *result = ARENA_PUSH_STRUCT(arena, UiState);
+	result->uiBuffers[0].arena = ArenaInitFromArena(arena, MegaByte * 5);
+	result->uiBuffers[1].arena = ArenaInitFromArena(arena, MegaByte * 5);
+	return result;
 }
 
 UiBlock *CreateUiBlock(UiState *uiState)
@@ -28,9 +22,9 @@ UiBlock *CreateUiBlock(UiState *uiState)
 	{
 		result = &uiBuffer->uiBlocks[uiBuffer->uiBlockCount++];
 		*result = {};
-		if (G_UI_STATE.parentStackCount)
+		if (uiState->parentStackCount)
 		{
-			result->parent = G_UI_STATE.parentStack[G_UI_STATE.parentStackCount - 1];
+			result->parent = uiState->parentStack[uiState->parentStackCount - 1];
 			if (ASSERT(result->parent))
 			{
 				if (result->parent->firstChild)
@@ -219,11 +213,11 @@ void CalculateUiPosGivenReletativePositions(UiBlock *uiBlock)
 	}
 }
 
-UiBlock *GetUiBlockOfHashLastFrame(u32 hash)
+UiBlock *GetUiBlockOfHashLastFrame(UiState *uiState, u32 hash)
 {
 	UiBlock *result = {};
 
-	UiBuffer *uiBuffer = &G_UI_STATE.uiBuffers[1 - G_UI_STATE.uiBufferIndex];
+	UiBuffer *uiBuffer = &uiState->uiBuffers[1 - uiState->uiBufferIndex];
 	for (u32 i = 0; i < ARRAY_COUNT(uiBuffer->uiBlocks); i++)
 	{
 		if (uiBuffer->uiBlocks[i].hash == hash)
@@ -295,9 +289,9 @@ void UiLayoutBlocks(UiBuffer *uiBuffer)
 	}
 }
 
-void UiEndFrame()
+void UiEndFrame(UiState *uiState)
 {
-	UiBuffer *uiBufferLastFrame = &G_UI_STATE.uiBuffers[1 - G_UI_STATE.uiBufferIndex];
+	UiBuffer *uiBufferLastFrame = &uiState->uiBuffers[1 - uiState->uiBufferIndex];
 	ArenaReset(&uiBufferLastFrame->arena);
-	G_UI_STATE.uiBufferIndex = 1 - G_UI_STATE.uiBufferIndex;
+	uiState->uiBufferIndex = 1 - uiState->uiBufferIndex;
 }

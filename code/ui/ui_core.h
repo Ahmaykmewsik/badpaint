@@ -121,15 +121,13 @@ struct UiState
 	int parentStackCount;
 };
 
-void UiInit(Arena *arena);
-UiState *GetUiState();
-//QUESTION: (Ahmayk) change to pass in ui buffer?
-UiBlock *GetUiBlockOfHashLastFrame(u32 hash);
+UiState *UiInit(Arena *arena);
+UiBlock *GetUiBlockOfHashLastFrame(UiState *uiState, u32 hash);
 UiBlock *CreateUiBlock(UiState *uiState);
 void UiPushParent(UiState *uiState, UiBlock *uiBlock);
 void UiPopParent(UiState *uiState, UiBlock *uiBlock);
 void UiLayoutBlocks(UiBuffer *uiBuffer);
-void UiEndFrame();
+void UiEndFrame(UiState *uiState);
 
 #define CONCAT_IMPL(x, y) x##y
 #define CONCAT(x, y) CONCAT_IMPL(x, y)

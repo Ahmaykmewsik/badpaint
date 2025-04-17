@@ -27,9 +27,8 @@ ColorU32 GetReactiveColorU32(CommandInput *commandInputs, UiBlock *uiBlockLastFr
 	return result;
 }
 
-UiBlock *CreateUiButton(String string, u32 hash, UiFont uiFont, UiReactiveColorStates uiReactiveColorStates, b32 active, b32 disabled, CommandInput *commandInputs)
+UiBlock *CreateUiButton(UiState *uiState, String string, u32 hash, UiFont uiFont, UiReactiveColorStates uiReactiveColorStates, b32 active, b32 disabled, CommandInput *commandInputs)
 {
-	UiState *uiState = GetUiState();
 	UiBlock *result = CreateUiBlock(uiState);
 	result->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED | UI_FLAG_INTERACTABLE;
 	result->hash = hash;
@@ -41,7 +40,7 @@ UiBlock *CreateUiButton(String string, u32 hash, UiFont uiFont, UiReactiveColorS
 	UiReactiveColors uiReactiveColors = (active)
 		? uiReactiveColorStates.active
 		: uiReactiveColorStates.nonActive;
-	UiBlock *uiBlockLastFrame = GetUiBlockOfHashLastFrame(hash);
+	UiBlock *uiBlockLastFrame = GetUiBlockOfHashLastFrame(uiState, hash);
 	result->uiBlockColors.backColor = GetReactiveColorU32(commandInputs, uiBlockLastFrame, uiReactiveColors, disabled);
 	return result;
 }
