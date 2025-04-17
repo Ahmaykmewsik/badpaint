@@ -86,7 +86,7 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 	}
 }
 
-void UiRenderBlocksRaylib(UiBuffer *uiBuffer)
+void UiRaylibRenderBlocks(UiBuffer *uiBuffer)
 {
 	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
 	{

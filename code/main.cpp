@@ -910,7 +910,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 		ClearBackground(Color{127, 127, 127, 255});
 
-		UiRenderBlocksRaylib(uiBufferCurrent);
+		UiRaylibRenderBlocks(uiBufferCurrent);
 
 		if (isHoveredOnPaintable)
 		{

@@ -6,4 +6,4 @@
 
 UiTexture UiRaylibTextureToUiTexture(Texture *texture);
 void UiRaylibProcessStrings(UiBuffer *uiBuffer);
-void UiRenderBlocksRaylib(UiBuffer *uiBuffer);
+void UiRaylibRenderBlocks(UiBuffer *uiBuffer);
