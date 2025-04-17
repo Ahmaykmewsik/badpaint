@@ -20,7 +20,7 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 	{
 		int drawOrder = 0;
 
-		if (IsFlag(uiBlock, UI_FLAG_DRAW_BACKGROUND) && uiBlock->uiBlockColors.backColor.a)
+		if ((uiBlock->flags & UI_FLAG_DRAW_BACKGROUND) && uiBlock->uiBlockColors.backColor.a > 0)
 		{
 			//uiBlock->rect.dim.x = ClampF32(0, uiBlock->rect.dim.x, windowPixelDim.x);
 			//uiBlock->rect.dim.y = ClampF32(0, uiBlock->rect.dim.y, windowPixelDim.y);
@@ -29,20 +29,20 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 			DrawRectangleRec(rect, color);
 		}
 
-		if (IsFlag(uiBlock, UI_FLAG_DRAW_TEXT))
+		if (uiBlock->flags & UI_FLAG_DRAW_TEXT)
 		{
 			v2 pos = uiBlock->rect.pos;
 
-			if (IsFlag(uiBlock, UI_FLAG_ALIGN_TEXT_CENTERED))
+			if (uiBlock->flags & UI_FLAG_ALIGN_TEXT_CENTERED)
 			{
 				pos += GetCeneteredPosInRectV2(uiBlock->rect, uiBlock->textDim);
 			}
-			else if (IsFlag(uiBlock, UI_FLAG_ALIGN_TEXT_RIGHT))
+			else if (uiBlock->flags & UI_FLAG_ALIGN_TEXT_RIGHT)
 			{
 				pos.x += uiBlock->rect.dim.x - uiBlock->textDim.x;
 			}
 
-			Font *font = (Font*) uiBlock->uiFont.data; 
+			Font *font = (Font*) uiBlock->uiFont.data;
 			if (ASSERT(font) && ASSERT(uiBlock->uiFont.id == (u32) font->texture.id))
 			{
 				Color color = ColorU32ToRayColor(uiBlock->uiBlockColors.frontColor);
@@ -50,7 +50,7 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 			}
 		}
 
-		if (IsFlag(uiBlock, UI_FLAG_DRAW_TEXTURE))
+		if (uiBlock->flags & UI_FLAG_DRAW_TEXTURE)
 		{
 			Texture *texture = (Texture *) uiBlock->uiTexture.data;
 			if (ASSERT(texture) && ASSERT(uiBlock->uiTexture.id == texture->id))
@@ -59,7 +59,7 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 				Rectangle source = {0.0f, 0.0f, (f32)texture->width, (f32)texture->height};
 				Rectangle dest = {uiBlock->rect.pos.x, uiBlock->rect.pos.y, (f32)texture->width * scale, (f32)texture->height * scale};
 
-				if (IsFlag(uiBlock, UI_FLAG_ALIGN_TEXTURE_CENTERED))
+				if (uiBlock->flags & UI_FLAG_ALIGN_TEXTURE_CENTERED)
 				{
 					v2 dim;
 					dim.x = dest.width;
@@ -73,7 +73,7 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 			}
 		}
 
-		if (IsFlag(uiBlock, UI_FLAG_DRAW_BORDER))
+		if (uiBlock->flags & UI_FLAG_DRAW_BORDER)
 		{
 			RectV2 rect = uiBlock->rect;
 			Color color = ColorU32ToRayColor(uiBlock->uiBlockColors.borderColor);

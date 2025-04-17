@@ -131,8 +131,6 @@ struct UiState
 
 void UiInit(Arena *arena);
 UiState *GetUiState();
-
-bool IsFlag(UiBlock *uiBlock, unsigned int flags = 0);
 //QUESTION: (Ahmayk) change to pass in ui buffer?
 UiBlock *GetUiBlockOfHashLastFrame(u32 hash);
 UiBlock *CreateUiBlock(UiState *uiState);

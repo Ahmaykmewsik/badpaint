@@ -161,7 +161,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		for (u32 i = 0; i < uiBufferLastFrame->uiBlockCount; i++)
 		{
 			UiBlock *uiBlock = &uiBufferLastFrame->uiBlocks[i];
-			if (IsFlag(uiBlock, UI_FLAG_INTERACTABLE))
+			if (uiBlock->flags & UI_FLAG_INTERACTABLE)
 			{
 				uiBlock->cursorRelativePixelPos = mousePixelPos - uiBlock->rect.pos;
 
@@ -208,7 +208,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		for (u32 i = 0; i < uiBufferLastFrame->uiBlockCount; i++)
 		{
 			UiBlock *uiBlock = &uiBufferLastFrame->uiBlocks[i];
-			if (IsFlag(uiBlock, UI_FLAG_INTERACTABLE))
+			if (uiBlock->flags & UI_FLAG_INTERACTABLE)
 			{
 				if (uiBlock->command)
 				{

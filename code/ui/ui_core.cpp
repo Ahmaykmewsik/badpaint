@@ -59,12 +59,6 @@ UiBlock *CreateUiBlock(UiState *uiState)
 	return result;
 }
 
-bool IsFlag(UiBlock *uiBlock, unsigned int flags)
-{
-	bool result = uiBlock->flags & flags;
-	return result;
-}
-
 void PushUiParent()
 {
 	if (ASSERT(G_UI_STATE.parentStackCount < ARRAY_COUNT(G_UI_STATE.parentStack)))
@@ -143,7 +137,7 @@ void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock)
 		CalculateUiDownwardsDependentSizes(uiBlock->firstChild);
 		CalculateUiDownwardsDependentSizes(uiBlock->next);
 
-		bool isHorizontal = IsFlag(uiBlock, UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
+		bool isHorizontal = uiBlock->flags & UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT;
 
 		for (int j = 0;
 				j < ARRAY_COUNT(uiBlock->uiSizes);
@@ -188,11 +182,11 @@ void CalculateUiRelativePositions(UiBlock *uiBlock)
 {
 	if (uiBlock)
 	{
-		if (IsFlag(uiBlock, UI_FLAG_MANUAL_POSITION) || (!uiBlock->parent || IsFlag(uiBlock->parent, UI_FLAG_CHILDREN_MANUAL_POSITION)))
+		if ((uiBlock->flags & UI_FLAG_MANUAL_POSITION) || (!uiBlock->parent || uiBlock->parent->flags & UI_FLAG_CHILDREN_MANUAL_POSITION))
 		{
 			uiBlock->computedRelativePixelPos = uiBlock->relativePixelPosition;
 		}
-		else if (uiBlock->parent && IsFlag(uiBlock, UI_FLAG_CENTER_IN_PARENT))
+		else if (uiBlock->parent && (uiBlock->flags & UI_FLAG_CENTER_IN_PARENT))
 		{
 			uiBlock->computedRelativePixelPos = PositionInCenterV2(uiBlock->parent->rect.dim, uiBlock->rect.dim);
 		}
@@ -200,7 +194,7 @@ void CalculateUiRelativePositions(UiBlock *uiBlock)
 		{
 			uiBlock->computedRelativePixelPos = uiBlock->prev->computedRelativePixelPos;
 
-			if (uiBlock->parent && IsFlag(uiBlock->parent, UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT))
+			if (uiBlock->parent && (uiBlock->parent->flags & UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT))
 				uiBlock->computedRelativePixelPos.x += uiBlock->prev->rect.dim.x;
 			else
 				uiBlock->computedRelativePixelPos.y += uiBlock->prev->rect.dim.y;
