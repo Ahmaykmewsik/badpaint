@@ -119,9 +119,6 @@ struct UiState
 
 	UiBlock *parentStack[20];
 	int parentStackCount;
-
-	//NOTE: Ahmayk(Temporary hack)
-	CommandInput *commandInputs;
 };
 
 #define CONCAT_IMPL(x, y) x##y

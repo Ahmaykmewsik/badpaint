@@ -11,7 +11,7 @@ warnings = $warnings /wd4100
 # enable local variable initialized but not referneced
 warnings = $warnings /wd4189
 
-flags = $flags $warnings -nologo -EHsc -Zi -FS -DOS_WINDOWS
+flags = $flags $warnings -nologo -showIncludes -EHsc -Zi -FS -DOS_WINDOWS
 
 includes = -I ../includes -I ../code -I ../code/base
 libraries = ./libraries/builtLibraries.lib user32.lib shell32.lib gdi32.lib winmm.lib kernel32.lib Ole32.lib winhttp.lib dbghelp.lib comctl32.lib onecore.lib opengl32.lib
