@@ -67,6 +67,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	SetWindowSize(windowDim.x, windowDim.y);
 
 	Font defaultFont = LoadFontFromMemory(".otf", PAINT_FONT_DATA, ARRAY_COUNT(PAINT_FONT_DATA), 18, 0, 0);
+
+	RaylibRenderData raylibRenderData = {};
+	raylibRenderData.fonts = ARENA_PUSH_ARRAY(&gameMemory.permanentArena, 1, Font);
+	raylibRenderData.fonts[0] = defaultFont;
+	raylibRenderData.fontCount++;
 	//Font largeFont = LoadFontFromMemory(".otf", PAINT_FONT_DATA, ARRAY_COUNT(PAINT_FONT_DATA), 32, 0, 0);
 
 #if 0
@@ -682,7 +687,9 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		UiSettings *uiSettings = &G_UI_STATE->uiSettings;
 		G_UI_STATE->commandInputs = commandInputs;
 
-		uiSettings->font = defaultFont;
+		UiFont defaultUiFont = {};
+		defaultUiFont.id = defaultFont.texture.id;
+		defaultUiFont.baseSize = defaultFont.baseSize;
 
 		float titleBarHeight = 20;
 
@@ -729,6 +736,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 							stringBlock->string = STRING("Congulations! You broke the image. (undo with Ctrl-Z)");
 							stringBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_TEXT};
 							stringBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
+							stringBlock->uiFont = defaultUiFont;
 						}
 					}
 					else
@@ -738,6 +746,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						stringBlock->string = STRING("Drop any image into the window for editing.");
 						stringBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_TEXT};
 						stringBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
+						stringBlock->uiFont = defaultUiFont;
 					}
 				}
 
@@ -796,8 +805,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			h->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 			UiParent()
 			{
-				CreateBrushEffectButton(BRUSH_EFFECT_ERASE, STRING("Ers"), Color{245, 245, 245, 255}, COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE, &currentBrush);
-				CreateBrushEffectButton(BRUSH_EFFECT_REMOVE, STRING("Rmv"), BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_REMOVE], COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE, &currentBrush);
+				CreateBrushEffectButton(BRUSH_EFFECT_ERASE, STRING("Ers"), defaultUiFont, Color{245, 245, 245, 255}, COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE, &currentBrush);
+				CreateBrushEffectButton(BRUSH_EFFECT_REMOVE, STRING("Rmv"), defaultUiFont, BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_REMOVE], COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE, &currentBrush);
 			}
 
 			h = CreateUiBlock(G_UI_STATE, uiSettings);
@@ -806,8 +815,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			h->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 			UiParent()
 			{
-				CreateBrushEffectButton(BRUSH_EFFECT_MAX, STRING("Max"), BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_MAX], COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX, &currentBrush);
-				CreateBrushEffectButton(BRUSH_EFFECT_SHIFT, STRING("Sft"), BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_SHIFT], COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT, &currentBrush);
+				CreateBrushEffectButton(BRUSH_EFFECT_MAX, STRING("Max"), defaultUiFont, BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_MAX], COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX, &currentBrush);
+				CreateBrushEffectButton(BRUSH_EFFECT_SHIFT, STRING("Sft"), defaultUiFont, BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_SHIFT], COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT, &currentBrush);
 			}
 
 			h = CreateUiBlock(G_UI_STATE, uiSettings);
@@ -816,7 +825,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			h->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 			UiParent()
 			{
-				CreateBrushEffectButton(BRUSH_EFFECT_RANDOM, STRING("Rnd"), BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_RANDOM], COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM, &currentBrush);
+				CreateBrushEffectButton(BRUSH_EFFECT_RANDOM, STRING("Rnd"), defaultUiFont, BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_RANDOM], COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM, &currentBrush);
 			}
 
 			{
@@ -831,6 +840,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			sliderNumLabel->string = U32ToString(currentBrush.size, StringArena());
 			sliderNumLabel->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 			sliderNumLabel->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
+			sliderNumLabel->uiFont = defaultUiFont;
 
 			ReactiveUiColor uiColorParent = {};
 			uiColorParent.down = Color{220, 220, 220, 255};
@@ -887,6 +897,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			notifBlock->relativePixelPosition = v2{0, titleBarHeight};
 			notifBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, (f32) windowDim.x};
 			notifBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
+			notifBlock->uiFont = defaultUiFont;
 
 			notificationMessage->alpha -= 0.001f;
 			if (notificationMessage->alpha <= 0)
@@ -907,6 +918,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		blockFps->string = fpsString;
 		blockFps->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_TEXT};
 		blockFps->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
+		blockFps->uiFont = defaultUiFont;
 
 		{
 			uiSettings->frontColor = DARKGRAY;
@@ -916,6 +928,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 			b->relativePixelPosition = v2{windowDim.x * 0.07f, 2};
 			b->string = STRING("Use 0-5 to toggle differnet PNG filter algorythms");
+			b->uiFont = defaultUiFont;
 		}
 
 		{
@@ -926,6 +939,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 			b->relativePixelPosition = v2{windowDim.x * 0.45f, 2};
 			b->string = STRING("PNG Filter: ") + PNG_FILTER_NAMES[canvas->currentPNGFilterType];
+			b->uiFont = defaultUiFont;
 		}
 
 		{
@@ -933,7 +947,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			uiColorState.nonActive.down = DARKGREEN;
 			uiColorState.nonActive.hovered = Color{10, 238, 58, 255};
 			uiColorState.nonActive.neutral = GREEN;
-			UiBlock *b = CreateUiButton(STRING("EXPORT IMAGE"), Murmur3String("exportImage"), uiColorState, false, false);
+			UiBlock *b = CreateUiButton(STRING("EXPORT IMAGE"), Murmur3String("exportImage"), defaultUiFont, uiColorState, false, false);
 			b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, 200};
 			b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 			b->relativePixelPosition = v2{windowDim.x * 0.8f, 2};
@@ -948,16 +962,17 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 			b->relativePixelPosition = v2{-5, (f32) windowDim.y - 20};
 			b->string = STRING(VERSION_NUMBER);
+			b->uiFont = defaultUiFont;
 		}
 
-		UiRaylibProcessStrings(uiBufferCurrent);
+		UiRaylibProcessStrings(uiBufferCurrent, &raylibRenderData);
 		UiLayoutBlocks(uiBufferCurrent);
 
 		BeginDrawing();
 
 		ClearBackground(Color{127, 127, 127, 255});
 
-		UiRenderBlocksRaylib(uiBufferCurrent);
+		UiRenderBlocksRaylib(uiBufferCurrent, &raylibRenderData);
 
 		if (isHoveredOnPaintable)
 		{

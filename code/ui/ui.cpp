@@ -279,7 +279,7 @@ UiBlock *GetUiBlockOfHashLastFrame(u32 hash)
     return result;
 }
 
-UiBlock *CreateUiButton(String string, u32 hash, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled)
+UiBlock *CreateUiButton(String string, u32 hash, UiFont uiFont, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled)
 {
 	ReactiveUiColor reactiveUiColor = (active)
 		? reactiveUiColorState.active
@@ -296,6 +296,7 @@ UiBlock *CreateUiButton(String string, u32 hash, ReactiveUiColorState reactiveUi
 	result->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED | UI_FLAG_INTERACTABLE;
 	result->hash = hash;
 	result->string = string;
+	result->uiFont = uiFont;
 	return result;
 }
 

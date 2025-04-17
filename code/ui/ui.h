@@ -55,7 +55,12 @@ struct UiSettings
 	Color frontColor;
 	Color detailColor;
 	Color borderColor;
-	Font font;
+};
+
+struct UiFont
+{
+	u32 id;
+	u32 baseSize;
 };
 
 struct UiBlock
@@ -71,6 +76,7 @@ struct UiBlock
 	u64 flags;
 	String string;
 	v2 textDim;
+	UiFont uiFont;
 
 	UiSize uiSizes[UI_AXIS_COUNT];
 	f32 value;
@@ -143,7 +149,7 @@ UiBlock *CreateUiBlock(UiState *uiState, UiSettings *uiSettings);
 void PushUiParent();
 void PopUiParent();
 Color GetReactiveColor(CommandInput *commandInputs, UiBlock *uiBlockLastFrame, ReactiveUiColor reactiveUiColor, bool disabled);
-UiBlock *CreateUiButton(String string, u32 hash, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled = false);
+UiBlock *CreateUiButton(String string, u32 hash, UiFont uiFont, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled = false);
 ReactiveUiColorState CreateButtonReactiveUiColorState(Color color);
 
 void UiLayoutBlocks(UiBuffer *uiBuffer);
