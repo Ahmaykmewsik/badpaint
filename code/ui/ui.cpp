@@ -90,19 +90,18 @@ void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock)
 				uiBlock->uiSizes[1].kind == UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT)
 		{
 			ASSERT(uiBlock->parent);
-			ASSERT(uiBlock->texture.width && uiBlock->texture.height);
-			v2 textureDim = GetTextureDim(uiBlock->texture);
+			ASSERT(uiBlock->uiTexture.dim.x && uiBlock->uiTexture.dim.y);
 
 			float scaleX = 1;
 			float scaleY = 1;
 			if (uiBlock->parent->rect.dim.x)
-				scaleX = uiBlock->parent->rect.dim.x / textureDim.x;
+				scaleX = uiBlock->parent->rect.dim.x / uiBlock->uiTexture.dim.x;
 			if (uiBlock->parent->rect.dim.y)
-				scaleY = uiBlock->parent->rect.dim.y / textureDim.y;
+				scaleY = uiBlock->parent->rect.dim.y / uiBlock->uiTexture.dim.y;
 
 			float scale = MinF32(scaleX, scaleY);
 
-			uiBlock->rect.dim = textureDim * scale;
+			uiBlock->rect.dim = uiBlock->uiTexture.dim * scale;
 		}
 		else
 		{
@@ -334,8 +333,8 @@ void UiLayoutBlocks(UiBuffer *uiBuffer)
 			{
 				case UI_SIZE_KIND_TEXTURE:
 					{
-						v2 dim = GetTextureDim(uiBlock->texture);
-						uiBlock->rect.dim.elements[j] = dim.elements[j];
+						//NOTE: (Ahmayk) :(
+						uiBlock->rect.dim.elements[j] = (f32) uiBlock->uiTexture.dim.elements[j];
 						break;
 					}
 				case UI_SIZE_KIND_PIXELS:

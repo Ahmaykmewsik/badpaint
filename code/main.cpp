@@ -664,7 +664,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 							UiBlock *finalTexture = CreateUiBlock(G_UI_STATE, uiSettings);
 							finalTexture->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE;
 							finalTexture->hash = HASH_FINAL_TEXTURE;
-							finalTexture->texture = loadedTexture;
+							finalTexture->uiTexture = UiRaylibTextureToUiTexture(&loadedTexture);
 							finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
 							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
 						}
@@ -699,7 +699,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					{
 						UiBlock *b = CreateUiBlock(G_UI_STATE, uiSettings);
 						b->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT;
-						b->texture = canvas->textureVisualizedFilteredRootImage;
+						b->uiTexture = UiRaylibTextureToUiTexture(&canvas->textureVisualizedFilteredRootImage);
 						b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
 						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
 					}
@@ -708,7 +708,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						UiBlock *b = CreateUiBlock(G_UI_STATE, uiSettings);
 						b->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE;
 						b->hash = HASH_CANVAS;
-						b->texture = canvas->textureDrawing;
+						b->uiTexture = UiRaylibTextureToUiTexture(&canvas->textureDrawing);
 						b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
 						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
 					}

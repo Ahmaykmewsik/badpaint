@@ -48,24 +48,27 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 			}
 		}
 
-		if (IsFlag(uiBlock, UI_FLAG_DRAW_TEXTURE) && ASSERT(uiBlock->texture.id))
+		if (IsFlag(uiBlock, UI_FLAG_DRAW_TEXTURE))
 		{
-			float scale = uiBlock->rect.dim.x / uiBlock->texture.width;
-			Texture texture = uiBlock->texture;
-			Rectangle source = {0.0f, 0.0f, (float)texture.width, (float)texture.height};
-			Rectangle dest = {uiBlock->rect.pos.x, uiBlock->rect.pos.y, (float)texture.width * scale, (float)texture.height * scale};
-
-			if (IsFlag(uiBlock, UI_FLAG_ALIGN_TEXTURE_CENTERED))
+			Texture *texture = (Texture *) uiBlock->uiTexture.data;
+			if (ASSERT(texture) && ASSERT(uiBlock->uiTexture.id == texture->id))
 			{
-				v2 dim;
-				dim.x = dest.width;
-				dim.y = dest.height;
-				v2 relativePos = GetCeneteredPosInRectV2(uiBlock->rect, dim);
-				dest.x += relativePos.x;
-				dest.y += relativePos.y;
-			}
+				float scale = uiBlock->rect.dim.x / texture->width;
+				Rectangle source = {0.0f, 0.0f, (f32)texture->width, (f32)texture->height};
+				Rectangle dest = {uiBlock->rect.pos.x, uiBlock->rect.pos.y, (f32)texture->width * scale, (f32)texture->height * scale};
 
-			DrawTexturePro(uiBlock->texture, source, dest, Vector2{0, 0}, 0, WHITE);
+				if (IsFlag(uiBlock, UI_FLAG_ALIGN_TEXTURE_CENTERED))
+				{
+					v2 dim;
+					dim.x = dest.width;
+					dim.y = dest.height;
+					v2 relativePos = GetCeneteredPosInRectV2(uiBlock->rect, dim);
+					dest.x += relativePos.x;
+					dest.y += relativePos.y;
+				}
+
+				DrawTexturePro(*texture, source, dest, Vector2{0, 0}, 0, WHITE);
+			}
 		}
 
 		if (IsFlag(uiBlock, UI_FLAG_DRAW_BORDER))
@@ -111,3 +114,12 @@ void UiRaylibProcessStrings(UiBuffer *uiBuffer)
 	}
 }
 
+UiTexture UiRaylibTextureToUiTexture(Texture *texture)
+{
+	UiTexture result;
+	result.id = texture->id;
+	result.dim.x = (i32) texture->width;
+	result.dim.y = (i32) texture->height;
+	result.data = texture;
+	return result;
+}

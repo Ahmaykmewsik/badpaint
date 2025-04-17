@@ -63,6 +63,13 @@ struct UiFont
 	void *data;
 };
 
+struct UiTexture
+{
+	u32 id;
+	iv2 dim;
+	void *data;
+};
+
 struct UiBlock
 {
 	u32 hash;
@@ -81,7 +88,7 @@ struct UiBlock
 	UiSize uiSizes[UI_AXIS_COUNT];
 	f32 value;
 	v2 relativePixelPosition;
-	Texture texture;
+	UiTexture uiTexture;
 	v2 manualDim;
 	COMMAND command;
 	SLIDER_ACTION sliderAction;
