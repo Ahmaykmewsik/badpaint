@@ -124,20 +124,6 @@ struct UiState
 	CommandInput *commandInputs;
 };
 
-struct UiReactiveColors
-{
-	ColorU32 neutral;
-	ColorU32 hovered;
-	ColorU32 down;
-	ColorU32 disabled;
-};
-
-struct UiReactiveColorStates
-{
-	UiReactiveColors active;
-	UiReactiveColors nonActive;
-};
-
 #define CONCAT_IMPL(x, y) x##y
 #define CONCAT(x, y) CONCAT_IMPL(x, y)
 #define UiDeferLoop(begin, end) for (int CONCAT(_i_, __LINE__) = ((begin), 0); !CONCAT(_i_, __LINE__); CONCAT(_i_, __LINE__) += 1, (end))
@@ -152,9 +138,6 @@ UiBlock *GetUiBlockOfHashLastFrame(u32 hash);
 UiBlock *CreateUiBlock(UiState *uiState);
 void PushUiParent();
 void PopUiParent();
-ColorU32 GetReactiveColorU32(CommandInput *commandInputs, UiBlock *uiBlockLastFrame, UiReactiveColors uiReactiveColors, b32 disabled);
-UiBlock *CreateUiButton(String string, u32 hash, UiFont uiFont, UiReactiveColorStates uiReactiveColorStates, b32 active, b32 disabled = false);
-UiReactiveColorStates CreateButtonUiReactiveColorStates(ColorU32 color);
 
 void UiLayoutBlocks(UiBuffer *uiBuffer);
 void UiEndFrame();

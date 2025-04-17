@@ -7,7 +7,8 @@
 #include "../includes/raylib/src/raylib.h"
 #include "../includes//raylib//src/external/glfw/include/GLFW/glfw3.h"
 
-#include "ui/ui.h"
+#include "ui/ui_core.h"
+#include "ui/ui_base_widgets.h"
 #include "ui/ui_raylib.h"
 #include "widgets.h"
 #include "vn_math_external.h"
