@@ -78,3 +78,23 @@ inline Color RandomColor()
 	result.a = 255; 
 	return result;
 }
+
+inline Color ColorU32ToRayColor(ColorU32 color)
+{
+	Color result;
+	result.r = color.r;
+	result.g = color.g; 
+	result.b = color.b; 
+	result.a = color.a; 
+	return result;
+}
+
+inline ColorU32 RayColorToColorU32(Color color)
+{
+	ColorU32 result;
+	result.r = color.r;
+	result.g = color.g; 
+	result.b = color.b; 
+	result.a = color.a; 
+	return result;
+}

@@ -48,13 +48,12 @@ enum UI_FLAGS
 	UI_FLAG_CENTER_IN_PARENT = (1 << 19),
 };
 
-struct UiSettings
+struct UiBlockColors
 {
 	//TODO: Think of different names for these colors I'm always forgetting which goes to what
-	Color backColor;
-	Color frontColor;
-	Color detailColor;
-	Color borderColor;
+	ColorU32 backColor;
+	ColorU32 frontColor;
+	ColorU32 borderColor;
 };
 
 struct UiFont
@@ -93,7 +92,7 @@ struct UiBlock
 	COMMAND command;
 	SLIDER_ACTION sliderAction;
 
-	UiSettings uiSettings;
+	UiBlockColors uiBlockColors;
 
 	b32 hovered;
 	b32 pressed;
@@ -121,24 +120,22 @@ struct UiState
 	UiBlock *parentStack[20];
 	int parentStackCount;
 
-	UiSettings uiSettings;
-
 	//NOTE: Ahmayk(Temporary hack)
 	CommandInput *commandInputs;
 };
 
-struct ReactiveUiColor
+struct UiReactiveColors
 {
-	Color neutral;
-	Color hovered;
-	Color down;
-	Color disabled;
+	ColorU32 neutral;
+	ColorU32 hovered;
+	ColorU32 down;
+	ColorU32 disabled;
 };
 
-struct ReactiveUiColorState
+struct UiReactiveColorStates
 {
-	ReactiveUiColor active;
-	ReactiveUiColor nonActive;
+	UiReactiveColors active;
+	UiReactiveColors nonActive;
 };
 
 #define CONCAT_IMPL(x, y) x##y
@@ -152,12 +149,12 @@ UiState *GetUiState();
 bool IsFlag(UiBlock *uiBlock, unsigned int flags = 0);
 //QUESTION: (Ahmayk) change to pass in ui buffer?
 UiBlock *GetUiBlockOfHashLastFrame(u32 hash);
-UiBlock *CreateUiBlock(UiState *uiState, UiSettings *uiSettings);
+UiBlock *CreateUiBlock(UiState *uiState);
 void PushUiParent();
 void PopUiParent();
-Color GetReactiveColor(CommandInput *commandInputs, UiBlock *uiBlockLastFrame, ReactiveUiColor reactiveUiColor, bool disabled);
-UiBlock *CreateUiButton(String string, u32 hash, UiFont uiFont, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled = false);
-ReactiveUiColorState CreateButtonReactiveUiColorState(Color color);
+ColorU32 GetReactiveColorU32(CommandInput *commandInputs, UiBlock *uiBlockLastFrame, UiReactiveColors uiReactiveColors, b32 disabled);
+UiBlock *CreateUiButton(String string, u32 hash, UiFont uiFont, UiReactiveColorStates uiReactiveColorStates, b32 active, b32 disabled = false);
+UiReactiveColorStates CreateButtonUiReactiveColorStates(ColorU32 color);
 
 void UiLayoutBlocks(UiBuffer *uiBuffer);
 void UiEndFrame();

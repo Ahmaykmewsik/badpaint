@@ -145,6 +145,27 @@ union v4
 
 v4 operator*(v4 a, f32 b);
 
+union ColorU32
+{
+	struct
+	{
+		u8 r;
+		u8 g;
+		u8 b;
+		u8 a;
+	};
+
+	struct
+	{
+		u32 color;
+	};
+};
+
+#define COLORU32_BLACK     ColorU32{0, 0, 0, 255}
+#define COLORU32_GRAY      ColorU32{130, 130, 130, 255}
+#define COLORU32_DARKGRAY  ColorU32{80, 80, 80, 255}
+#define COLORU32_RED       ColorU32{230, 41, 55, 255}
+
 struct LineV2
 {
 	v2 start;

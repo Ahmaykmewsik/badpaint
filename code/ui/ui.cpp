@@ -20,7 +20,7 @@ void UiInit(Arena *arena)
 	G_UI_STATE.uiBuffers[1].arena = ArenaInitFromArena(arena, MegaByte * 5);
 }
 
-UiBlock *CreateUiBlock(UiState *uiState, UiSettings *uiSettings)
+UiBlock *CreateUiBlock(UiState *uiState)
 {
 	UiBlock *result = {};
 	UiBuffer *uiBuffer = &uiState->uiBuffers[uiState->uiBufferIndex];
@@ -28,23 +28,24 @@ UiBlock *CreateUiBlock(UiState *uiState, UiSettings *uiSettings)
 	{
 		result = &uiBuffer->uiBlocks[uiBuffer->uiBlockCount++];
 		*result = {};
-		result->uiSettings = *uiSettings;
 		if (G_UI_STATE.parentStackCount)
 		{
 			result->parent = G_UI_STATE.parentStack[G_UI_STATE.parentStackCount - 1];
-			ASSERT(result->parent);
-			if (result->parent->firstChild)
+			if (ASSERT(result->parent))
 			{
-				ASSERT(result->parent->lastChild);
-				result->prev = result->parent->lastChild;
-				result->parent->lastChild->next = result;
-			}
-			else
-			{
-				result->parent->firstChild = result;
-			}
+				if (result->parent->firstChild)
+				{
+					ASSERT(result->parent->lastChild);
+					result->prev = result->parent->lastChild;
+					result->parent->lastChild->next = result;
+				}
+				else
+				{
+					result->parent->firstChild = result;
+				}
 
-			result->parent->lastChild = result;
+				result->parent->lastChild = result;
+			}
 		}
 	}
 
@@ -224,33 +225,30 @@ void CalculateUiPosGivenReletativePositions(UiBlock *uiBlock)
 	}
 }
 
-Color GetReactiveColor(CommandInput *commandInputs, UiBlock *uiBlockLastFrame, ReactiveUiColor reactiveUiColor, bool disabled)
+ColorU32 GetReactiveColorU32(CommandInput *commandInputs, UiBlock *uiBlockLastFrame, UiReactiveColors uiReactiveColors, b32 disabled)
 {
-	Color result = reactiveUiColor.neutral;
+	ColorU32 result = uiReactiveColors.neutral;
 
 	if (disabled)
-		result = reactiveUiColor.disabled;
+	{
+		result = uiReactiveColors.disabled;
+	}
 	else if (uiBlockLastFrame)
 	{
-		bool down = uiBlockLastFrame->down;
-		bool hovered = uiBlockLastFrame->hovered;
+		b32 down = uiBlockLastFrame->down;
+		b32 hovered = uiBlockLastFrame->hovered;
 
 		COMMAND command = uiBlockLastFrame->command;
 		if (down || (command && IsCommandDown(commandInputs, command)))
-			result = reactiveUiColor.down;
+		{
+			result = uiReactiveColors.down;
+		}
 		else if (hovered)
-			result = reactiveUiColor.hovered;
+		{
+			result = uiReactiveColors.hovered;
+		}
 	}
 
-	return result;
-}
-
-Color GetReactiveColorWithState(CommandInput *commandInputs, UiBlock *uiBlockLastFrame, ReactiveUiColorState reactiveUiColorState, bool disabled, bool active)
-{
-	ReactiveUiColor reactiveUiColor = (active)
-		? reactiveUiColorState.active
-		: reactiveUiColorState.nonActive;
-	Color result = GetReactiveColor(commandInputs, uiBlockLastFrame, reactiveUiColor, disabled);
 	return result;
 }
 
@@ -278,39 +276,36 @@ UiBlock *GetUiBlockOfHashLastFrame(u32 hash)
     return result;
 }
 
-UiBlock *CreateUiButton(String string, u32 hash, UiFont uiFont, ReactiveUiColorState reactiveUiColorState, bool active, bool disabled)
+UiBlock *CreateUiButton(String string, u32 hash, UiFont uiFont, UiReactiveColorStates uiReactiveColorStates, b32 active, b32 disabled)
 {
-	ReactiveUiColor reactiveUiColor = (active)
-		? reactiveUiColorState.active
-		: reactiveUiColorState.nonActive;
-	UiBlock *uiBlockLastFrame = GetUiBlockOfHashLastFrame(hash);
-	G_UI_STATE.uiSettings.backColor = GetReactiveColor(G_UI_STATE.commandInputs, uiBlockLastFrame, reactiveUiColor, disabled);
-
-	UiSettings *uiSettings = &G_UI_STATE.uiSettings;
-	uiSettings->frontColor = BLACK;
-	uiSettings->detailColor = BLACK;
-	uiSettings->borderColor = (active) ? BLACK : GRAY;
-
-	UiBlock *result = CreateUiBlock(&G_UI_STATE, uiSettings);
+	UiBlock *result = CreateUiBlock(&G_UI_STATE);
 	result->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED | UI_FLAG_INTERACTABLE;
 	result->hash = hash;
 	result->string = string;
 	result->uiFont = uiFont;
+	result->uiBlockColors.frontColor = COLORU32_BLACK;
+	result->uiBlockColors.borderColor = (active) ? COLORU32_BLACK: COLORU32_GRAY;
+
+	UiReactiveColors uiReactiveColors = (active)
+		? uiReactiveColorStates.active
+		: uiReactiveColorStates.nonActive;
+	UiBlock *uiBlockLastFrame = GetUiBlockOfHashLastFrame(hash);
+	result->uiBlockColors.backColor = GetReactiveColorU32(G_UI_STATE.commandInputs, uiBlockLastFrame, uiReactiveColors, disabled);
 	return result;
 }
 
-Color AddConstantToColor(Color color, i8 constant)
+ColorU32 AddConstantToColor(ColorU32 color, i8 constant)
 {
-	Color result = color;
+	ColorU32 result = color;
 	result.r = (u8) ClampI32(0, result.r + constant, 255);
 	result.g = (u8) ClampI32(0, result.g + constant, 255);
 	result.b = (u8) ClampI32(0, result.b + constant, 255);
 	return result;
 }
 
-ReactiveUiColorState CreateButtonReactiveUiColorState(Color color)
+UiReactiveColorStates CreateButtonUiReactiveColorStates(ColorU32 color)
 {
-	ReactiveUiColorState result = {};
+	UiReactiveColorStates result = {};
 
 	result.active.down = AddConstantToColor(color, -100);
 	result.active.hovered = AddConstantToColor(color, 10);

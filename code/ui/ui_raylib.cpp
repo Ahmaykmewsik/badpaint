@@ -20,12 +20,13 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 	{
 		int drawOrder = 0;
 
-		if (IsFlag(uiBlock, UI_FLAG_DRAW_BACKGROUND) && uiBlock->uiSettings.backColor.a)
+		if (IsFlag(uiBlock, UI_FLAG_DRAW_BACKGROUND) && uiBlock->uiBlockColors.backColor.a)
 		{
 			//uiBlock->rect.dim.x = ClampF32(0, uiBlock->rect.dim.x, windowPixelDim.x);
 			//uiBlock->rect.dim.y = ClampF32(0, uiBlock->rect.dim.y, windowPixelDim.y);
 			Rectangle rect = RectToRayRectangle(uiBlock->rect);
-			DrawRectangleRec(rect, uiBlock->uiSettings.backColor);
+			Color color = ColorU32ToRayColor(uiBlock->uiBlockColors.backColor);
+			DrawRectangleRec(rect, color);
 		}
 
 		if (IsFlag(uiBlock, UI_FLAG_DRAW_TEXT))
@@ -44,7 +45,8 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 			Font *font = (Font*) uiBlock->uiFont.data; 
 			if (ASSERT(font) && ASSERT(uiBlock->uiFont.id == (u32) font->texture.id))
 			{
-				DrawTextPro(*font, C_STRING_NULL_TERMINATED(uiBlock->string), V2ToRayVector(pos), {}, 0, (f32) font->baseSize, 1, uiBlock->uiSettings.frontColor);
+				Color color = ColorU32ToRayColor(uiBlock->uiBlockColors.frontColor);
+				DrawTextPro(*font, C_STRING_NULL_TERMINATED(uiBlock->string), V2ToRayVector(pos), {}, 0, (f32) font->baseSize, 1, color);
 			}
 		}
 
@@ -74,8 +76,9 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 		if (IsFlag(uiBlock, UI_FLAG_DRAW_BORDER))
 		{
 			RectV2 rect = uiBlock->rect;
+			Color color = ColorU32ToRayColor(uiBlock->uiBlockColors.borderColor);
 			//TODO: (Ahmayk) Bleh. Need to have concept in UI of pixel-perfect positioning vs not
-			DrawRectangleLines((u32)rect.pos.x, (u32)rect.pos.y, (u32)rect.dim.x, (u32)rect.dim.y, uiBlock->uiSettings.borderColor);
+			DrawRectangleLines((u32)rect.pos.x, (u32)rect.pos.y, (u32)rect.dim.x, (u32)rect.dim.y, color);
 		}
 
 		UiRenderBlockRaylib(uiBlock->firstChild, uiDepth + 2);
