@@ -687,8 +687,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		float titleBarHeight = 20;
 
 		UiBlock *root = CreateUiBlock(G_UI_STATE, uiSettings);
-		root->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, (f32) windowDim.x};
-		root->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, (f32) windowDim.y};
+		root->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, (f32) windowDim.x};
+		root->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, (f32) windowDim.y};
 		UiParent()
 		{
 			uiSettings->frontColor = BLACK;
@@ -697,18 +697,18 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 			UiBlock *titleBar = CreateUiBlock(G_UI_STATE, uiSettings);
 			titleBar->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT;
-			titleBar->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, (f32) windowDim.x};
-			titleBar->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, titleBarHeight};
+			titleBar->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, (f32) windowDim.x};
+			titleBar->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, titleBarHeight};
 
 			UiBlock *body = CreateUiBlock(G_UI_STATE, uiSettings);
-			body->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, (f32) windowDim.x};
-			body->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, windowDim.y - titleBarHeight};
+			body->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, (f32) windowDim.x};
+			body->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, windowDim.y - titleBarHeight};
 			UiParent()
 			{
 				UiBlock *topPart = CreateUiBlock(G_UI_STATE, uiSettings);
 				topPart->flags = UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER;
-				topPart->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
-				topPart->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5f};
+				topPart->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
+				topPart->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5f};
 				UiParent()
 				{
 					if (loadedTexture.id)
@@ -719,16 +719,16 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 							finalTexture->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE;
 							finalTexture->hash = HASH_FINAL_TEXTURE;
 							finalTexture->texture = loadedTexture;
-							finalTexture->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
-							finalTexture->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
+							finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
+							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
 						}
 						else
 						{
 							UiBlock *stringBlock = CreateUiBlock(G_UI_STATE, uiSettings);
 							stringBlock->flags = UI_FLAG_DRAW_TEXT | UI_FLAG_CENTER_IN_PARENT;
 							stringBlock->string = STRING("Congulations! You broke the image. (undo with Ctrl-Z)");
-							stringBlock->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_TEXT};
-							stringBlock->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
+							stringBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_TEXT};
+							stringBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 						}
 					}
 					else
@@ -736,15 +736,15 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						UiBlock *stringBlock = CreateUiBlock(G_UI_STATE, uiSettings);
 						stringBlock->flags = UI_FLAG_DRAW_TEXT | UI_FLAG_CENTER_IN_PARENT;
 						stringBlock->string = STRING("Drop any image into the window for editing.");
-						stringBlock->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_TEXT};
-						stringBlock->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
+						stringBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_TEXT};
+						stringBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 					}
 				}
 
 				UiBlock *bottomPart = CreateUiBlock(G_UI_STATE, uiSettings);
 				bottomPart->flags = UI_FLAG_DRAW_BORDER;
-				bottomPart->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
-				bottomPart->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5f};
+				bottomPart->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
+				bottomPart->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5f};
 				UiParent()
 				{
 					if (canvas->textureVisualizedFilteredRootImage.id)
@@ -752,8 +752,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						UiBlock *b = CreateUiBlock(G_UI_STATE, uiSettings);
 						b->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT;
 						b->texture = canvas->textureVisualizedFilteredRootImage;
-						b->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
-						b->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
+						b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
+						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
 					}
 					if (canvas->textureDrawing.id)
 					{
@@ -761,8 +761,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						b->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE;
 						b->hash = HASH_CANVAS;
 						b->texture = canvas->textureDrawing;
-						b->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
-						b->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
+						b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
+						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
 					}
 				}
 			}
@@ -773,8 +773,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 		UiBlock *sideToolbar = CreateUiBlock(G_UI_STATE, uiSettings);
 		sideToolbar->flags = UI_FLAG_DRAW_BACKGROUND;
-		sideToolbar->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, toolbarWidth};
-		sideToolbar->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS}; //??
+		sideToolbar->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, toolbarWidth};
+		sideToolbar->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS}; //??
 		sideToolbar->relativePixelPosition = v2{0, (float)titleBarHeight};
 
 		UiParent()
@@ -785,16 +785,15 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			uiSettings->borderColor = GRAY;
 			{
 				UiBlock *b = CreateUiBlock(G_UI_STATE, uiSettings);
-				b->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
-				b->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, 10};
+				b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
+				b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, 10};
 			}
 
 			UiBlock *h;
 			h = CreateUiBlock(G_UI_STATE, uiSettings);
 			h->flags = UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT;
-			h->flags = UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT;
-			h->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
-			h->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
+			h->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
+			h->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 			UiParent()
 			{
 				CreateBrushEffectButton(BRUSH_EFFECT_ERASE, STRING("Ers"), Color{245, 245, 245, 255}, COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE, &currentBrush);
@@ -803,9 +802,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 			h = CreateUiBlock(G_UI_STATE, uiSettings);
 			h->flags = UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT;
-			h->flags = UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT;
-			h->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
-			h->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
+			h->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
+			h->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 			UiParent()
 			{
 				CreateBrushEffectButton(BRUSH_EFFECT_MAX, STRING("Max"), BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_MAX], COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX, &currentBrush);
@@ -814,9 +812,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 			h = CreateUiBlock(G_UI_STATE, uiSettings);
 			h->flags = UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT;
-			h->flags = UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT;
-			h->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
-			h->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
+			h->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
+			h->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 			UiParent()
 			{
 				CreateBrushEffectButton(BRUSH_EFFECT_RANDOM, STRING("Rnd"), BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_RANDOM], COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM, &currentBrush);
@@ -824,16 +821,16 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 			{
 				UiBlock *b = CreateUiBlock(G_UI_STATE, uiSettings);
-				b->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
-				b->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, 10};
+				b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
+				b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, 10};
 			}
 
 			uiSettings->backColor = Color{191, 191, 191, 255};
 			UiBlock *sliderNumLabel = CreateUiBlock(G_UI_STATE, uiSettings);
 			sliderNumLabel->flags = UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED;
 			sliderNumLabel->string = U32ToString(currentBrush.size, StringArena());
-			sliderNumLabel->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
-			sliderNumLabel->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
+			sliderNumLabel->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
+			sliderNumLabel->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 
 			ReactiveUiColor uiColorParent = {};
 			uiColorParent.down = Color{220, 220, 220, 255};
@@ -849,8 +846,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			UiBlock *sliderBase = CreateUiBlock(G_UI_STATE, uiSettings);
 			sliderBase->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_INTERACTABLE | UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER;
 			sliderBase->hash = hashBrushSizeSlider;
-			sliderBase->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
-			sliderBase->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT * 0.5f};
+			sliderBase->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
+			sliderBase->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT * 0.5f};
 			sliderBase->value = value;
 			sliderBase->sliderAction = SLIDER_ACTION_BRUSH_SIZE;
 			UiParent()
@@ -863,8 +860,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 				UiBlock *sliderTop = CreateUiBlock(G_UI_STATE, uiSettings);
 				sliderTop->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER;
-				sliderTop->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, value};
-				sliderTop->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
+				sliderTop->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, value};
+				sliderTop->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 			}
 
 			uiSettings->backColor = BRUSH_EFFECT_COLORS_PRIMARY[currentBrush.brushEffect];
@@ -875,8 +872,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			uiSettings->borderColor = BLACK;
 			UiBlock *brushView = CreateUiBlock(G_UI_STATE, uiSettings);
 			brushView->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER;
-			brushView->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, toolbarWidth};
-			brushView->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, toolbarWidth};
+			brushView->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, toolbarWidth};
+			brushView->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, toolbarWidth};
 		}
 
 		NotificationMessage *notificationMessage = GetNotificationMessage();
@@ -888,8 +885,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			notifBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT;
 			notifBlock->string = notificationMessage->string;
 			notifBlock->relativePixelPosition = v2{0, titleBarHeight};
-			notifBlock->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, (f32) windowDim.x};
-			notifBlock->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
+			notifBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, (f32) windowDim.x};
+			notifBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 
 			notificationMessage->alpha -= 0.001f;
 			if (notificationMessage->alpha <= 0)
@@ -908,15 +905,15 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		UiBlock *blockFps = CreateUiBlock(G_UI_STATE, uiSettings);
 		blockFps->flags = UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT;
 		blockFps->string = fpsString;
-		blockFps->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_TEXT};
-		blockFps->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
+		blockFps->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_TEXT};
+		blockFps->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 
 		{
 			uiSettings->frontColor = DARKGRAY;
 			UiBlock *b = CreateUiBlock(G_UI_STATE, uiSettings);
 			b->flags = UI_FLAG_DRAW_TEXT;
-			b->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_TEXT};
-			b->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
+			b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_TEXT};
+			b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 			b->relativePixelPosition = v2{windowDim.x * 0.07f, 2};
 			b->string = STRING("Use 0-5 to toggle differnet PNG filter algorythms");
 		}
@@ -925,8 +922,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			uiSettings->frontColor = BLACK;
 			UiBlock *b = CreateUiBlock(G_UI_STATE, uiSettings);
 			b->flags = UI_FLAG_DRAW_TEXT;
-			b->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_TEXT};
-			b->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
+			b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_TEXT};
+			b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 			b->relativePixelPosition = v2{windowDim.x * 0.45f, 2};
 			b->string = STRING("PNG Filter: ") + PNG_FILTER_NAMES[canvas->currentPNGFilterType];
 		}
@@ -937,8 +934,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			uiColorState.nonActive.hovered = Color{10, 238, 58, 255};
 			uiColorState.nonActive.neutral = GREEN;
 			UiBlock *b = CreateUiButton(STRING("EXPORT IMAGE"), Murmur3String("exportImage"), uiColorState, false, false);
-			b->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, 200};
-			b->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
+			b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, 200};
+			b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 			b->relativePixelPosition = v2{windowDim.x * 0.8f, 2};
 			b->command = COMMAND_EXPORT_IMAGE;
 		}
@@ -947,8 +944,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			uiSettings->frontColor = DARKGRAY;
 			UiBlock *b = CreateUiBlock(G_UI_STATE, uiSettings);
 			b->flags = UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT;
-			b->uiSettings.uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, (f32) windowDim.x};
-			b->uiSettings.uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
+			b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, (f32) windowDim.x};
+			b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 			b->relativePixelPosition = v2{-5, (f32) windowDim.y - 20};
 			b->string = STRING(VERSION_NUMBER);
 		}

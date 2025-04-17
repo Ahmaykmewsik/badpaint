@@ -50,9 +50,6 @@ enum UI_FLAGS
 
 struct UiSettings
 {
-	f32 startValue;
-	f32 endValue;
-	UiSize uiSizes[UI_AXIS_COUNT];
 	//TODO: Think of different names for these colors I'm always forgetting which goes to what
 	Color backColor;
 	Color frontColor;
@@ -75,6 +72,7 @@ struct UiBlock
 	String string;
 	v2 textDim;
 
+	UiSize uiSizes[UI_AXIS_COUNT];
 	f32 value;
 	v2 relativePixelPosition;
 	Texture texture;

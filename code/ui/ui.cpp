@@ -86,8 +86,8 @@ void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock)
 {
 	if (uiBlock)
 	{
-		if (uiBlock->uiSettings.uiSizes[0].kind == UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT ||
-				uiBlock->uiSettings.uiSizes[1].kind == UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT)
+		if (uiBlock->uiSizes[0].kind == UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT ||
+				uiBlock->uiSizes[1].kind == UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT)
 		{
 			ASSERT(uiBlock->parent);
 			ASSERT(uiBlock->texture.width && uiBlock->texture.height);
@@ -107,10 +107,10 @@ void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock)
 		else
 		{
 			for (int j = 0;
-					j < ARRAY_COUNT(uiBlock->uiSettings.uiSizes);
+					j < ARRAY_COUNT(uiBlock->uiSizes);
 					j++)
 			{
-				UiSize uiSize = uiBlock->uiSettings.uiSizes[j];
+				UiSize uiSize = uiBlock->uiSizes[j];
 				switch (uiSize.kind)
 				{
 					case UI_SIZE_KIND_PERCENT_OF_PARENT:
@@ -146,10 +146,10 @@ void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock)
 		bool isHorizontal = IsFlag(uiBlock, UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT);
 
 		for (int j = 0;
-				j < ARRAY_COUNT(uiBlock->uiSettings.uiSizes);
+				j < ARRAY_COUNT(uiBlock->uiSizes);
 				j++)
 		{
-			UiSize uiSize = uiBlock->uiSettings.uiSizes[j];
+			UiSize uiSize = uiBlock->uiSizes[j];
 			switch (uiSize.kind)
 			{
 				case UI_SIZE_KIND_CHILDREN_OF_SUM:
@@ -168,7 +168,7 @@ void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock)
 						}
 						uiBlock->rect.dim.elements[j] = sumOrMaxOfChildren;
 
-						if (j == ARRAY_COUNT(uiBlock->uiSettings.uiSizes) - 1)
+						if (j == ARRAY_COUNT(uiBlock->uiSizes) - 1)
 							CalculateUiUpwardsDependentSizes(uiBlock->firstChild);
 						break;
 					}
@@ -326,9 +326,9 @@ void UiLayoutBlocks(UiBuffer *uiBuffer)
 	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
 	{
 		UiBlock *uiBlock = &uiBuffer->uiBlocks[i];
-		for (u32 j = 0; j < ARRAY_COUNT(uiBlock->uiSettings.uiSizes); j++)
+		for (u32 j = 0; j < ARRAY_COUNT(uiBlock->uiSizes); j++)
 		{
-			UiSize uiSize = uiBlock->uiSettings.uiSizes[j];
+			UiSize uiSize = uiBlock->uiSizes[j];
 			switch (uiSize.kind)
 			{
 				case UI_SIZE_KIND_TEXTURE:
