@@ -265,8 +265,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		u32 HASH_CANVAS = Murmur3String("canvas");
 		u32 HASH_FINAL_TEXTURE = Murmur3String("finalTexture");
 
-		UiBlock *canvasUiBlock = GetUiBlockOfHashLastFrame(uiState, HASH_CANVAS);
-		UiBlock *finalTextureUiBlock = GetUiBlockOfHashLastFrame(uiState, HASH_FINAL_TEXTURE);
+		UiBlock *canvasUiBlock = UiGetBlockOfHashLastFrame(uiState, HASH_CANVAS);
+		UiBlock *finalTextureUiBlock = UiGetBlockOfHashLastFrame(uiState, HASH_FINAL_TEXTURE);
 
 		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && canvas->saveRollbackOnNextPress)
 		{
@@ -792,7 +792,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			uiColorParent.down = ColorU32{220, 220, 220, 255};
 			uiColorParent.hovered = ColorU32{200, 200, 200, 255};
 			uiColorParent.neutral = ColorU32{180, 180, 180, 255};
-			UiBlock *sliderUiBlock = GetUiBlockOfHashLastFrame(uiState, sliderBase->hash);
+			UiBlock *sliderUiBlock = UiGetBlockOfHashLastFrame(uiState, sliderBase->hash);
 			sliderBase->uiBlockColors.backColor = GetReactiveColorU32(commandInputs, sliderUiBlock, uiColorParent, false);
 			Slider slider = brushSizeSlider;
 			sliderBase->value = MapNormalizeF32(brushSizeSlider.min, (f32) *brushSizeSlider.unsignedIntToChange, brushSizeSlider.max);

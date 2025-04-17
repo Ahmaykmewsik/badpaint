@@ -213,7 +213,7 @@ void CalculateUiPosGivenReletativePositions(UiBlock *uiBlock)
 	}
 }
 
-UiBlock *GetUiBlockOfHashLastFrame(UiState *uiState, u32 hash)
+UiBlock *UiGetBlockOfHashLastFrame(UiState *uiState, u32 hash)
 {
 	UiBlock *result = {};
 

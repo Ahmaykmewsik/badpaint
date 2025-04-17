@@ -40,7 +40,7 @@ UiBlock *CreateUiButton(UiState *uiState, String string, u32 hash, UiFont uiFont
 	UiReactiveColors uiReactiveColors = (active)
 		? uiReactiveColorStates.active
 		: uiReactiveColorStates.nonActive;
-	UiBlock *uiBlockLastFrame = GetUiBlockOfHashLastFrame(uiState, hash);
+	UiBlock *uiBlockLastFrame = UiGetBlockOfHashLastFrame(uiState, hash);
 	result->uiBlockColors.backColor = GetReactiveColorU32(commandInputs, uiBlockLastFrame, uiReactiveColors, disabled);
 	return result;
 }

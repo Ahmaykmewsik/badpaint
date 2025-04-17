@@ -122,7 +122,7 @@ struct UiState
 };
 
 UiState *UiInit(Arena *arena);
-UiBlock *GetUiBlockOfHashLastFrame(UiState *uiState, u32 hash);
+UiBlock *UiGetBlockOfHashLastFrame(UiState *uiState, u32 hash);
 UiBlock *UiCreateBlock(UiState *uiState);
 void UiPushParent(UiState *uiState, UiBlock *uiBlock);
 void UiPopParent(UiState *uiState, UiBlock *uiBlock);
