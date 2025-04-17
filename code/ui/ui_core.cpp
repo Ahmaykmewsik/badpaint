@@ -59,21 +59,21 @@ UiBlock *CreateUiBlock(UiState *uiState)
 	return result;
 }
 
-void PushUiParent()
+void UiPushParent(UiState *uiState, UiBlock *uiBlock)
 {
-	if (ASSERT(G_UI_STATE.parentStackCount < ARRAY_COUNT(G_UI_STATE.parentStack)))
+	if (ASSERT(uiState->parentStackCount < ARRAY_COUNT(uiState->parentStack)))
 	{
-		UiBuffer *uiBuffer = &G_UI_STATE.uiBuffers[G_UI_STATE.uiBufferIndex];
-		G_UI_STATE.parentStack[G_UI_STATE.parentStackCount] = &uiBuffer->uiBlocks[uiBuffer->uiBlockCount - 1];
-		G_UI_STATE.parentStackCount++;
+		uiState->parentStack[uiState->parentStackCount] = uiBlock;
+		uiState->parentStackCount++;
 	}
 }
 
-void PopUiParent()
+void UiPopParent(UiState *uiState, UiBlock *uiBlock)
 {
-	if (ASSERT(G_UI_STATE.parentStackCount > 0))
+	if (ASSERT(uiState->parentStackCount > 0) &&
+		ASSERT(uiState->parentStack[uiState->parentStackCount - 1] == uiBlock))
 	{
-		G_UI_STATE.parentStackCount--;
+		uiState->parentStackCount--;
 	}
 }
 

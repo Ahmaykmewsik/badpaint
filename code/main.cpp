@@ -638,7 +638,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		UiBlock *root = CreateUiBlock(G_UI_STATE);
 		root->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, (f32) windowDim.x};
 		root->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, (f32) windowDim.y};
-		UiParent()
+		UI_PARENT_SCOPE(G_UI_STATE, root)
 		{
 			UiBlock *titleBar = CreateUiBlock(G_UI_STATE);
 			titleBar->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT;
@@ -649,14 +649,14 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			UiBlock *body = CreateUiBlock(G_UI_STATE);
 			body->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, (f32) windowDim.x};
 			body->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, windowDim.y - titleBarHeight};
-			UiParent()
+			UI_PARENT_SCOPE(G_UI_STATE, body)
 			{
 				UiBlock *topPart = CreateUiBlock(G_UI_STATE);
 				topPart->flags = UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER;
 				topPart->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 				topPart->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5f};
 				topPart->uiBlockColors = defaultBlockColors;
-				UiParent()
+				UI_PARENT_SCOPE(G_UI_STATE, topPart)
 				{
 					if (loadedTexture.id)
 					{
@@ -697,7 +697,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				bottomPart->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 				bottomPart->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 0.5f};
 				bottomPart->uiBlockColors = defaultBlockColors;
-				UiParent()
+				UI_PARENT_SCOPE(G_UI_STATE, bottomPart)
 				{
 					if (canvas->textureVisualizedFilteredRootImage.id)
 					{
@@ -728,8 +728,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		sideToolbar->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS}; //??
 		sideToolbar->relativePixelPosition = v2{0, (float)titleBarHeight};
 		sideToolbar->uiBlockColors.backColor = ColorU32{191, 191, 191, 255};
-
-		UiParent()
+		UI_PARENT_SCOPE(G_UI_STATE, sideToolbar)
 		{
 			//uiSettings->frontColor = BLACK;
 			//uiSettings->borderColor = GRAY;
@@ -744,7 +743,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			h->flags = UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT;
 			h->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 			h->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
-			UiParent()
+			UI_PARENT_SCOPE(G_UI_STATE, h)
 			{
 				CreateBrushEffectButton(BRUSH_EFFECT_ERASE, STRING("Ers"), defaultUiFont, ColorU32{245, 245, 245, 255}, COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE, &currentBrush, commandInputs);
 				CreateBrushEffectButton(BRUSH_EFFECT_REMOVE, STRING("Rmv"), defaultUiFont, RayColorToColorU32(BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_REMOVE]), COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE, &currentBrush, commandInputs);
@@ -754,7 +753,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			h->flags = UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT;
 			h->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 			h->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
-			UiParent()
+			UI_PARENT_SCOPE(G_UI_STATE, h)
 			{
 				CreateBrushEffectButton(BRUSH_EFFECT_MAX, STRING("Max"), defaultUiFont, RayColorToColorU32(BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_MAX]), COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX, &currentBrush, commandInputs);
 				CreateBrushEffectButton(BRUSH_EFFECT_SHIFT, STRING("Sft"), defaultUiFont, RayColorToColorU32(BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_SHIFT]), COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT, &currentBrush, commandInputs);
@@ -764,7 +763,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			h->flags = UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT;
 			h->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 			h->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
-			UiParent()
+			UI_PARENT_SCOPE(G_UI_STATE, h)
 			{
 				CreateBrushEffectButton(BRUSH_EFFECT_RANDOM, STRING("Rnd"), defaultUiFont, RayColorToColorU32(BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_RANDOM]), COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM, &currentBrush, commandInputs);
 			}
@@ -798,7 +797,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			sliderBase->uiBlockColors.backColor = GetReactiveColorU32(commandInputs, sliderUiBlock, uiColorParent, false);
 			Slider slider = brushSizeSlider;
 			sliderBase->value = MapNormalizeF32(brushSizeSlider.min, (f32) *brushSizeSlider.unsignedIntToChange, brushSizeSlider.max);
-			UiParent()
+			UI_PARENT_SCOPE(G_UI_STATE, sliderBase)
 			{
 				UiBlock *sliderTop = CreateUiBlock(G_UI_STATE);
 				sliderTop->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER;

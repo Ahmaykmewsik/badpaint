@@ -115,24 +115,23 @@ struct UiState
 {
 	b32 initialized;
 	UiBuffer uiBuffers[2];
-	u32 uiBufferIndex; 
+	u32 uiBufferIndex;
 
-	UiBlock *parentStack[20];
+	UiBlock *parentStack[64];
 	int parentStackCount;
 };
-
-#define CONCAT_IMPL(x, y) x##y
-#define CONCAT(x, y) CONCAT_IMPL(x, y)
-#define UiDeferLoop(begin, end) for (int CONCAT(_i_, __LINE__) = ((begin), 0); !CONCAT(_i_, __LINE__); CONCAT(_i_, __LINE__) += 1, (end))
-#define UiParent() UiDeferLoop(PushUiParent(), PopUiParent())
 
 void UiInit(Arena *arena);
 UiState *GetUiState();
 //QUESTION: (Ahmayk) change to pass in ui buffer?
 UiBlock *GetUiBlockOfHashLastFrame(u32 hash);
 UiBlock *CreateUiBlock(UiState *uiState);
-void PushUiParent();
-void PopUiParent();
-
+void UiPushParent(UiState *uiState, UiBlock *uiBlock);
+void UiPopParent(UiState *uiState, UiBlock *uiBlock);
 void UiLayoutBlocks(UiBuffer *uiBuffer);
 void UiEndFrame();
+
+#define CONCAT_IMPL(x, y) x##y
+#define CONCAT(x, y) CONCAT_IMPL(x, y)
+#define DEFER_LOOP(begin, end) for (int CONCAT(_i_, __LINE__) = ((begin), 0); !CONCAT(_i_, __LINE__); CONCAT(_i_, __LINE__) += 1, (end))
+#define UI_PARENT_SCOPE(uiState, uiBlock) DEFER_LOOP(UiPushParent(uiState, uiBlock), UiPopParent(uiState, uiBlock))
