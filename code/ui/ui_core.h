@@ -89,14 +89,10 @@ struct UiBlock
 	v2 relativePixelPosition;
 	UiTexture uiTexture;
 	v2 manualDim;
-	COMMAND command;
 	SLIDER_ACTION sliderAction;
 
 	UiBlockColors uiBlockColors;
 
-	b32 hovered;
-	b32 pressed;
-	b32 down;
 	v2 cursorRelativePixelPos;
 
 	v2 computedRelativePixelPos;

@@ -10,6 +10,7 @@ ColorU32 GetReactiveColorU32(CommandInput *commandInputs, UiBlock *uiBlockLastFr
 	}
 	else if (uiBlockLastFrame)
 	{
+#if 0
 		b32 down = uiBlockLastFrame->down;
 		b32 hovered = uiBlockLastFrame->hovered;
 
@@ -22,11 +23,13 @@ ColorU32 GetReactiveColorU32(CommandInput *commandInputs, UiBlock *uiBlockLastFr
 		{
 			result = uiReactiveColors.hovered;
 		}
+#endif
 	}
 
 	return result;
 }
 
+#if 0
 UiBlock *CreateUiButton(UiState *uiState, String string, u32 hash, UiFont uiFont, UiReactiveColorStates uiReactiveColorStates, b32 active, b32 disabled, CommandInput *commandInputs)
 {
 	UiBlock *result = UiCreateBlock(uiState);
@@ -44,6 +47,7 @@ UiBlock *CreateUiButton(UiState *uiState, String string, u32 hash, UiFont uiFont
 	result->uiBlockColors.backColor = GetReactiveColorU32(commandInputs, uiBlockLastFrame, uiReactiveColors, disabled);
 	return result;
 }
+#endif
 
 ColorU32 AddConstantToColor(ColorU32 color, i8 constant)
 {

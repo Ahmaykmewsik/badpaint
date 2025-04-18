@@ -3,29 +3,6 @@
 #include <base.h>
 #include "../includes/raylib/src/raylib.h"
 
-enum COMMAND : u32
-{
-    COMMAND_NULL,
-    COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE,
-    COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE,
-    COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX,
-    COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT,
-    COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM,
-    COMMAND_EXPORT_IMAGE,
-    COMMAND_COUNT,
-};
-
-//NOTE: (Ahmayk) This needs to be redesigned to include key modifiers 
-static KeyboardKey COMMAND_KEY_BINDINGS[] = {
-	KEY_NULL,
-	KEY_E,
-	KEY_R,
-	KEY_A,
-	KEY_S,
-	KEY_N,
-	KEY_NULL,
-};
-
 enum BRUSH_EFFECT : u32
 {
     BRUSH_EFFECT_ERASE = 0,
@@ -85,7 +62,5 @@ struct NotificationMessage
 	f32 alpha;
 };
 
-bool IsCommandDown(CommandInput *commandInputs, COMMAND command);
-bool IsCommandPressed(CommandInput *commandInputs, COMMAND command);
 void InitNotificationMessage(String string, Arena *circularNotificationBuffer);
 NotificationMessage *GetNotificationMessage();

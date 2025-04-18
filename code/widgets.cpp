@@ -1,6 +1,7 @@
 
 #include "widgets.h"
 
+#if 0
 UiBlock *CreateBrushEffectButton(UiState *uiState, BRUSH_EFFECT brushEffect, String string, UiFont uiFont, ColorU32 baseColor, COMMAND command, Brush *currentBrush, CommandInput *commandInputs)
 {
 	u32 hash = Murmur3String("brushEffect", brushEffect);
@@ -8,9 +9,10 @@ UiBlock *CreateBrushEffectButton(UiState *uiState, BRUSH_EFFECT brushEffect, Str
 	bool active = currentBrush->brushEffect == brushEffect;
 
 	UiBlock *result = CreateUiButton(uiState, string, hash, uiFont, uiColorStates, active, false, commandInputs);
-	result->command = command;
+	//result->command = command;
 	result->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 	result->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 
 	return result;
 }
+#endif
