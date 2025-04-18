@@ -97,3 +97,12 @@ b32 IsCommandKeyBindingDown(COMMAND command);
 b32 IsCommandKeyBindingPressed(COMMAND command);
 
 AppCommand *PushAppCommand(AppCommandBuffer *appCommandBuffer);
+
+//TODO: (Ahmayk) Replace this stupid shit once we have better UI
+struct NotificationMessage
+{
+	String string;
+	f32 alpha;
+};
+
+void InitNotificationMessage(String string, Arena *circularNotificationBuffer);

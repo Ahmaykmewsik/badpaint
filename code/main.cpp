@@ -11,7 +11,6 @@
 #include "ui/ui_raylib.h"
 #include "widgets.h"
 #include "vn_math_external.h"
-#include "input.h"
 #include "image.h"
 #include "platform_win32.h"
 #include "main.h"
@@ -76,6 +75,15 @@ b32 IsCommandKeyBindingPressed(COMMAND command)
 		result = true;
 	}
 	return result;
+}
+
+//TODO: (Ahmayk) remove and replace with better error reporting/messaging system
+static NotificationMessage notificationMessage = {};
+
+void InitNotificationMessage(String string, Arena *circularNotificationBuffer)
+{
+    notificationMessage.string = ReallocString(string, circularNotificationBuffer);
+	notificationMessage.alpha = 1.0f;
 }
 
 void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned int threadCount)
@@ -499,23 +507,22 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			}
 		}
 
-		NotificationMessage *notificationMessage = GetNotificationMessage();
-		if (notificationMessage->string.length)
+		if (notificationMessage.string.length)
 		{
 			UiBlock *notifBlock = UiCreateBlock(uiState);
 			notifBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT;
-			notifBlock->string = notificationMessage->string;
+			notifBlock->string = notificationMessage.string;
 			notifBlock->relativePixelPosition = v2{0, titleBarHeight};
 			notifBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, (f32) windowDim.x};
 			notifBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 			notifBlock->uiFont = appState->defaultUiFont;
-			notifBlock->uiBlockColors.frontColor = ColorU32{255, 255, 255, (u8)(notificationMessage->alpha * 255)};
-			notifBlock->uiBlockColors.backColor = ColorU32{100, 100, 100, (u8)(notificationMessage->alpha * 255)};
+			notifBlock->uiBlockColors.frontColor = ColorU32{255, 255, 255, (u8)(notificationMessage.alpha * 255)};
+			notifBlock->uiBlockColors.backColor = ColorU32{100, 100, 100, (u8)(notificationMessage.alpha * 255)};
 
-			notificationMessage->alpha -= 0.001f;
-			if (notificationMessage->alpha <= 0)
+			notificationMessage.alpha -= 0.001f;
+			if (notificationMessage.alpha <= 0)
 			{
-				notificationMessage->alpha = {};
+				notificationMessage.alpha = {};
 			}
 		}
 

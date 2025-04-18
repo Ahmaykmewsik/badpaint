@@ -2,9 +2,6 @@
 
 #include <base.h>
 
-//TODO: (Ahmayk) remove dependency
-#include <input.h>
-
 enum UI_SIZE_KIND
 {
 	UI_SIZE_KIND_NULL,

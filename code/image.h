@@ -1,6 +1,5 @@
 
 #include "main.h"
-#include "input.h"
 #include "../includes/raylib/src/raylib.h"
 #include "platform_win32.h"
 
