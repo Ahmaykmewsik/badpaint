@@ -24,7 +24,7 @@ UiReactiveColorStates CreateButtonUiReactiveColorStates(ColorU32 color)
 	return result;
 }
 
-ColorU32 GetReactiveColor(u32 hash, UiInteractionHashes *uiInteractionHashes, UiReactiveColors *uiReactiveColors, b32 isDisabled, b32 downOverride)
+ColorU32 GetReactiveColorU32(u32 hash, UiInteractionHashes *uiInteractionHashes, UiReactiveColors *uiReactiveColors, b32 isDisabled, b32 downOverride)
 {
 	ColorU32 result = uiReactiveColors->neutral;
 	if (isDisabled)
@@ -73,7 +73,7 @@ b32 WidgetBrushEffectButton(UiState *uiState, AppState *appState, UiInteractionH
 	{
 		uiReactiveColors = uiReactiveColorStates.active;
 	}
-	block->uiBlockColors.backColor = GetReactiveColor(hash, uiInteractionHashes, &uiReactiveColors, isDisabled, downOverride);
+	block->uiBlockColors.backColor = GetReactiveColorU32(hash, uiInteractionHashes, &uiReactiveColors, isDisabled, downOverride);
 
 	b32 result = (hash == uiInteractionHashes->hashMousePressed);
 	return result;

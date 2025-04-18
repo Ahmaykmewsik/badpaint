@@ -85,11 +85,9 @@ struct UiBlock
 	UiFont uiFont;
 
 	UiSize uiSizes[UI_AXIS_COUNT];
-	f32 value;
 	v2 relativePixelPosition;
 	UiTexture uiTexture;
 	v2 manualDim;
-	SLIDER_ACTION sliderAction;
 
 	UiBlockColors uiBlockColors;
 

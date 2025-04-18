@@ -27,7 +27,7 @@ struct UiInteractionHashes
 };
 
 UiReactiveColorStates CreateButtonUiReactiveColorStates(ColorU32 color);
-ColorU32 GetReactiveColor(u32 hash, UiInteractionHashes *uiInteractionHashes, UiReactiveColors *uiReactiveColors, b32 isDisabled, b32 downOverride);
+ColorU32 GetReactiveColorU32(u32 hash, UiInteractionHashes *uiInteractionHashes, UiReactiveColors *uiReactiveColors, b32 isDisabled = false, b32 downOverride = false);
 
 b32 WidgetBrushEffectButton(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, BRUSH_EFFECT brushEffect, String string, COMMAND command);
 

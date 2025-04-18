@@ -134,12 +134,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	//TODO: (Ahmayk) Remove
 	u32 draggedHash = {};
 
-	Slider brushSizeSlider = {};
-	brushSizeSlider.sliderAction = SLIDER_ACTION_BRUSH_SIZE;
-	brushSizeSlider.unsignedIntToChange = &appState->currentBrush.size;
-	brushSizeSlider.min = 1;
-	brushSizeSlider.max = 50;
-
 	*rootImageRaw = LoadDataIntoRawImage(&DEFAULT_IMAGE_DATA[0], ARRAY_COUNT(DEFAULT_IMAGE_DATA), &gameMemory);
 	if (rootImageRaw->dataSize)
 	{
@@ -263,16 +257,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					{
 						uiInteractionHashes.hashMouseDown = uiBlock->hash;
 					}
-				}
-
-				if (uiBlock->sliderAction && draggedHash == uiBlock->hash)
-				{
-					float normPressedPosInRect = (pressedMousePos.x - uiBlock->rect.pos.x) / uiBlock->rect.dim.x;
-					float normDifference = (pressedMousePos.x - mousePixelPos.x) / uiBlock->rect.dim.x;
-					float normValue = ClampF32(0, normPressedPosInRect - normDifference, 1);
-
-					//TODO: lookup slider
-					*brushSizeSlider.unsignedIntToChange = (u32) RoundF32(LerpF32(brushSizeSlider.min, normValue, brushSizeSlider.max));
 				}
 			}
 		}
@@ -467,29 +451,41 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			sliderBase->hash = Murmur3String("brushSizeSlider");
 			sliderBase->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 			sliderBase->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT * 0.5f};
-			sliderBase->sliderAction = SLIDER_ACTION_BRUSH_SIZE;
+			b32 isDragging = draggedHash == sliderBase->hash;
 			UiReactiveColors uiColorParent = {};
 			uiColorParent.down = ColorU32{220, 220, 220, 255};
 			uiColorParent.hovered = ColorU32{200, 200, 200, 255};
 			uiColorParent.neutral = ColorU32{180, 180, 180, 255};
-#if 0
 			UiBlock *sliderUiBlock = UiGetBlockOfHashLastFrame(uiState, sliderBase->hash);
-			sliderBase->uiBlockColors.backColor = GetReactiveColorU32(commandInputs, sliderUiBlock, uiColorParent, false);
-			Slider slider = brushSizeSlider;
-			sliderBase->value = MapNormalizeF32(brushSizeSlider.min, (f32) *brushSizeSlider.unsignedIntToChange, brushSizeSlider.max);
+			sliderBase->uiBlockColors.backColor = GetReactiveColorU32(sliderBase->hash, &uiInteractionHashes, &uiColorParent, false, isDragging);
+			sliderBase->uiBlockColors.borderColor = COLORU32_BLACK;
 			UI_PARENT_SCOPE(uiState, sliderBase)
 			{
 				UiBlock *sliderTop = UiCreateBlock(uiState);
 				sliderTop->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT | UI_FLAG_DRAW_BORDER;
-				sliderTop->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, sliderBase->value}; //???
+				sliderTop->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 				sliderTop->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 				UiReactiveColors uiColorChild = {};
 				uiColorChild.down = ColorU32{20, 131, 255, 255};
 				uiColorChild.hovered = ColorU32{10, 131, 251, 255};
 				uiColorChild.neutral = ColorU32{0, 121, 241, 255};
-				sliderTop->uiBlockColors.backColor = GetReactiveColorU32(commandInputs, sliderUiBlock, uiColorChild, false);
+				sliderTop->uiBlockColors.backColor = GetReactiveColorU32(sliderBase->hash, &uiInteractionHashes, &uiColorChild, false, isDragging);
+				sliderTop->uiBlockColors.borderColor = COLORU32_BLACK;
+
+				f32 sliderMin = 1;
+				f32 sliderMax = 50;
+				static f32 sliderValue = (f32) appState->currentBrush.size;
+				if (isDragging)
+				{
+					UiBlock *sliderBaseLastFrame = UiGetBlockOfHashLastFrame(uiState, sliderBase->hash);
+					f32 normPressedPosInRect = (pressedMousePos.x - sliderBaseLastFrame->rect.pos.x) / sliderBaseLastFrame->rect.dim.x;
+					f32 normDifference = (pressedMousePos.x - mousePixelPos.x) / sliderBaseLastFrame->rect.dim.x;
+					f32 normValue = ClampF32(0, normPressedPosInRect - normDifference, 1);
+					sliderValue = RoundF32(LerpF32(sliderMin, normValue, sliderMax));
+					appState->currentBrush.size = (u32) sliderValue;
+				}
+				sliderTop->uiSizes[UI_AXIS_X].value =  InverseLerpF32(sliderMin, sliderValue, sliderMax);
 			}
-#endif
 
 			UiBlock *brushView = UiCreateBlock(uiState);
 			brushView->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER;
@@ -573,7 +569,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			uiReactiveColors.neutral = ColorU32{0, 228, 48, 255};
 			uiReactiveColors.down = ColorU32{0, 117, 44, 255};
 			uiReactiveColors.hovered = ColorU32{10, 238, 58, 255};
-			b->uiBlockColors.backColor = GetReactiveColor(b->hash, &uiInteractionHashes, &uiReactiveColors, false, false);
+			b->uiBlockColors.backColor = GetReactiveColorU32(b->hash, &uiInteractionHashes, &uiReactiveColors, false, false);
 			if (b->hash == uiInteractionHashes.hashMousePressed)
 			{
 				AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
