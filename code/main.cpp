@@ -301,8 +301,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 							finalTexture->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE;
 							finalTexture->hash = HASH_FINAL_TEXTURE;
 							finalTexture->uiTexture = UiRaylibTextureToUiTexture(&loadedTexture);
-							finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
-							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
+							finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_OTHER_AXIS, SafeDivideI32(loadedTexture.width, loadedTexture.height)};
+							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 						}
 						else
 						{
@@ -339,8 +339,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						UiBlock *b = UiCreateBlock(uiState);
 						b->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT;
 						b->uiTexture = UiRaylibTextureToUiTexture(&canvas->textureVisualizedFilteredRootImage);
-						b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
-						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
+						b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_OTHER_AXIS, SafeDivideI32(b->uiTexture.dim.x, b->uiTexture.dim.y)};
+						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 					}
 					if (canvas->textureDrawing.id)
 					{
@@ -348,8 +348,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						b->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_CENTER_IN_PARENT | UI_FLAG_INTERACTABLE;
 						b->hash = HASH_CANVAS;
 						b->uiTexture = UiRaylibTextureToUiTexture(&canvas->textureDrawing);
-						b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
-						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT};
+						b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_OTHER_AXIS, SafeDivideI32(b->uiTexture.dim.x, b->uiTexture.dim.y)};
+						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 					}
 				}
 			}

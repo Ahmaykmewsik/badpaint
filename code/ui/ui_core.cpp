@@ -75,47 +75,33 @@ void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock)
 {
 	if (uiBlock)
 	{
-		if (uiBlock->uiSizes[0].kind == UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT ||
-				uiBlock->uiSizes[1].kind == UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT)
+		for (int i = 0; i < ARRAY_COUNT(uiBlock->uiSizes); i++)
 		{
-			ASSERT(uiBlock->parent);
-			ASSERT(uiBlock->uiTexture.dim.x && uiBlock->uiTexture.dim.y);
-
-			float scaleX = 1;
-			float scaleY = 1;
-			if (uiBlock->parent->rect.dim.x)
-				scaleX = uiBlock->parent->rect.dim.x / uiBlock->uiTexture.dim.x;
-			if (uiBlock->parent->rect.dim.y)
-				scaleY = uiBlock->parent->rect.dim.y / uiBlock->uiTexture.dim.y;
-
-			float scale = MinF32(scaleX, scaleY);
-
-			uiBlock->rect.dim = uiBlock->uiTexture.dim * scale;
-		}
-		else
-		{
-			for (int j = 0;
-					j < ARRAY_COUNT(uiBlock->uiSizes);
-					j++)
+			switch (uiBlock->uiSizes[i].kind)
 			{
-				UiSize uiSize = uiBlock->uiSizes[j];
-				switch (uiSize.kind)
+			case UI_SIZE_KIND_PERCENT_OF_PARENT:
+			{
+				if (ASSERT(uiBlock->parent))
 				{
-					case UI_SIZE_KIND_PERCENT_OF_PARENT:
-						{
-							if (uiBlock->parent && uiBlock->parent->rect.dim.elements[j])
-							{
-								uiBlock->rect.dim.elements[j] = (uiBlock->parent->rect.dim.elements[j] * uiSize.value);
-							}
-							break;
-						}
-					case UI_SIZE_KIND_CHILDREN_OF_SUM:
-					case UI_SIZE_KIND_PIXELS:
-					case UI_SIZE_KIND_TEXT:
-					case UI_SIZE_KIND_TEXTURE:
-						break;
-						InvalidDefaultCase
+					uiBlock->rect.dim.elements[i] = (uiBlock->parent->rect.dim.elements[i] * uiBlock->uiSizes[i].value);
 				}
+			} break;
+			case UI_SIZE_KIND_PERCENT_OF_OTHER_AXIS:
+			case UI_SIZE_KIND_SUM_OF_CHILDREN:
+			case UI_SIZE_KIND_PIXELS:
+			case UI_SIZE_KIND_TEXTURE:
+			case UI_SIZE_KIND_TEXT:
+				break;
+				InvalidDefaultCase
+			}
+		}
+
+		//NOTE: (Ahmayk) percent of other axis done in a 2nd pass so we solve other axis first (if solveable).
+		for (int i = 0; i < ARRAY_COUNT(uiBlock->uiSizes); i++)
+		{
+			if (uiBlock->uiSizes[i].kind == UI_SIZE_KIND_PERCENT_OF_OTHER_AXIS)
+			{
+				uiBlock->rect.dim.elements[i] = uiBlock->rect.dim.elements[1 - i] * uiBlock->uiSizes[i].value;
 			}
 		}
 
@@ -133,41 +119,42 @@ void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock)
 
 		bool isHorizontal = uiBlock->flags & UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT;
 
-		for (int j = 0;
-				j < ARRAY_COUNT(uiBlock->uiSizes);
-				j++)
+		b32 childrenNeedUpwardRebuild = false;
+
+		for (int i = 0; i < ARRAY_COUNT(uiBlock->uiSizes); i++)
 		{
-			UiSize uiSize = uiBlock->uiSizes[j];
-			switch (uiSize.kind)
+			switch (uiBlock->uiSizes[i].kind)
 			{
-				case UI_SIZE_KIND_CHILDREN_OF_SUM:
+				case UI_SIZE_KIND_SUM_OF_CHILDREN:
+				{
+					float sumOrMaxOfChildren = 0;
+					UiBlock *child = uiBlock->firstChild;
+					while (child)
 					{
-						float sumOrMaxOfChildren = 0;
-						UiBlock *child = uiBlock->firstChild;
-						while (child)
-						{
-							ASSERT(child != uiBlock);
+						ASSERT(child != uiBlock);
 
-							((j == 0 && isHorizontal) || (j == 1 && !isHorizontal))
-								? sumOrMaxOfChildren += child->rect.dim.elements[j]
-								: sumOrMaxOfChildren = MaxF32(child->rect.dim.elements[j], sumOrMaxOfChildren);
+						((i == 0 && isHorizontal) || (i == 1 && !isHorizontal))
+							? sumOrMaxOfChildren += child->rect.dim.elements[i]
+							: sumOrMaxOfChildren = MaxF32(child->rect.dim.elements[i], sumOrMaxOfChildren);
 
-							child = child->next;
-						}
-						uiBlock->rect.dim.elements[j] = sumOrMaxOfChildren;
-
-						if (j == ARRAY_COUNT(uiBlock->uiSizes) - 1)
-							CalculateUiUpwardsDependentSizes(uiBlock->firstChild);
-						break;
+						child = child->next;
 					}
-				case UI_SIZE_KIND_PERCENT_OF_PARENT:
+					uiBlock->rect.dim.elements[i] = sumOrMaxOfChildren;
+					childrenNeedUpwardRebuild = true;
+				} break;
 				case UI_SIZE_KIND_PIXELS:
-				case UI_SIZE_KIND_TEXT:
 				case UI_SIZE_KIND_TEXTURE:
-				case UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT:
-					break;
-					InvalidDefaultCase
+				case UI_SIZE_KIND_PERCENT_OF_PARENT:
+				case UI_SIZE_KIND_PERCENT_OF_OTHER_AXIS:
+				case UI_SIZE_KIND_TEXT:
+				break;
+				InvalidDefaultCase
 			}
+		}
+
+		if (childrenNeedUpwardRebuild)
+		{
+			CalculateUiUpwardsDependentSizes(uiBlock->firstChild);
 		}
 	}
 }
@@ -248,29 +235,26 @@ void UiLayoutBlocks(UiBuffer *uiBuffer)
 			switch (uiSize.kind)
 			{
 				case UI_SIZE_KIND_TEXTURE:
-					{
-						//NOTE: (Ahmayk) :(
-						uiBlock->rect.dim.elements[j] = (f32) uiBlock->uiTexture.dim.elements[j];
-						break;
-					}
+				{
+					//NOTE: (Ahmayk) :(
+					uiBlock->rect.dim.elements[j] = (f32) uiBlock->uiTexture.dim.elements[j];
+				} break;
 				case UI_SIZE_KIND_PIXELS:
-					{
-						uiBlock->rect.dim.elements[j] = uiSize.value;
-						break;
-					}
+				{
+					uiBlock->rect.dim.elements[j] = uiSize.value;
+				} break;
 				case UI_SIZE_KIND_TEXT:
+				{
+					if (ASSERT(uiBlock->string.length && !IsZeroV2(uiBlock->textDim)))
 					{
-						if (ASSERT(uiBlock->string.length && !IsZeroV2(uiBlock->textDim)))
-						{
-							uiBlock->rect.dim.elements[j] = uiBlock->textDim.elements[j];
-						}
+						uiBlock->rect.dim.elements[j] = uiBlock->textDim.elements[j];
 					}
+				}
 				case UI_SIZE_KIND_PERCENT_OF_PARENT:
-				case UI_SIZE_KIND_CHILDREN_OF_SUM:
-				case UI_SIZE_KIND_SCALE_TEXTURE_IN_PARENT:
-					break;
-
-					InvalidDefaultCase
+				case UI_SIZE_KIND_SUM_OF_CHILDREN:
+				case UI_SIZE_KIND_PERCENT_OF_OTHER_AXIS:
+				break;
+				InvalidDefaultCase
 			}
 		}
 	}
