@@ -391,8 +391,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		sideToolbar->uiBlockColors.backColor = ColorU32{191, 191, 191, 255};
 		UI_PARENT_SCOPE(uiState, sideToolbar)
 		{
-			//uiSettings->frontColor = BLACK;
-			//uiSettings->borderColor = GRAY;
 			{
 				UiBlock *b = UiCreateBlock(uiState);
 				b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
@@ -400,15 +398,22 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			}
 
 			UiBlock *h;
-#if 0
 			h = UiCreateBlock(uiState);
 			h->flags = UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT;
 			h->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 			h->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 			UI_PARENT_SCOPE(uiState, h)
 			{
-				CreateBrushEffectButton(uiState, BRUSH_EFFECT_ERASE, STRING("Ers"), appState->defaultUiFont, ColorU32{245, 245, 245, 255}, COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE, &currentBrush, commandInputs);
-				CreateBrushEffectButton(uiState, BRUSH_EFFECT_REMOVE, STRING("Rmv"), appState->defaultUiFont, RayColorToColorU32(BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_REMOVE]), COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE, &currentBrush, commandInputs);
+				if (WidgetBrushEffectButton(uiState, appState, &uiInteractionHashes, BRUSH_EFFECT_ERASE, STRING("Ers"), COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE))
+				{
+					AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
+					appCommand->command = COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE;
+				}
+				if (WidgetBrushEffectButton(uiState, appState, &uiInteractionHashes, BRUSH_EFFECT_REMOVE, STRING("Rmv"), COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE))
+				{
+					AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
+					appCommand->command = COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE;
+				}
 			}
 
 			h = UiCreateBlock(uiState);
@@ -417,10 +422,17 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			h->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 			UI_PARENT_SCOPE(uiState, h)
 			{
-				CreateBrushEffectButton(uiState, BRUSH_EFFECT_MAX, STRING("Max"), appState->defaultUiFont, RayColorToColorU32(BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_MAX]), COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX, &currentBrush, commandInputs);
-				CreateBrushEffectButton(uiState, BRUSH_EFFECT_SHIFT, STRING("Sft"), appState->defaultUiFont, RayColorToColorU32(BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_SHIFT]), COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT, &currentBrush, commandInputs);
+				if (WidgetBrushEffectButton(uiState, appState, &uiInteractionHashes, BRUSH_EFFECT_MAX, STRING("Max"), COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX))
+				{
+					AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
+					appCommand->command = COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX;
+				}
+				if (WidgetBrushEffectButton(uiState, appState, &uiInteractionHashes, BRUSH_EFFECT_SHIFT, STRING("Sft"), COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT))
+				{
+					AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
+					appCommand->command = COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT;
+				}
 			}
-#endif
 
 			h = UiCreateBlock(uiState);
 			h->flags = UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT;
@@ -546,19 +558,28 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			b->uiBlockColors.frontColor = COLORU32_BLACK;
 		}
 
-#if 0
 		{
-			UiReactiveColorStates uiColorStates = {};
-			uiColorStates.nonActive.down = ColorU32{0, 117, 44, 255};
-			uiColorStates.nonActive.hovered = ColorU32{10, 238, 58, 255};
-			uiColorStates.nonActive.neutral = ColorU32{0, 228, 48, 255};
-			UiBlock *b = CreateUiButton(uiState, STRING("EXPORT IMAGE"), Murmur3String("exportImage"), appState->defaultUiFont, uiColorStates, false, false, commandInputs);
+			UiBlock *b = UiCreateBlock(uiState);
+			b->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED | UI_FLAG_INTERACTABLE;
+			b->hash = Murmur3String("exportImage");
+			b->string = STRING("EXPORT IMAGE");
+			b->uiFont = appState->defaultUiFont;
 			b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, 200};
 			b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 			b->relativePixelPosition = v2{windowDim.x * 0.8f, 2};
-			//b->command = COMMAND_EXPORT_IMAGE;
+			b->uiBlockColors.frontColor = COLORU32_BLACK;
+			b->uiBlockColors.borderColor = COLORU32_BLACK;
+			UiReactiveColors uiReactiveColors = {};
+			uiReactiveColors.neutral = ColorU32{0, 228, 48, 255};
+			uiReactiveColors.down = ColorU32{0, 117, 44, 255};
+			uiReactiveColors.hovered = ColorU32{10, 238, 58, 255};
+			b->uiBlockColors.backColor = GetReactiveColor(b->hash, &uiInteractionHashes, &uiReactiveColors, false, false);
+			if (b->hash == uiInteractionHashes.hashMousePressed)
+			{
+				AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
+				appCommand->command = COMMAND_EXPORT_IMAGE;
+			}
 		}
-#endif
 
 		{
 			UiBlock *b = UiCreateBlock(uiState);
