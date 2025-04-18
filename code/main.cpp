@@ -8,7 +8,6 @@
 #include "../includes//raylib//src/external/glfw/include/GLFW/glfw3.h"
 
 #include "ui/ui_core.h"
-#include "ui/ui_base_widgets.h"
 #include "ui/ui_raylib.h"
 #include "widgets.h"
 #include "vn_math_external.h"
@@ -81,6 +80,7 @@ b32 IsCommandKeyBindingPressed(COMMAND command)
 
 void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned int threadCount)
 {
+	AppState *appState = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, AppState);
 	ImageRawRGBA32 *rootImageRaw = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, ImageRawRGBA32);
 	Canvas *canvas = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, Canvas);
 
@@ -98,7 +98,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	}
 
 	UiState *uiState = UiInit(&gameMemory.permanentArena);
-
 
 	SetTraceLogLevel(LOG_NONE);
 
@@ -124,12 +123,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	SetWindowSize(windowDim.x, windowDim.y);
 
 	Font defaultFont = LoadFontFromMemory(".otf", PAINT_FONT_DATA, ARRAY_COUNT(PAINT_FONT_DATA), 18, 0, 0);
+	appState->defaultUiFont.id = defaultFont.texture.id;
+	appState->defaultUiFont.data = &defaultFont;
 
-	Color deleteColor = RED;
-
-	Brush currentBrush = {};
-	currentBrush.brushEffect = BRUSH_EFFECT_REMOVE;
-	currentBrush.size = 10;
+	appState->currentBrush.brushEffect = BRUSH_EFFECT_REMOVE;
+	appState->currentBrush.size = 10;
 
 	Texture loadedTexture = {};
 	v2 pressedMousePos = {};
@@ -138,14 +136,14 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 	Slider brushSizeSlider = {};
 	brushSizeSlider.sliderAction = SLIDER_ACTION_BRUSH_SIZE;
-	brushSizeSlider.unsignedIntToChange = &currentBrush.size;
+	brushSizeSlider.unsignedIntToChange = &appState->currentBrush.size;
 	brushSizeSlider.min = 1;
 	brushSizeSlider.max = 50;
 
 	*rootImageRaw = LoadDataIntoRawImage(&DEFAULT_IMAGE_DATA[0], ARRAY_COUNT(DEFAULT_IMAGE_DATA), &gameMemory);
 	if (rootImageRaw->dataSize)
 	{
-		InitializeNewImage(&gameMemory, rootImageRaw, canvas, &loadedTexture, &currentBrush, processedImages, threadCount);
+		InitializeNewImage(&gameMemory, rootImageRaw, canvas, &loadedTexture, &appState->currentBrush, processedImages, threadCount);
 	}
 
 	while (!WindowShouldClose())
@@ -198,7 +196,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 			if (rootImageRaw->dataSize)
 			{
-				InitializeNewImage(&gameMemory, rootImageRaw, canvas, &loadedTexture, &currentBrush, processedImages, threadCount);
+				InitializeNewImage(&gameMemory, rootImageRaw, canvas, &loadedTexture, &appState->currentBrush, processedImages, threadCount);
 				if (rootImageRaw->dataSize > MegaByte * 500)
 				{
 					String notification = STRING("You like to play dangerously, don't you?");
@@ -243,9 +241,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		}
 #endif
 
-		u32 blockHashMouseHover = 0;
-		u32 blockHashMouseDown = 0;
-		u32 blockHashMousePressed = 0;
+		UiInteractionHashes uiInteractionHashes = {};
 
 		UiBuffer *uiBufferLastFrame = &uiState->uiBuffers[1 - uiState->uiBufferIndex];
 		for (u32 i = 0; i < uiBufferLastFrame->uiBlockCount; i++)
@@ -257,15 +253,15 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 				if (IsInRectV2(mousePixelPos, uiBlock->rect))
 				{
-					blockHashMouseHover = uiBlock->hash;
+					uiInteractionHashes.hashMouseHover = uiBlock->hash;
 					if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
 					{
-						blockHashMousePressed = uiBlock->hash;
+						uiInteractionHashes.hashMousePressed = uiBlock->hash;
 						draggedHash = uiBlock->hash;
 					}
 					if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
 					{
-						blockHashMouseDown = uiBlock->hash;
+						uiInteractionHashes.hashMouseDown = uiBlock->hash;
 					}
 				}
 
@@ -292,10 +288,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		// NOTE: We start at 1 so that we always have a null uiBlock
 		uiBufferCurrent->uiBlockCount = 1;
 		uiState->parentStackCount = {};
-
-		UiFont defaultUiFont = {};
-		defaultUiFont.id = defaultFont.texture.id;
-		defaultUiFont.data = &defaultFont;
 
 		float titleBarHeight = 20;
 
@@ -345,7 +337,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 							stringBlock->string = STRING("Congulations! You broke the image. (undo with Ctrl-Z)");
 							stringBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_TEXT};
 							stringBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
-							stringBlock->uiFont = defaultUiFont;
+							stringBlock->uiFont = appState->defaultUiFont;
 							stringBlock->uiBlockColors = defaultBlockColors;
 						}
 					}
@@ -356,7 +348,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						stringBlock->string = STRING("Drop any image into the window for editing.");
 						stringBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_TEXT};
 						stringBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
-						stringBlock->uiFont = defaultUiFont;
+						stringBlock->uiFont = appState->defaultUiFont;
 						stringBlock->uiBlockColors = defaultBlockColors;
 					}
 				}
@@ -415,8 +407,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			h->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 			UI_PARENT_SCOPE(uiState, h)
 			{
-				CreateBrushEffectButton(uiState, BRUSH_EFFECT_ERASE, STRING("Ers"), defaultUiFont, ColorU32{245, 245, 245, 255}, COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE, &currentBrush, commandInputs);
-				CreateBrushEffectButton(uiState, BRUSH_EFFECT_REMOVE, STRING("Rmv"), defaultUiFont, RayColorToColorU32(BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_REMOVE]), COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE, &currentBrush, commandInputs);
+				CreateBrushEffectButton(uiState, BRUSH_EFFECT_ERASE, STRING("Ers"), appState->defaultUiFont, ColorU32{245, 245, 245, 255}, COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE, &currentBrush, commandInputs);
+				CreateBrushEffectButton(uiState, BRUSH_EFFECT_REMOVE, STRING("Rmv"), appState->defaultUiFont, RayColorToColorU32(BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_REMOVE]), COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE, &currentBrush, commandInputs);
 			}
 
 			h = UiCreateBlock(uiState);
@@ -425,8 +417,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			h->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 			UI_PARENT_SCOPE(uiState, h)
 			{
-				CreateBrushEffectButton(uiState, BRUSH_EFFECT_MAX, STRING("Max"), defaultUiFont, RayColorToColorU32(BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_MAX]), COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX, &currentBrush, commandInputs);
-				CreateBrushEffectButton(uiState, BRUSH_EFFECT_SHIFT, STRING("Sft"), defaultUiFont, RayColorToColorU32(BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_SHIFT]), COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT, &currentBrush, commandInputs);
+				CreateBrushEffectButton(uiState, BRUSH_EFFECT_MAX, STRING("Max"), appState->defaultUiFont, RayColorToColorU32(BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_MAX]), COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX, &currentBrush, commandInputs);
+				CreateBrushEffectButton(uiState, BRUSH_EFFECT_SHIFT, STRING("Sft"), appState->defaultUiFont, RayColorToColorU32(BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_SHIFT]), COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT, &currentBrush, commandInputs);
 			}
 #endif
 
@@ -436,83 +428,10 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			h->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 			UI_PARENT_SCOPE(uiState, h)
 			{
-				//CreateBrushEffectButton(uiState, BRUSH_EFFECT_RANDOM, STRING("Rnd"), defaultUiFont, RayColorToColorU32(BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_RANDOM]), COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM, &currentBrush, commandInputs);
-
-#if 1
-				BRUSH_EFFECT brushEffect = BRUSH_EFFECT_RANDOM;
-				String string = STRING("Rnd");
-				ColorU32 baseColor = RayColorToColorU32(BRUSH_EFFECT_COLORS_PRIMARY[BRUSH_EFFECT_RANDOM]);
-
-				u32 hash = Murmur3String("brushEffect", brushEffect);
-				UiReactiveColorStates uiReactiveColorStates = CreateButtonUiReactiveColorStates(baseColor);
-				bool active = currentBrush.brushEffect == brushEffect;
-				bool disabled = false;
-
-				//UiBlock *block = CreateUiButton(uiState, string, hash, defaultUiFont, uiColorStates, active, false, commandInputs);
+				if (WidgetBrushEffectButton(uiState, appState, &uiInteractionHashes, BRUSH_EFFECT_RANDOM, STRING("Rnd"), COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM))
 				{
-					UiBlock *button = UiCreateBlock(uiState);
-					button->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED | UI_FLAG_INTERACTABLE;
-					button->hash = hash;
-					button->string = string;
-					button->uiFont = defaultUiFont;
-					button->uiBlockColors.frontColor = COLORU32_BLACK;
-					button->uiBlockColors.borderColor = (active) ? COLORU32_BLACK: COLORU32_GRAY;
-					button->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
-					button->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
-
-					UiReactiveColors uiReactiveColors = (active)
-						? uiReactiveColorStates.active
-						: uiReactiveColorStates.nonActive;
-
-					UiBlock *uiBlockLastFrame = UiGetBlockOfHashLastFrame(uiState, hash);
-
-					{
-						ColorU32 back = uiReactiveColors.neutral;
-
-						COMMAND command = COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM;
-
-						b32 isHovered = false;
-						b32 isPressed = false;
-						b32 isDown = false;
-						b32 isDisabled = disabled;
-						if (!isDisabled)
-						{
-							isHovered = blockHashMouseHover == hash;
-							isPressed = blockHashMousePressed == hash;
-							isDown = blockHashMouseDown == hash;
-							isDown |= IsCommandKeyBindingDown(command);
-						}
-						if (isPressed)
-						{
-							AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
-							appCommand->command = command;
-						}
-
-						if (isDisabled)
-						{
-							back = uiReactiveColors.disabled;
-						}
-						if (isDown)
-						{
-							back = uiReactiveColors.down;
-						}
-						else if (isHovered)
-						{
-							back = uiReactiveColors.hovered;
-						}
-						button->uiBlockColors.backColor = back;
-
-					}
-#endif
-
-#if 0
-					UiButtonResult *buttonResult = UiCreateButton(uiState, string, hash, defaultUiFont, uiColorStates, active, false);
-					if (buttonResult->activated)
-					{
-						AppCommand *appCommand = PushAppCommand(appCommandBuffer);
-						appCommand->command = COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM;
-					}
-#endif
+					AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
+					appCommand->command = COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM;
 				}
 			}
 
@@ -525,10 +444,10 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			//uiSettings->backColor = ColorU32{191, 191, 191, 255};
 			UiBlock *sliderNumLabel = UiCreateBlock(uiState);
 			sliderNumLabel->flags = UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED;
-			sliderNumLabel->string = U32ToString(currentBrush.size, StringArena());
+			sliderNumLabel->string = U32ToString(appState->currentBrush.size, StringArena());
 			sliderNumLabel->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PERCENT_OF_PARENT, 1};
 			sliderNumLabel->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
-			sliderNumLabel->uiFont = defaultUiFont;
+			sliderNumLabel->uiFont = appState->defaultUiFont;
 			sliderNumLabel->uiBlockColors = defaultBlockColors;
 
 			UiBlock *sliderBase = UiCreateBlock(uiState);
@@ -565,8 +484,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			brushView->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, toolbarWidth};
 			brushView->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, toolbarWidth};
 			brushView->uiBlockColors.borderColor = COLORU32_BLACK;
-			brushView->uiBlockColors.backColor = RayColorToColorU32(BRUSH_EFFECT_COLORS_PRIMARY[currentBrush.brushEffect]);
-			if (currentBrush.brushEffect == BRUSH_EFFECT_ERASE)
+			brushView->uiBlockColors.backColor = BRUSH_EFFECT_COLORS_PRIMARY[appState->currentBrush.brushEffect];
+			if (appState->currentBrush.brushEffect == BRUSH_EFFECT_ERASE)
 			{
 				brushView->uiBlockColors.backColor = ColorU32{245, 245, 245, 255};
 			}
@@ -581,7 +500,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			notifBlock->relativePixelPosition = v2{0, titleBarHeight};
 			notifBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, (f32) windowDim.x};
 			notifBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
-			notifBlock->uiFont = defaultUiFont;
+			notifBlock->uiFont = appState->defaultUiFont;
 			notifBlock->uiBlockColors.frontColor = ColorU32{255, 255, 255, (u8)(notificationMessage->alpha * 255)};
 			notifBlock->uiBlockColors.backColor = ColorU32{100, 100, 100, (u8)(notificationMessage->alpha * 255)};
 
@@ -597,7 +516,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		blockFps->flags = UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_RIGHT;
 		blockFps->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_TEXT};
 		blockFps->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
-		blockFps->uiFont = defaultUiFont;
+		blockFps->uiFont = appState->defaultUiFont;
 		blockFps->string = STRING("FPS: ") + U32ToString(fps, StringArena());
 		blockFps->uiBlockColors.frontColor = COLORU32_BLACK;
 		if (fps < 60)
@@ -612,7 +531,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 			b->relativePixelPosition = v2{windowDim.x * 0.07f, 2};
 			b->string = STRING("Use 0-5 to toggle differnet PNG filter algorythms");
-			b->uiFont = defaultUiFont;
+			b->uiFont = appState->defaultUiFont;
 			b->uiBlockColors.frontColor = COLORU32_DARKGRAY;
 		}
 
@@ -623,7 +542,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 			b->relativePixelPosition = v2{windowDim.x * 0.45f, 2};
 			b->string = STRING("PNG Filter: ") + PNG_FILTER_NAMES[canvas->currentPNGFilterType];
-			b->uiFont = defaultUiFont;
+			b->uiFont = appState->defaultUiFont;
 			b->uiBlockColors.frontColor = COLORU32_BLACK;
 		}
 
@@ -633,7 +552,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			uiColorStates.nonActive.down = ColorU32{0, 117, 44, 255};
 			uiColorStates.nonActive.hovered = ColorU32{10, 238, 58, 255};
 			uiColorStates.nonActive.neutral = ColorU32{0, 228, 48, 255};
-			UiBlock *b = CreateUiButton(uiState, STRING("EXPORT IMAGE"), Murmur3String("exportImage"), defaultUiFont, uiColorStates, false, false, commandInputs);
+			UiBlock *b = CreateUiButton(uiState, STRING("EXPORT IMAGE"), Murmur3String("exportImage"), appState->defaultUiFont, uiColorStates, false, false, commandInputs);
 			b->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, 200};
 			b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 			b->relativePixelPosition = v2{windowDim.x * 0.8f, 2};
@@ -648,7 +567,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			b->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_TEXT};
 			b->relativePixelPosition = v2{-5, (f32) windowDim.y - 20};
 			b->string = STRING(VERSION_NUMBER);
-			b->uiFont = defaultUiFont;
+			b->uiFont = appState->defaultUiFont;
 			b->uiBlockColors.frontColor = COLORU32_DARKGRAY; 
 		}
 
@@ -662,23 +581,23 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			{
 				case COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE:
 				{
-					currentBrush.brushEffect = BRUSH_EFFECT_ERASE;
+					appState->currentBrush.brushEffect = BRUSH_EFFECT_ERASE;
 				} break;
 				case COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE:
 				{
-					currentBrush.brushEffect = BRUSH_EFFECT_REMOVE;
+					appState->currentBrush.brushEffect = BRUSH_EFFECT_REMOVE;
 				} break;
 				case COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX:
 				{
-					currentBrush.brushEffect = BRUSH_EFFECT_MAX;
+					appState->currentBrush.brushEffect = BRUSH_EFFECT_MAX;
 				} break;
 				case COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT:
 				{
-					currentBrush.brushEffect = BRUSH_EFFECT_SHIFT;
+					appState->currentBrush.brushEffect = BRUSH_EFFECT_SHIFT;
 				} break;
 				case COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM:
 				{
-					currentBrush.brushEffect = BRUSH_EFFECT_RANDOM;
+					appState->currentBrush.brushEffect = BRUSH_EFFECT_RANDOM;
 				} break;
 				case COMMAND_EXPORT_IMAGE:
 				{
@@ -736,20 +655,20 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		v2 cursorPosInDrawnImage = {};
 		b32 isDownOnPaintable = false;
 		b32 isHoveredOnPaintable = false;
-		if (canvasUiBlock && canvasUiBlock->hash == blockHashMouseHover)
+		if (canvasUiBlock && canvasUiBlock->hash == uiInteractionHashes.hashMouseHover)
 		{
 			f32 scale = canvas->drawnImageData.dim.x / canvasUiBlock->rect.dim.x;
 			cursorPosInDrawnImagePrevious = (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBlock->rect.pos) * scale;
 			cursorPosInDrawnImage = (mousePixelPos - canvasUiBlock->rect.pos) * scale;
-			isDownOnPaintable = canvasUiBlock->hash == blockHashMouseDown;
+			isDownOnPaintable = canvasUiBlock->hash == uiInteractionHashes.hashMouseDown;
 			isHoveredOnPaintable = true;
 		}
-		if (finalTextureUiBlock && finalTextureUiBlock->hash == blockHashMouseHover)
+		if (finalTextureUiBlock && finalTextureUiBlock->hash == uiInteractionHashes.hashMouseHover)
 		{
 			f32 scale = rootImageRaw->dim.x / finalTextureUiBlock->rect.dim.x;
 			cursorPosInDrawnImagePrevious = (mousePixelPos - RayVectorToV2(GetMouseDelta()) - finalTextureUiBlock->rect.pos) * scale;
 			cursorPosInDrawnImage = (mousePixelPos - finalTextureUiBlock->rect.pos) * scale;
-			isDownOnPaintable = finalTextureUiBlock->hash == blockHashMouseDown;
+			isDownOnPaintable = finalTextureUiBlock->hash == uiInteractionHashes.hashMouseDown;
 			isHoveredOnPaintable = true;
 		}
 
@@ -757,7 +676,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		{
 			Color colorToPaint = {};
 
-			colorToPaint.r = (u8) currentBrush.brushEffect;
+			colorToPaint.r = (u8) appState->currentBrush.brushEffect;
 			colorToPaint.g = (u8) RandomInRangeI32(0, 255);
 			colorToPaint.a = (u8) canvas->processBatchIndex;
 
@@ -768,7 +687,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			endPosIV2.x = (u32) RoundF32(cursorPosInDrawnImage.x);
 			endPosIV2.y = (u32) RoundF32(cursorPosInDrawnImage.y);
 
-			b32 drewSomething = CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, currentBrush.size, colorToPaint);
+			b32 drewSomething = CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, appState->currentBrush.size, colorToPaint);
 			if (drewSomething)
 			{
 				canvas->proccessAsap = true;
@@ -1008,7 +927,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		if (somethingToDraw)
 		{
 			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->drawingPboIDs[canvas->currentDrawingPboID]);
-			Color *pixels = (Color *) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+			ColorU32 *pixels = (ColorU32 *) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
 			if (ASSERT(pixels))
 			{
 				for (u32 rectIndex = 0; rectIndex < canvas->drawingRectCount; rectIndex++)
@@ -1024,8 +943,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 							u32 endIndex = startIndex + drawingRect.dim.x;
 							for (u32 i = startIndex; i < endIndex; i++)
 							{
-								Color canvasPixel = ((Color *)canvas->drawnImageData.dataU8)[i];
-								Color *outPixel = (pixels + i);
+								ColorU32 canvasPixel = ((ColorU32 *)canvas->drawnImageData.dataU8)[i];
+								ColorU32 *outPixel = (pixels + i);
 								//NOTE: (Ahmayk) alpha = 0 -> no processing
 								//alpha != 0 -> is being processed currently
 								if (canvasPixel.a != 0)
@@ -1051,7 +970,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				if (canvas->drawingRectDirtyListFrame[rectIndex])
 				{
 					RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->drawnImageData.dim, canvas->drawingRectDim, rectIndex);
-					GLintptr offset = (drawingRect.pos.y * canvas->textureDrawing.width + drawingRect.pos.x) * sizeof(Color);
+					GLintptr offset = (drawingRect.pos.y * canvas->textureDrawing.width + drawingRect.pos.x) * sizeof(ColorU32);
 					glTexSubImage2D(GL_TEXTURE_2D, 0, drawingRect.pos.x, drawingRect.pos.y, drawingRect.dim.x, drawingRect.dim.y, GL_RGBA, GL_UNSIGNED_BYTE, (void*)offset);
 					canvas->drawingRectDirtyListFrame[rectIndex] = false;
 				}
@@ -1084,15 +1003,15 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			if (canvasUiBlock)
 			{
 				v2 hoverPos = canvasUiBlock->rect.pos + (canvasUiBlock->rect.dim * normalizedRelativePos);
-				Color hoverCursorColor = BRUSH_EFFECT_COLORS_PROCESSING[currentBrush.brushEffect];
-				f32 size = currentBrush.size * SafeDivideF32(canvasUiBlock->rect.dim.x, (f32) canvas->drawnImageData.dim.x);
+				Color hoverCursorColor = ColorU32ToRayColor( BRUSH_EFFECT_COLORS_PROCESSING[appState->currentBrush.brushEffect]);
+				f32 size = appState->currentBrush.size * SafeDivideF32(canvasUiBlock->rect.dim.x, (f32) canvas->drawnImageData.dim.x);
 				DrawCircle((i32)hoverPos.x, (i32)hoverPos.y, size, hoverCursorColor);
 			}
 			if (finalTextureUiBlock)
 			{
 				v2 hoverPos = finalTextureUiBlock->rect.pos + (finalTextureUiBlock->rect.dim * normalizedRelativePos);
 				Color outlineColor = Color{0, 0, 0, 100};
-				f32 size = currentBrush.size * SafeDivideF32(finalTextureUiBlock->rect.dim.x, (f32) canvas->drawnImageData.dim.x);
+				f32 size = appState->currentBrush.size * SafeDivideF32(finalTextureUiBlock->rect.dim.x, (f32) canvas->drawnImageData.dim.x);
 				DrawCircleLines((i32)hoverPos.x, (i32)hoverPos.y, size, outlineColor);
 			}
 		}

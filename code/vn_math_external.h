@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../includes/raylib/src/raylib.h"
+
 inline Vector2 V2ToRayVector(v2 v)
 {
 	return Vector2{v.x, v.y};
