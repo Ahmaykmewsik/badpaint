@@ -224,24 +224,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				appCommand->command = (COMMAND) i;
 			}
 		}
-#if 0
-
-		for (u32 i = 0; i < uiBufferLastFrame->uiBlockCount; i++)
-		{
-			UiBlock *uiBlock = &uiBufferLastFrame->uiBlocks[i];
-			if (uiBlock->flags & UI_FLAG_INTERACTABLE)
-			{
-				if (uiBlock->command)
-				{
-					CommandInput *commandInput = commandInputs + uiBlock->command;
-					commandInput->down |= uiBlock->down;
-					commandInput->pressed |= uiBlock->pressed;
-					uiBlock->down |= commandInput->down;
-					uiBlock->pressed |= commandInput->pressed;
-				}
-			}
-		}
-#endif
 
 		UiInteractionHashes uiInteractionHashes = {};
 
@@ -1015,6 +997,17 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		UiRaylibProcessStrings(uiBufferCurrent);
 		UiLayoutBlocks(uiBufferCurrent);
 
+#if DEBUG_MODE
+		if (IsKeyDown(KEY_L))
+		{
+			for (u32 i = 1; i < uiBufferCurrent->uiBlockCount; i++)
+			{
+				uiBufferCurrent->uiBlocks[i].flags |= UI_FLAG_DRAW_BORDER;
+				uiBufferCurrent->uiBlocks[i].uiBlockColors.borderColor = ColorU32{255, 255, 0, 255};
+			}
+		}
+#endif
+
 		BeginDrawing();
 
 		ClearBackground(Color{127, 127, 127, 255});
@@ -1039,6 +1032,23 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				DrawCircleLines((i32)hoverPos.x, (i32)hoverPos.y, size, outlineColor);
 			}
 		}
+
+#if DEBUG_MODE
+		if (IsKeyDown(KEY_P))
+		{
+			for (u32 i = 1; i < uiBufferCurrent->uiBlockCount; i++)
+			{
+				if (uiBufferCurrent->uiBlocks[i].parent)
+				{
+					i32 startPosX = (i32) uiBufferCurrent->uiBlocks[i].parent->rect.pos.x;
+					i32 startPosY = (i32) uiBufferCurrent->uiBlocks[i].parent->rect.pos.y;
+					i32 endPosX = (i32) uiBufferCurrent->uiBlocks[i].rect.pos.x;
+					i32 endPosY = (i32) uiBufferCurrent->uiBlocks[i].rect.pos.y;
+					DrawLine(startPosX, startPosY, endPosX, endPosY, RED);
+				}
+			}
+		}
+#endif
 
 		EndDrawing();
 
