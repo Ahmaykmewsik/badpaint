@@ -59,8 +59,8 @@ b32 WidgetBrushEffectButton(UiState *uiState, AppState *appState, UiInteractionH
 	block->uiFont = appState->defaultUiFont;
 	block->uiBlockColors.frontColor = COLORU32_BLACK;
 	block->uiBlockColors.borderColor = (active) ? COLORU32_BLACK: COLORU32_GRAY;
-	block->uiSizes[UI_AXIS_X] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
-	block->uiSizes[UI_AXIS_Y] = {UI_SIZE_KIND_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
+	block->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
+	block->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 
 	ColorU32 baseColor = BRUSH_EFFECT_COLORS_PRIMARY[brushEffect];
 	if (brushEffect == BRUSH_EFFECT_ERASE)

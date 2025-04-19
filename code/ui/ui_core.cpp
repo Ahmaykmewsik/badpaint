@@ -77,20 +77,20 @@ void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock)
 	{
 		for (int i = 0; i < ARRAY_COUNT(uiBlock->uiSizes); i++)
 		{
-			switch (uiBlock->uiSizes[i].kind)
+			switch (uiBlock->uiSizes[i].type)
 			{
-			case UI_SIZE_KIND_PERCENT_OF_PARENT:
+			case UI_SIZE_PERCENT_OF_PARENT:
 			{
 				if (ASSERT(uiBlock->parent))
 				{
 					uiBlock->rect.dim.elements[i] = (uiBlock->parent->rect.dim.elements[i] * uiBlock->uiSizes[i].value);
 				}
 			} break;
-			case UI_SIZE_KIND_PERCENT_OF_OTHER_AXIS:
-			case UI_SIZE_KIND_SUM_OF_CHILDREN:
-			case UI_SIZE_KIND_PIXELS:
-			case UI_SIZE_KIND_TEXTURE:
-			case UI_SIZE_KIND_TEXT:
+			case UI_SIZE_PERCENT_OF_OTHER_AXIS:
+			case UI_SIZE_SUM_OF_CHILDREN:
+			case UI_SIZE_PIXELS:
+			case UI_SIZE_TEXTURE:
+			case UI_SIZE_TEXT:
 				break;
 				InvalidDefaultCase
 			}
@@ -99,7 +99,7 @@ void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock)
 		//NOTE: (Ahmayk) percent of other axis done in a 2nd pass so we solve other axis first (if solveable).
 		for (int i = 0; i < ARRAY_COUNT(uiBlock->uiSizes); i++)
 		{
-			if (uiBlock->uiSizes[i].kind == UI_SIZE_KIND_PERCENT_OF_OTHER_AXIS)
+			if (uiBlock->uiSizes[i].type == UI_SIZE_PERCENT_OF_OTHER_AXIS)
 			{
 				uiBlock->rect.dim.elements[i] = uiBlock->rect.dim.elements[1 - i] * uiBlock->uiSizes[i].value;
 			}
@@ -123,9 +123,9 @@ void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock)
 
 		for (int i = 0; i < ARRAY_COUNT(uiBlock->uiSizes); i++)
 		{
-			switch (uiBlock->uiSizes[i].kind)
+			switch (uiBlock->uiSizes[i].type)
 			{
-				case UI_SIZE_KIND_SUM_OF_CHILDREN:
+				case UI_SIZE_SUM_OF_CHILDREN:
 				{
 					float sumOrMaxOfChildren = 0;
 					UiBlock *child = uiBlock->firstChild;
@@ -142,11 +142,11 @@ void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock)
 					uiBlock->rect.dim.elements[i] = sumOrMaxOfChildren;
 					childrenNeedUpwardRebuild = true;
 				} break;
-				case UI_SIZE_KIND_PIXELS:
-				case UI_SIZE_KIND_TEXTURE:
-				case UI_SIZE_KIND_PERCENT_OF_PARENT:
-				case UI_SIZE_KIND_PERCENT_OF_OTHER_AXIS:
-				case UI_SIZE_KIND_TEXT:
+				case UI_SIZE_PIXELS:
+				case UI_SIZE_TEXTURE:
+				case UI_SIZE_PERCENT_OF_PARENT:
+				case UI_SIZE_PERCENT_OF_OTHER_AXIS:
+				case UI_SIZE_TEXT:
 				break;
 				InvalidDefaultCase
 			}
@@ -232,27 +232,27 @@ void UiLayoutBlocks(UiBuffer *uiBuffer)
 		for (u32 j = 0; j < ARRAY_COUNT(uiBlock->uiSizes); j++)
 		{
 			UiSize uiSize = uiBlock->uiSizes[j];
-			switch (uiSize.kind)
+			switch (uiSize.type)
 			{
-				case UI_SIZE_KIND_TEXTURE:
+				case UI_SIZE_TEXTURE:
 				{
 					//NOTE: (Ahmayk) :(
 					uiBlock->rect.dim.elements[j] = (f32) uiBlock->uiTexture.dim.elements[j];
 				} break;
-				case UI_SIZE_KIND_PIXELS:
+				case UI_SIZE_PIXELS:
 				{
 					uiBlock->rect.dim.elements[j] = uiSize.value;
 				} break;
-				case UI_SIZE_KIND_TEXT:
+				case UI_SIZE_TEXT:
 				{
 					if (ASSERT(uiBlock->string.length && !IsZeroV2(uiBlock->textDim)))
 					{
 						uiBlock->rect.dim.elements[j] = uiBlock->textDim.elements[j];
 					}
 				}
-				case UI_SIZE_KIND_PERCENT_OF_PARENT:
-				case UI_SIZE_KIND_SUM_OF_CHILDREN:
-				case UI_SIZE_KIND_PERCENT_OF_OTHER_AXIS:
+				case UI_SIZE_PERCENT_OF_PARENT:
+				case UI_SIZE_SUM_OF_CHILDREN:
+				case UI_SIZE_PERCENT_OF_OTHER_AXIS:
 				break;
 				InvalidDefaultCase
 			}
