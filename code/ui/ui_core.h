@@ -2,6 +2,18 @@
 
 #include <base.h>
 
+enum UI_POSITION_TYPE
+{
+	UI_POSITION_AUTO,
+	UI_POSITION_ABSOLUTE,
+	UI_POSITION_RELATIVE,
+};
+struct UiPosition
+{
+	UI_POSITION_TYPE type;
+	f32 valuePixels;
+};
+
 enum UI_SIZE_TYPE
 {
 	UI_SIZE_NULL,
@@ -12,11 +24,23 @@ enum UI_SIZE_TYPE
 	UI_SIZE_PERCENT_OF_OTHER_AXIS,
 	UI_SIZE_SUM_OF_CHILDREN,
 };
-
 struct UiSize
 {
 	UI_SIZE_TYPE type;
 	f32 value;
+};
+
+enum UI_ALIGN_TYPE
+{
+	UI_ALIGN_START,
+	UI_ALIGN_CENTER,
+	UI_ALIGN_END,
+};
+
+enum UI_CHILD_LAYOUT_TYPE
+{
+	UI_CHILD_LAYOUT_LEFT_TO_RIGHT,
+	UI_CHILD_LAYOUT_TOP_TO_BOTTOM,
 };
 
 enum UI_AXIS
@@ -34,14 +58,7 @@ enum UI_FLAGS
 	UI_FLAG_DRAW_BORDER = (1 << 4),
 	UI_FLAG_DRAW_TEXTURE = (1 << 5),
 
-	UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT = (1 << 9),
-	UI_FLAG_CHILDREN_MANUAL_POSITION = (1 << 10),
-	UI_FLAG_MANUAL_POSITION = (1 << 11),
-	UI_FLAG_ALIGN_TEXT_CENTERED = (1 << 13),
-	UI_FLAG_ALIGN_TEXT_RIGHT = (1 << 14),
-	UI_FLAG_ALIGN_TEXTURE_CENTERED = (1 << 15),
-	UI_FLAG_INTERACTABLE = (1 << 17),
-	UI_FLAG_CENTER_IN_PARENT = (1 << 19),
+	UI_FLAG_INTERACTABLE = (1 << 10),
 };
 
 struct UiBlockColors
@@ -67,7 +84,14 @@ struct UiTexture
 
 struct UiBlock
 {
+	u32 flags;
 	u32 hash;
+
+	UiSize uiSizes[UI_AXIS_COUNT];
+	UiPosition uiPosition[UI_AXIS_COUNT];
+	UI_ALIGN_TYPE uiAlignTypesBlock[UI_AXIS_COUNT];
+	UI_ALIGN_TYPE uiAlignTypesText[UI_AXIS_COUNT];
+	UI_CHILD_LAYOUT_TYPE uiChildLayoutType;
 
 	UiBlock *firstChild;
 	UiBlock *lastChild;
@@ -75,21 +99,12 @@ struct UiBlock
 	UiBlock *prev;
 	UiBlock *parent;
 
-	u64 flags;
 	String string;
 	v2 textDim;
 	UiFont uiFont;
-
-	UiSize uiSizes[UI_AXIS_COUNT];
-	v2 relativePixelPosition;
 	UiTexture uiTexture;
-	v2 manualDim;
-
 	UiBlockColors uiBlockColors;
 
-	v2 cursorRelativePixelPos;
-
-	v2 computedRelativePixelPos;
 	RectV2 rect;
 };
 
@@ -116,7 +131,7 @@ UiBlock *UiGetBlockOfHashLastFrame(UiState *uiState, u32 hash);
 UiBlock *UiCreateBlock(UiState *uiState);
 void UiPushParent(UiState *uiState, UiBlock *uiBlock);
 void UiPopParent(UiState *uiState, UiBlock *uiBlock);
-void UiLayoutBlocks(UiBuffer *uiBuffer);
+void UiLayoutBlocks(UiBuffer *uiBuffer, iv2 windowDim, Arena *temporaryArena);
 void UiEndFrame(UiState *uiState);
 
 #define CONCAT_IMPL(x, y) x##y

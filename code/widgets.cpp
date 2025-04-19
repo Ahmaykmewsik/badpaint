@@ -53,7 +53,7 @@ b32 WidgetBrushEffectButton(UiState *uiState, AppState *appState, UiInteractionH
 	b32 downOverride = IsCommandKeyBindingDown(command);
 
 	UiBlock *block = UiCreateBlock(uiState);
-	block->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_ALIGN_TEXT_CENTERED | UI_FLAG_INTERACTABLE;
+	block->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_INTERACTABLE;
 	block->hash = hash;
 	block->string = string;
 	block->uiFont = appState->defaultUiFont;
@@ -61,6 +61,8 @@ b32 WidgetBrushEffectButton(UiState *uiState, AppState *appState, UiInteractionH
 	block->uiBlockColors.borderColor = (active) ? COLORU32_BLACK: COLORU32_GRAY;
 	block->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 	block->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
+	block->uiAlignTypesText[UI_AXIS_X] = UI_ALIGN_CENTER;
+	block->uiAlignTypesText[UI_AXIS_Y] = UI_ALIGN_CENTER;
 
 	ColorU32 baseColor = BRUSH_EFFECT_COLORS_PRIMARY[brushEffect];
 	if (brushEffect == BRUSH_EFFECT_ERASE)

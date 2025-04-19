@@ -6,6 +6,8 @@
 #include "main.h"
 #include "vn_math_external.h"
 
+#include <cstring>  //memset
+
 UiState *UiInit(Arena *arena)
 {
 	UiState *result = ARENA_PUSH_STRUCT(arena, UiState);
@@ -117,8 +119,6 @@ void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock)
 		CalculateUiDownwardsDependentSizes(uiBlock->firstChild);
 		CalculateUiDownwardsDependentSizes(uiBlock->next);
 
-		bool isHorizontal = uiBlock->flags & UI_FLAG_CHILDREN_HORIZONTAL_LAYOUT;
-
 		b32 childrenNeedUpwardRebuild = false;
 
 		for (int i = 0; i < ARRAY_COUNT(uiBlock->uiSizes); i++)
@@ -132,11 +132,15 @@ void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock)
 					while (child)
 					{
 						ASSERT(child != uiBlock);
-
-						((i == 0 && isHorizontal) || (i == 1 && !isHorizontal))
-							? sumOrMaxOfChildren += child->rect.dim.elements[i]
-							: sumOrMaxOfChildren = MaxF32(child->rect.dim.elements[i], sumOrMaxOfChildren);
-
+						if ((i == UI_AXIS_X && uiBlock->uiAlignTypesBlock[i] == UI_CHILD_LAYOUT_LEFT_TO_RIGHT) ||
+							(i == UI_AXIS_Y && uiBlock->uiAlignTypesBlock[i] == UI_CHILD_LAYOUT_TOP_TO_BOTTOM))
+						{
+							 sumOrMaxOfChildren += child->rect.dim.elements[i];
+						}
+						else
+						{
+							sumOrMaxOfChildren = MaxF32(child->rect.dim.elements[i], sumOrMaxOfChildren);
+						}
 						child = child->next;
 					}
 					uiBlock->rect.dim.elements[i] = sumOrMaxOfChildren;
@@ -159,10 +163,11 @@ void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock)
 	}
 }
 
-void CalculateUiRelativePositions(UiBlock *uiBlock)
+void CalculateUiPositionData(UiBuffer *uiBuffer, UiBlock *uiBlock, v2 *calculatedPositionDatas, iv2 windowDim)
 {
 	if (uiBlock)
 	{
+#if 0
 		if ((uiBlock->flags & UI_FLAG_MANUAL_POSITION) || (!uiBlock->parent || uiBlock->parent->flags & UI_FLAG_CHILDREN_MANUAL_POSITION))
 		{
 			uiBlock->computedRelativePixelPos = uiBlock->relativePixelPosition;
@@ -180,23 +185,132 @@ void CalculateUiRelativePositions(UiBlock *uiBlock)
 			else
 				uiBlock->computedRelativePixelPos.y += uiBlock->prev->rect.dim.y;
 		}
+#endif
 
-		CalculateUiRelativePositions(uiBlock->firstChild);
-		CalculateUiRelativePositions(uiBlock->next);
+		v2 *calculatedPosition = calculatedPositionDatas + (uiBlock - uiBuffer->uiBlocks);
+
+		for (u32 i = 0; i < UI_AXIS_COUNT; i++)
+		{
+			switch(uiBlock->uiPosition[i].type)
+			{
+				case UI_POSITION_ABSOLUTE:
+				{
+					//NOTE: (Ahmayk) absolute position is passed in directly into final rect later
+				} break;
+				case UI_POSITION_RELATIVE:
+				{
+					calculatedPosition->elements[i] = uiBlock->uiPosition[i].valuePixels;
+				} break;
+				case UI_POSITION_AUTO:
+				{
+					f32 parentSize = (f32) windowDim.elements[i];
+					UI_CHILD_LAYOUT_TYPE parentLayoutType = UI_CHILD_LAYOUT_LEFT_TO_RIGHT;
+					if (uiBlock->parent)
+					{
+						parentLayoutType = uiBlock->parent->uiChildLayoutType;
+						parentSize = uiBlock->parent->rect.dim.elements[i];
+					}
+
+					UiBlock *prevBlockInAlignment = {};
+					for (UiBlock *prev = uiBlock->prev; prev; prev = prev->prev)
+					{
+						if (prev->uiAlignTypesBlock[i] == uiBlock->uiAlignTypesBlock[i])
+						{
+							prevBlockInAlignment = prev;
+							break;
+						}
+					}
+
+					b32 inParentLayoutType = (i == UI_AXIS_X && parentLayoutType == UI_CHILD_LAYOUT_LEFT_TO_RIGHT) ||
+										     (i == UI_AXIS_Y && parentLayoutType == UI_CHILD_LAYOUT_TOP_TO_BOTTOM);
+
+					if (prevBlockInAlignment && inParentLayoutType)
+					{
+						v2 *calculatedPositionPrev = calculatedPositionDatas + (prevBlockInAlignment - uiBuffer->uiBlocks);
+						calculatedPosition->elements[i] = calculatedPositionPrev->elements[i] + prevBlockInAlignment->rect.dim.elements[i];
+					}
+					else
+					{
+						f32 sumOrMaxOfSiblingsAndSelf = 0;
+						UiBlock *childOfParent = uiBlock;
+						while(childOfParent->prev)
+						{
+							childOfParent = childOfParent->prev;
+						}
+						for (; childOfParent; childOfParent = childOfParent->next)
+						{
+							if (childOfParent->uiPosition[i].type == UI_POSITION_AUTO &&
+								childOfParent->uiAlignTypesBlock[i] == uiBlock->uiAlignTypesBlock[i])
+							{
+								if (inParentLayoutType)
+								{
+									sumOrMaxOfSiblingsAndSelf += childOfParent->rect.dim.elements[i];
+								}
+								else
+								{
+									sumOrMaxOfSiblingsAndSelf = MaxF32(childOfParent->rect.dim.elements[i], sumOrMaxOfSiblingsAndSelf);
+								}
+							}
+						}
+
+						switch(uiBlock->uiAlignTypesBlock[i])
+						{
+							case UI_ALIGN_START:
+							{
+								calculatedPosition->elements[i] = 0;
+							} break;
+							case UI_ALIGN_END:
+							{
+								calculatedPosition->elements[i] = parentSize - MinF32(parentSize, sumOrMaxOfSiblingsAndSelf);
+							} break;
+							case UI_ALIGN_CENTER:
+							{
+								calculatedPosition->elements[i] = (parentSize * 0.5f) - (MinF32(parentSize, sumOrMaxOfSiblingsAndSelf) * 0.5f);
+							} break;
+							InvalidDefaultCase;
+						}
+					}
+				} break;
+				InvalidDefaultCase;
+			}
+		}
+
+		CalculateUiPositionData(uiBuffer, uiBlock->firstChild, calculatedPositionDatas, windowDim);
+		CalculateUiPositionData(uiBuffer, uiBlock->next, calculatedPositionDatas, windowDim);
 	}
 }
 
-void CalculateUiPosGivenReletativePositions(UiBlock *uiBlock)
+void CalculateUiPos(UiBuffer *uiBuffer, UiBlock *uiBlock, v2 *calculatedPositionDatas)
 {
 	if (uiBlock)
 	{
+		v2 *calculatedPosition = calculatedPositionDatas + (uiBlock - uiBuffer->uiBlocks);
+
+		v2 parentPos = {};
 		if (uiBlock->parent)
-			uiBlock->computedRelativePixelPos += uiBlock->parent->computedRelativePixelPos;
+		{
+			parentPos = uiBlock->parent->rect.pos;
+		}
 
-		uiBlock->rect.pos = uiBlock->computedRelativePixelPos;
+		for (u32 i = 0; i < UI_AXIS_COUNT; i++)
+		{
+			switch(uiBlock->uiPosition[i].type)
+			{
+				case UI_POSITION_ABSOLUTE:
+				{
+					uiBlock->rect.pos.elements[i] = uiBlock->uiPosition[i].valuePixels;
+				} break;
+				case UI_POSITION_RELATIVE:
+				case UI_POSITION_AUTO:
+				{
+					uiBlock->rect.pos.elements[i] = parentPos.elements[i] + calculatedPosition->elements[i];
+				} break;
+				InvalidDefaultCase
+			}
+		}
 
-		CalculateUiPosGivenReletativePositions(uiBlock->firstChild);
-		CalculateUiPosGivenReletativePositions(uiBlock->next);
+		CalculateUiPos(uiBuffer, uiBlock->firstChild, calculatedPositionDatas);
+		CalculateUiPos(uiBuffer, uiBlock->next, calculatedPositionDatas);
 	}
 }
 
@@ -224,7 +338,7 @@ UiBlock *UiGetBlockOfHashLastFrame(UiState *uiState, u32 hash)
     return result;
 }
 
-void UiLayoutBlocks(UiBuffer *uiBuffer)
+void UiLayoutBlocks(UiBuffer *uiBuffer, iv2 windowDim, Arena *temporaryArena)
 {
 	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
 	{
@@ -259,18 +373,21 @@ void UiLayoutBlocks(UiBuffer *uiBuffer)
 		}
 	}
 
+	ArenaMarker positionDataMarker;
+	v2 *calculatedPositionDatas = ARENA_PUSH_ARRAY_MARKER(temporaryArena, uiBuffer->uiBlockCount, v2, &positionDataMarker);
+	memset(calculatedPositionDatas, 0, uiBuffer->uiBlockCount * sizeof(v2));
 	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
 	{
 		UiBlock *uiBlock = &uiBuffer->uiBlocks[i];
-
 		if (!uiBlock->parent)
 		{
 			CalculateUiUpwardsDependentSizes(uiBlock);
 			CalculateUiDownwardsDependentSizes(uiBlock);
-			CalculateUiRelativePositions(uiBlock);
-			CalculateUiPosGivenReletativePositions(uiBlock);
+			CalculateUiPositionData(uiBuffer, uiBlock, calculatedPositionDatas, windowDim);
+			CalculateUiPos(uiBuffer, uiBlock, calculatedPositionDatas);
 		}
 	}
+	ArenaPopMarker(positionDataMarker);
 }
 
 void UiEndFrame(UiState *uiState)

@@ -31,16 +31,31 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 
 		if (uiBlock->flags & UI_FLAG_DRAW_TEXT)
 		{
-			v2 pos = uiBlock->rect.pos;
+			v2 pos = {};
+			for (u32 i = 0; i < ARRAY_COUNT(uiBlock->uiAlignTypesText); i++)
+			{
+				switch(uiBlock->uiAlignTypesText[i])
+				{
+					case UI_ALIGN_START:
+					{
+						pos.elements[i] = uiBlock->rect.pos.elements[i];
+					} break;
+					case UI_ALIGN_CENTER:
+					{
+						f32 textLengthInBlock = MinF32(uiBlock->textDim.elements[i], uiBlock->rect.dim.elements[i]);
+						f32 offset = (uiBlock->rect.dim.elements[i] * 0.5f) - (textLengthInBlock * 0.5f);
+						pos.elements[i] = uiBlock->rect.pos.elements[i] + offset;
+					} break;
+					case UI_ALIGN_END:
+					{
+						pos.elements[i] = uiBlock->rect.pos.elements[i] + uiBlock->rect.dim.elements[i] - uiBlock->textDim.elements[i];
+					} break;
+					InvalidDefaultCase;
+				}
+			}
 
-			if (uiBlock->flags & UI_FLAG_ALIGN_TEXT_CENTERED)
-			{
-				pos += GetCeneteredPosInRectV2(uiBlock->rect, uiBlock->textDim);
-			}
-			else if (uiBlock->flags & UI_FLAG_ALIGN_TEXT_RIGHT)
-			{
-				pos.x += uiBlock->rect.dim.x - uiBlock->textDim.x;
-			}
+			//NOTE: (Ahmayk) snap to grid, raylib produces artifacts if we don't do this
+			pos = RoundV2(pos);
 
 			Font *font = (Font*) uiBlock->uiFont.data;
 			if (ASSERT(font) && ASSERT(uiBlock->uiFont.id == (u32) font->texture.id))
@@ -58,17 +73,6 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 				float scale = uiBlock->rect.dim.x / texture->width;
 				Rectangle source = {0.0f, 0.0f, (f32)texture->width, (f32)texture->height};
 				Rectangle dest = {uiBlock->rect.pos.x, uiBlock->rect.pos.y, (f32)texture->width * scale, (f32)texture->height * scale};
-
-				if (uiBlock->flags & UI_FLAG_ALIGN_TEXTURE_CENTERED)
-				{
-					v2 dim;
-					dim.x = dest.width;
-					dim.y = dest.height;
-					v2 relativePos = GetCeneteredPosInRectV2(uiBlock->rect, dim);
-					dest.x += relativePos.x;
-					dest.y += relativePos.y;
-				}
-
 				DrawTexturePro(*texture, source, dest, Vector2{0, 0}, 0, WHITE);
 			}
 		}
