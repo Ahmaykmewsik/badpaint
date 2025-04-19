@@ -76,6 +76,9 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 		if (uiBlock->flags & UI_FLAG_DRAW_BORDER)
 		{
 			RectV2 rect = uiBlock->rect;
+			//NOTE: (Ahmayk) draw border around block, not on top of it
+			rect.dim.x += 1;
+			rect.dim.y += 1;
 			Color color = ColorU32ToRayColor(uiBlock->uiBlockColors.borderColor);
 			//TODO: (Ahmayk) Bleh. Need to have concept in UI of pixel-perfect positioning vs not
 			DrawRectangleLines((u32)rect.pos.x, (u32)rect.pos.y, (u32)rect.dim.x, (u32)rect.dim.y, color);
