@@ -142,6 +142,18 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	//TODO: (Ahmayk) Remove
 	u32 draggedHash = {};
 
+	Texture toolbrushSpriteSheet = LoadTexture("buttonSprites.png");
+	i32 spriteSheetBoxSize = 30;
+	appState->toolButtonPencil.nonActive = UiRaylibTextureToUiTextureView(&toolbrushSpriteSheet);
+	appState->toolButtonPencil.nonActive.viewRect.pos = iv2{spriteSheetBoxSize * 0, 0};
+	appState->toolButtonPencil.nonActive.viewRect.dim = iv2{spriteSheetBoxSize, spriteSheetBoxSize};
+	appState->toolButtonPencil.down = UiRaylibTextureToUiTextureView(&toolbrushSpriteSheet);
+	appState->toolButtonPencil.down.viewRect.pos = iv2{spriteSheetBoxSize * 1, 0};
+	appState->toolButtonPencil.down.viewRect.dim = iv2{spriteSheetBoxSize, spriteSheetBoxSize};
+	appState->toolButtonPencil.active = UiRaylibTextureToUiTextureView(&toolbrushSpriteSheet);
+	appState->toolButtonPencil.active.viewRect.pos = iv2{spriteSheetBoxSize * 2, 0};
+	appState->toolButtonPencil.active.viewRect.dim = iv2{spriteSheetBoxSize, spriteSheetBoxSize};
+
 	*rootImageRaw = LoadDataIntoRawImage(&DEFAULT_IMAGE_DATA[0], ARRAY_COUNT(DEFAULT_IMAGE_DATA), &gameMemory);
 	if (rootImageRaw->dataSize)
 	{
@@ -657,6 +669,14 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						UiBlock *b = UiCreateBlock(uiState);
 						b->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 5};
+					}
+
+					{
+						UiBlock *b = UiCreateBlock(uiState);
+						b->flags = UI_FLAG_DRAW_TEXTURE;
+						b->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXTURE};
+						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXTURE};
+						b->uiTextureView = appState->toolButtonPencil.nonActive;
 					}
 
 					if (WidgetBrushEffectButton(uiState, appState, &uiInteractionHashes, BRUSH_EFFECT_ERASE, STRING("Ers"), COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE))

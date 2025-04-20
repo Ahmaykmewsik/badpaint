@@ -87,10 +87,18 @@ struct Brush
     u32 size;
 };
 
+struct ToolButton
+{
+	UiTextureView nonActive;
+	UiTextureView down;
+	UiTextureView active;
+};
+
 struct AppState
 {
 	Brush currentBrush;
 	UiFont defaultUiFont;
+	ToolButton toolButtonPencil;
 };
 
 b32 IsCommandKeyBindingDown(COMMAND command);

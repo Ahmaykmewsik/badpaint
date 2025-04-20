@@ -73,10 +73,9 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 				ASSERT(uiBlock->uiTextureView.dim.x == texture->width) &&
 				ASSERT(uiBlock->uiTextureView.dim.y == texture->height))
 			{
-				float scale = uiBlock->rect.dim.x / texture->width;
 				RectIV2 *viewRect = &uiBlock->uiTextureView.viewRect;
 				Rectangle source = {(f32)viewRect->pos.x, (f32)viewRect->pos.x, (f32)viewRect->dim.x, (f32)viewRect->dim.y};
-				Rectangle dest = {uiBlock->rect.pos.x, uiBlock->rect.pos.y, (f32)texture->width * scale, (f32)texture->height * scale};
+				Rectangle dest = RectToRayRectangle(uiBlock->rect);
 				DrawTexturePro(*texture, source, dest, Vector2{0, 0}, 0, WHITE);
 			}
 		}
