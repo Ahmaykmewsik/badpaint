@@ -55,13 +55,19 @@ struct AppCommandBuffer
 	ArenaMarker arenaMarker;
 };
 
-enum BRUSH_EFFECT : u32
+enum BADPAINT_BRUSH_EFFECT : u32
 {
-    BRUSH_EFFECT_ERASE = 0,
-    BRUSH_EFFECT_REMOVE = 1,
-    BRUSH_EFFECT_MAX = 2,
-    BRUSH_EFFECT_SHIFT = 3,
-    BRUSH_EFFECT_RANDOM = 4,
+    BADPAINT_BRUSH_EFFECT_ERASE = 0,
+    BADPAINT_BRUSH_EFFECT_REMOVE = 1,
+    BADPAINT_BRUSH_EFFECT_MAX = 2,
+    BADPAINT_BRUSH_EFFECT_SHIFT = 3,
+    BADPAINT_BRUSH_EFFECT_RANDOM = 4,
+};
+
+enum BADPAINT_TOOL
+{
+	BADPAINT_TOOL_PENCIL,
+	BADPAINT_TOOL_COUNT,
 };
 
 static ColorU32 BRUSH_EFFECT_COLORS_PRIMARY[] =
@@ -81,24 +87,19 @@ static ColorU32 BRUSH_EFFECT_COLORS_PROCESSING[] =
 	{ 200, 122, 255, 127 }, //PURPLE
 };
 
-struct Brush
+struct Tool
 {
-    BRUSH_EFFECT brushEffect;
-    u32 size;
-};
-
-struct ToolButton
-{
-	UiTextureView nonActive;
-	UiTextureView down;
-	UiTextureView active;
+	UiTextureView uiTextureViews[7]; //INTERACTION_STATE_COUNT
 };
 
 struct AppState
 {
-	Brush currentBrush;
 	UiFont defaultUiFont;
-	ToolButton toolButtonPencil;
+
+	Tool tools[BADPAINT_TOOL_COUNT];
+    BADPAINT_BRUSH_EFFECT currentBrushEffect;
+	BADPAINT_TOOL currentTool;
+	u32 toolSize;
 };
 
 b32 IsCommandKeyBindingDown(COMMAND command);

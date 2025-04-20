@@ -134,8 +134,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	appState->defaultUiFont.id = defaultFont.texture.id;
 	appState->defaultUiFont.data = &defaultFont;
 
-	appState->currentBrush.brushEffect = BRUSH_EFFECT_REMOVE;
-	appState->currentBrush.size = 10;
+	appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_REMOVE;
+	appState->toolSize = 10;
 
 	Texture loadedTexture = {};
 	v2 pressedMousePos = {};
@@ -144,20 +144,18 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 	Texture toolbrushSpriteSheet = LoadTexture("buttonSprites.png");
 	i32 spriteSheetBoxSize = 30;
-	appState->toolButtonPencil.nonActive = UiRaylibTextureToUiTextureView(&toolbrushSpriteSheet);
-	appState->toolButtonPencil.nonActive.viewRect.pos = iv2{spriteSheetBoxSize * 0, 0};
-	appState->toolButtonPencil.nonActive.viewRect.dim = iv2{spriteSheetBoxSize, spriteSheetBoxSize};
-	appState->toolButtonPencil.down = UiRaylibTextureToUiTextureView(&toolbrushSpriteSheet);
-	appState->toolButtonPencil.down.viewRect.pos = iv2{spriteSheetBoxSize * 1, 0};
-	appState->toolButtonPencil.down.viewRect.dim = iv2{spriteSheetBoxSize, spriteSheetBoxSize};
-	appState->toolButtonPencil.active = UiRaylibTextureToUiTextureView(&toolbrushSpriteSheet);
-	appState->toolButtonPencil.active.viewRect.pos = iv2{spriteSheetBoxSize * 2, 0};
-	appState->toolButtonPencil.active.viewRect.dim = iv2{spriteSheetBoxSize, spriteSheetBoxSize};
+	Tool *pencil = &appState->tools[BADPAINT_TOOL_PENCIL];
+	for (i32 i = 0; i < 5; i++)
+	{
+		pencil->uiTextureViews[i] = UiRaylibTextureToUiTextureView(&toolbrushSpriteSheet);
+		pencil->uiTextureViews[i].viewRect.pos = iv2{spriteSheetBoxSize * i, 0};
+		pencil->uiTextureViews[i].viewRect.dim = iv2{spriteSheetBoxSize, spriteSheetBoxSize};
+	}
 
 	*rootImageRaw = LoadDataIntoRawImage(&DEFAULT_IMAGE_DATA[0], ARRAY_COUNT(DEFAULT_IMAGE_DATA), &gameMemory);
 	if (rootImageRaw->dataSize)
 	{
-		InitializeNewImage(&gameMemory, rootImageRaw, canvas, &loadedTexture, &appState->currentBrush, processedImages, threadCount);
+		InitializeNewImage(&gameMemory, rootImageRaw, canvas, &loadedTexture, processedImages, threadCount);
 	}
 
 	while (!WindowShouldClose())
@@ -210,7 +208,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 			if (rootImageRaw->dataSize)
 			{
-				InitializeNewImage(&gameMemory, rootImageRaw, canvas, &loadedTexture, &appState->currentBrush, processedImages, threadCount);
+				InitializeNewImage(&gameMemory, rootImageRaw, canvas, &loadedTexture, processedImages, threadCount);
 				if (rootImageRaw->dataSize > MegaByte * 500)
 				{
 					String notification = STRING("You like to play dangerously, don't you?");
@@ -341,18 +339,29 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 					{
 						UiBlock *b = UiCreateBlock(uiState);
-						b->flags = UI_FLAG_DRAW_TEXTURE;
+						b->hash = Murmur3String("brushPencil");
+						b->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
 						b->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXTURE};
 						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXTURE};
-						b->uiTextureView = appState->toolButtonPencil.nonActive;
+						b32 active = true;
+						b32 isDisabled = false;
+						b32 downOverride = IsKeyDown(KEY_B);
+						INTERACTION_STATE interactionState = GetInteractionState(b->hash, &uiInteractionHashes, active, isDisabled, downOverride);
+						b->uiTextureView = appState->tools[BADPAINT_TOOL_PENCIL].uiTextureViews[interactionState];
 					}
 
-					if (WidgetBrushEffectButton(uiState, appState, &uiInteractionHashes, BRUSH_EFFECT_ERASE, STRING("Ers"), COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE))
+					{
+						UiBlock *b = UiCreateBlock(uiState);
+						b->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 50};
+					}
+
+					if (WidgetBrushEffectButton(uiState, appState, &uiInteractionHashes, BADPAINT_BRUSH_EFFECT_ERASE, STRING("Ers"), COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE))
 					{
 						AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
 						appCommand->command = COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE;
 					}
-					if (WidgetBrushEffectButton(uiState, appState, &uiInteractionHashes, BRUSH_EFFECT_REMOVE, STRING("Rmv"), COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE))
+					if (WidgetBrushEffectButton(uiState, appState, &uiInteractionHashes, BADPAINT_BRUSH_EFFECT_REMOVE, STRING("Rmv"), COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE))
 					{
 						AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
 						appCommand->command = COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE;
@@ -436,23 +445,23 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			{
 				case COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE:
 				{
-					appState->currentBrush.brushEffect = BRUSH_EFFECT_ERASE;
+					appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_ERASE;
 				} break;
 				case COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE:
 				{
-					appState->currentBrush.brushEffect = BRUSH_EFFECT_REMOVE;
+					appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_REMOVE;
 				} break;
 				case COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX:
 				{
-					appState->currentBrush.brushEffect = BRUSH_EFFECT_MAX;
+					appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_MAX;
 				} break;
 				case COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT:
 				{
-					appState->currentBrush.brushEffect = BRUSH_EFFECT_SHIFT;
+					appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_SHIFT;
 				} break;
 				case COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM:
 				{
-					appState->currentBrush.brushEffect = BRUSH_EFFECT_RANDOM;
+					appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_RANDOM;
 				} break;
 				case COMMAND_EXPORT_IMAGE:
 				{
@@ -531,7 +540,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		{
 			Color colorToPaint = {};
 
-			colorToPaint.r = (u8) appState->currentBrush.brushEffect;
+			colorToPaint.r = (u8) appState->currentBrushEffect;
 			colorToPaint.g = (u8) RandomInRangeI32(0, 255);
 			colorToPaint.a = (u8) canvas->processBatchIndex;
 
@@ -542,7 +551,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			endPosIV2.x = (u32) RoundF32(cursorPosInDrawnImage.x);
 			endPosIV2.y = (u32) RoundF32(cursorPosInDrawnImage.y);
 
-			b32 drewSomething = CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, appState->currentBrush.size, colorToPaint);
+			b32 drewSomething = CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, appState->toolSize, colorToPaint);
 			if (drewSomething)
 			{
 				canvas->proccessAsap = true;
@@ -869,15 +878,15 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			if (canvasUiBlock)
 			{
 				v2 hoverPos = canvasUiBlock->rect.pos + (canvasUiBlock->rect.dim * normalizedRelativePos);
-				Color hoverCursorColor = ColorU32ToRayColor( BRUSH_EFFECT_COLORS_PROCESSING[appState->currentBrush.brushEffect]);
-				f32 size = appState->currentBrush.size * SafeDivideF32(canvasUiBlock->rect.dim.x, (f32) canvas->drawnImageData.dim.x);
+				Color hoverCursorColor = ColorU32ToRayColor( BRUSH_EFFECT_COLORS_PROCESSING[appState->currentBrushEffect]);
+				f32 size = appState->toolSize * SafeDivideF32(canvasUiBlock->rect.dim.x, (f32) canvas->drawnImageData.dim.x);
 				DrawCircle((i32)hoverPos.x, (i32)hoverPos.y, size, hoverCursorColor);
 			}
 			if (finalTextureUiBlock)
 			{
 				v2 hoverPos = finalTextureUiBlock->rect.pos + (finalTextureUiBlock->rect.dim * normalizedRelativePos);
 				Color outlineColor = Color{0, 0, 0, 100};
-				f32 size = appState->currentBrush.size * SafeDivideF32(finalTextureUiBlock->rect.dim.x, (f32) canvas->drawnImageData.dim.x);
+				f32 size = appState->toolSize * SafeDivideF32(finalTextureUiBlock->rect.dim.x, (f32) canvas->drawnImageData.dim.x);
 				DrawCircleLines((i32)hoverPos.x, (i32)hoverPos.y, size, outlineColor);
 			}
 		}

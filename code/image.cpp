@@ -650,7 +650,7 @@ void HashImageRects(ImageRawRGBA32 *imageRaw, iv2 rectDim, u32 **outHashes)
 
 //TODO: (Ahmayk) This takes a good deal of time now, the exspensive stuff should be offloaded to another thread
 //And we have a fun little loading animation or something
-void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush, GameMemory *gameMemory)
+void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *gameMemory)
 {
 	//NOTE: (Ahmayk) free and reallocate temporary arena to reduce memory size
 	//to uncommit the memory there, will reduce our memory footprint
@@ -742,7 +742,6 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 		canvas->rollbackHasRolledBackOnce = {};
 		canvas->saveRollbackOnNextPress = {};
 		canvas->dataOnCanvas = {};
-		canvas->brush = brush;
 
 		canvas->drawingRectDim = iv2{32, 32};
 		canvas->drawingRectCount = GetDrawingRectCount(canvasDim, canvas->drawingRectDim);
@@ -761,12 +760,12 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, Brush *brush
 	}
 }
 
-b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush, ProcessedImage *processedImages, u32 threadCount)
+b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, ProcessedImage *processedImages, u32 threadCount)
 {
 	b32 result = false;
 	if (rootImageRaw->dataU8)
 	{
-		InitializeCanvas(canvas, rootImageRaw, currentBrush, gameMemory);
+		InitializeCanvas(canvas, rootImageRaw, gameMemory);
 		if (canvas->initialized)
 		{
 			UploadAndReplaceTexture(rootImageRaw, loadedTexture);
@@ -826,22 +825,22 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 			{
 				switch (canvasPixel[0])
 				{
-					case BRUSH_EFFECT_ERASE: break;
-					case BRUSH_EFFECT_REMOVE:
+					case BADPAINT_BRUSH_EFFECT_ERASE: break;
+					case BADPAINT_BRUSH_EFFECT_REMOVE:
 					{
 						filteredPixel[0] = 0;
 						filteredPixel[1] = 0;
 						filteredPixel[2] = 0;
 						filteredPixel[3] = 0;
 					} break;
-					case BRUSH_EFFECT_MAX:
+					case BADPAINT_BRUSH_EFFECT_MAX:
 					{
 						filteredPixel[0] = 255;
 						filteredPixel[1] = 255;
 						filteredPixel[2] = 255;
 						filteredPixel[3] = 255;
 					} break;
-					case BRUSH_EFFECT_SHIFT:
+					case BADPAINT_BRUSH_EFFECT_SHIFT:
 					{
 						int shiftAmount = 36;
 						if (i < imagePNGFiltered.dataSize - shiftAmount)
@@ -852,7 +851,7 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 							filteredPixel[3] = filteredPixel[3 + shiftAmount];
 						}
 					} break;
-					case BRUSH_EFFECT_RANDOM:
+					case BADPAINT_BRUSH_EFFECT_RANDOM:
 					{
 						filteredPixel[0] = canvasPixel[1];
 						filteredPixel[1] = canvasPixel[1];

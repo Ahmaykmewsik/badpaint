@@ -11,44 +11,40 @@ ColorU32 AddConstantToColor(ColorU32 color, i8 constant)
 	return result;
 }
 
-UiReactiveColorStates CreateButtonUiReactiveColorStates(ColorU32 color)
+INTERACTION_STATE GetInteractionState(u32 hash, UiInteractionHashes *uiInteractionHashes, b32 isActive, b32 isDisabled, b32 downOverride)
 {
-	UiReactiveColorStates result = {};
-
-	result.active.down = AddConstantToColor(color, -100);
-	result.active.hovered = AddConstantToColor(color, 10);
-	result.active.neutral = color;
-	result.nonActive.down = AddConstantToColor(color, -100);
-	result.nonActive.hovered = AddConstantToColor(color, -20);
-	result.nonActive.neutral = AddConstantToColor(color, -50);
-	return result;
-}
-
-ColorU32 GetReactiveColorU32(u32 hash, UiInteractionHashes *uiInteractionHashes, UiReactiveColors *uiReactiveColors, b32 isDisabled, b32 downOverride)
-{
-	ColorU32 result = uiReactiveColors->neutral;
+	INTERACTION_STATE result = INTERACTION_STATE_NONACTIVE_NEUTRAL;
 	if (isDisabled)
 	{
-		result = uiReactiveColors->disabled;
+		result = INTERACTION_STATE_DISABLED;
 	}
 	else
 	{
+		if (isActive)
+		{
+			result = INTERACTION_STATE_ACTIVE_NEUTRAL;
+		}
+
 		if (hash == uiInteractionHashes->hashMouseDown || downOverride)
 		{
-			result = uiReactiveColors->down;
+			result = INTERACTION_STATE_DOWN;
 		}
 		else if (hash == uiInteractionHashes->hashMouseHover)
 		{
-			result = uiReactiveColors->hovered;
+			result = INTERACTION_STATE_NONACTIVE_HOVERED;
+			if (isActive)
+			{
+				result = INTERACTION_STATE_ACTIVE_HOVERED;
+			}
 		}
 	}
 	return result;
 }
 
-b32 WidgetBrushEffectButton(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, BRUSH_EFFECT brushEffect, String string, COMMAND command)
+b32 WidgetBrushEffectButton(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, BADPAINT_BRUSH_EFFECT brushEffect, String string, COMMAND command)
 {
 	u32 hash = Murmur3String("brushEffect", brushEffect);
-	b32 active = appState->currentBrush.brushEffect == brushEffect;
+	b32 active = appState->currentBrushEffect == brushEffect;
 	b32 isDisabled = false;
 	b32 downOverride = IsCommandKeyBindingDown(command);
 
@@ -65,17 +61,19 @@ b32 WidgetBrushEffectButton(UiState *uiState, AppState *appState, UiInteractionH
 	block->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
 
 	ColorU32 baseColor = BRUSH_EFFECT_COLORS_PRIMARY[brushEffect];
-	if (brushEffect == BRUSH_EFFECT_ERASE)
+	if (brushEffect == BADPAINT_BRUSH_EFFECT_ERASE)
 	{
 		baseColor = ColorU32{245, 245, 245, 255};
 	}
-	UiReactiveColorStates uiReactiveColorStates = CreateButtonUiReactiveColorStates(baseColor);
-	UiReactiveColors uiReactiveColors = uiReactiveColorStates.nonActive;
-	if (active)
-	{
-		uiReactiveColors = uiReactiveColorStates.active;
-	}
-	block->uiBlockColors.backColor = GetReactiveColorU32(hash, uiInteractionHashes, &uiReactiveColors, isDisabled, downOverride);
+
+	ColorU32 colors[INTERACTION_STATE_COUNT];
+	colors[INTERACTION_STATE_NONACTIVE_NEUTRAL] = AddConstantToColor(baseColor, -50);
+	colors[INTERACTION_STATE_NONACTIVE_HOVERED] = AddConstantToColor(baseColor, -20);
+	colors[INTERACTION_STATE_DOWN] = AddConstantToColor(baseColor, -100);
+	colors[INTERACTION_STATE_ACTIVE_NEUTRAL] = AddConstantToColor(baseColor, 0);
+	colors[INTERACTION_STATE_ACTIVE_HOVERED] = AddConstantToColor(baseColor, 10);
+	INTERACTION_STATE interactionState = GetInteractionState(hash, uiInteractionHashes, active, isDisabled, downOverride);
+	block->uiBlockColors.backColor = colors[interactionState];
 
 	b32 result = (hash == uiInteractionHashes->hashMousePressed);
 	return result;

@@ -67,7 +67,6 @@ struct Canvas
 	u32 drawingPboIDs[2]; 
 	u32 currentDrawingPboID;
 
-	Brush *brush;
 	bool proccessAsap;
 	PNG_FILTER_TYPE currentPNGFilterType;
 
@@ -104,7 +103,7 @@ struct ProcessedImage
 
 u8 *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, Arena *arena);
 ImageRawRGBA32 LoadDataIntoRawImage(u8 *fileData, u32 fileSize, GameMemory *gameMemory);
-b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, Brush *currentBrush, ProcessedImage *processedImages, u32 threadCount);
+b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, ProcessedImage *processedImages, u32 threadCount);
 bool ExportImage(Image image, String filepath);
 b32 CanvasDrawCircleStroke(Canvas *canvas, iv2 startPos, iv2 endPos, u32 radius, Color color);
 void SetPNGFilterType(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *gameMemory);
