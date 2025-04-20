@@ -30,11 +30,18 @@ struct UiSize
 	f32 value;
 };
 
-enum UI_ALIGN_TYPE
+enum UI_CHILD_ALIGN_TYPE
 {
-	UI_ALIGN_START,
-	UI_ALIGN_CENTER,
-	UI_ALIGN_END,
+	UI_CHILD_ALIGN_START,
+	UI_CHILD_ALIGN_CENTER,
+	UI_CHILD_ALIGN_END,
+};
+
+enum UI_TEXT_ALIGN_TYPE
+{
+	UI_TEXT_ALIGN_LEFT,
+	UI_TEXT_ALIGN_CENTER,
+	UI_TEXT_ALIGN_RIGHT,
 };
 
 enum UI_CHILD_LAYOUT_TYPE
@@ -91,9 +98,9 @@ struct UiBlock
 
 	UiSize uiSizes[UI_AXIS_COUNT];
 	UiPosition uiPosition[UI_AXIS_COUNT];
-	UI_ALIGN_TYPE uiAlignTypesBlock[UI_AXIS_COUNT];
-	UI_ALIGN_TYPE uiAlignTypesText[UI_AXIS_COUNT];
+	UI_CHILD_ALIGN_TYPE uiChildAlignTypes[UI_AXIS_COUNT];
 	UI_CHILD_LAYOUT_TYPE uiChildLayoutType;
+	UI_TEXT_ALIGN_TYPE uiTextAlignTypes[UI_AXIS_COUNT];
 
 	UiBlock *firstChild;
 	UiBlock *lastChild;

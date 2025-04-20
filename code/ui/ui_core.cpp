@@ -126,7 +126,7 @@ f32 GetSumOrMaxOfAllAutoSiblingsAndSelf(UiBlock *uiBlock, UI_AXIS uiAxis)
 		}
 
 		b32 inParentLayoutType = (uiAxis == UI_AXIS_X && parentLayoutType == UI_CHILD_LAYOUT_LEFT_TO_RIGHT) ||
-			(uiAxis == UI_AXIS_Y && parentLayoutType == UI_CHILD_LAYOUT_TOP_TO_BOTTOM);
+								 (uiAxis == UI_AXIS_Y && parentLayoutType == UI_CHILD_LAYOUT_TOP_TO_BOTTOM);
 
 		while(siblingBlock->prev)
 		{
@@ -134,8 +134,7 @@ f32 GetSumOrMaxOfAllAutoSiblingsAndSelf(UiBlock *uiBlock, UI_AXIS uiAxis)
 		}
 		for (; siblingBlock; siblingBlock = siblingBlock->next)
 		{
-			if (siblingBlock->uiPosition[uiAxis].type == UI_POSITION_AUTO &&
-					siblingBlock->uiAlignTypesBlock[uiAxis] == uiBlock->uiAlignTypesBlock[uiAxis])
+			if (siblingBlock->uiPosition[uiAxis].type == UI_POSITION_AUTO)
 			{
 				if (inParentLayoutType)
 				{
@@ -229,19 +228,20 @@ void CalculateUiPositionData(UiBuffer *uiBuffer, UiBlock *uiBlock, v2 *calculate
 				{
 					f32 parentSize = (f32) windowDim.elements[i];
 					UI_CHILD_LAYOUT_TYPE parentLayoutType = UI_CHILD_LAYOUT_LEFT_TO_RIGHT;
+					UI_CHILD_ALIGN_TYPE parentAlignTypeOfAxis = UI_CHILD_ALIGN_START;
 					if (uiBlock->parent)
 					{
 						parentLayoutType = uiBlock->parent->uiChildLayoutType;
 						parentSize = uiBlock->parent->rect.dim.elements[i];
+						parentAlignTypeOfAxis = uiBlock->parent->uiChildAlignTypes[i];
 					}
 
-					UiBlock *prevBlockInAlignment = {};
+					UiBlock *prevAutoBlock = {};
 					for (UiBlock *prev = uiBlock->prev; prev; prev = prev->prev)
 					{
-						if (prev->uiAlignTypesBlock[i] == uiBlock->uiAlignTypesBlock[i] &&
-							prev->uiPosition[i].type == UI_POSITION_AUTO)
+						if (prev->uiPosition[i].type == UI_POSITION_AUTO)
 						{
-							prevBlockInAlignment = prev;
+							prevAutoBlock = prev;
 							break;
 						}
 					}
@@ -249,25 +249,25 @@ void CalculateUiPositionData(UiBuffer *uiBuffer, UiBlock *uiBlock, v2 *calculate
 					b32 inParentLayoutType = (i == UI_AXIS_X && parentLayoutType == UI_CHILD_LAYOUT_LEFT_TO_RIGHT) ||
 										     (i == UI_AXIS_Y && parentLayoutType == UI_CHILD_LAYOUT_TOP_TO_BOTTOM);
 
-					if (prevBlockInAlignment && inParentLayoutType)
+					if (prevAutoBlock && inParentLayoutType)
 					{
-						v2 *calculatedPositionPrev = calculatedPositionDatas + (prevBlockInAlignment - uiBuffer->uiBlocks);
-						calculatedPosition->elements[i] = calculatedPositionPrev->elements[i] + prevBlockInAlignment->rect.dim.elements[i];
+						v2 *calculatedPositionPrev = calculatedPositionDatas + (prevAutoBlock - uiBuffer->uiBlocks);
+						calculatedPosition->elements[i] = calculatedPositionPrev->elements[i] + prevAutoBlock->rect.dim.elements[i];
 					}
 					else
 					{
-						switch(uiBlock->uiAlignTypesBlock[i])
+						switch(parentAlignTypeOfAxis)
 						{
-							case UI_ALIGN_START:
+							case UI_CHILD_ALIGN_START:
 							{
 								calculatedPosition->elements[i] = 0;
 							} break;
-							case UI_ALIGN_END:
+							case UI_CHILD_ALIGN_END:
 							{
 								f32 sumOrMaxOfSiblingsAndSelf = GetSumOrMaxOfAllAutoSiblingsAndSelf(uiBlock, (UI_AXIS) i);
 								calculatedPosition->elements[i] = parentSize - MinF32(parentSize, sumOrMaxOfSiblingsAndSelf);
 							} break;
-							case UI_ALIGN_CENTER:
+							case UI_CHILD_ALIGN_CENTER:
 							{
 								f32 sumOrMaxOfSiblingsAndSelf = GetSumOrMaxOfAllAutoSiblingsAndSelf(uiBlock, (UI_AXIS) i);
 								calculatedPosition->elements[i] = (parentSize * 0.5f) - (MinF32(parentSize, sumOrMaxOfSiblingsAndSelf) * 0.5f);

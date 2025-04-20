@@ -32,21 +32,21 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 		if (uiBlock->flags & UI_FLAG_DRAW_TEXT)
 		{
 			v2 pos = {};
-			for (u32 i = 0; i < ARRAY_COUNT(uiBlock->uiAlignTypesText); i++)
+			for (u32 i = 0; i < ARRAY_COUNT(uiBlock->uiTextAlignTypes); i++)
 			{
-				switch(uiBlock->uiAlignTypesText[i])
+				switch(uiBlock->uiTextAlignTypes[i])
 				{
-					case UI_ALIGN_START:
+					case UI_TEXT_ALIGN_LEFT:
 					{
 						pos.elements[i] = uiBlock->rect.pos.elements[i];
 					} break;
-					case UI_ALIGN_CENTER:
+					case UI_TEXT_ALIGN_CENTER:
 					{
 						f32 textLengthInBlock = MinF32(uiBlock->textDim.elements[i], uiBlock->rect.dim.elements[i]);
 						f32 offset = (uiBlock->rect.dim.elements[i] * 0.5f) - (textLengthInBlock * 0.5f);
 						pos.elements[i] = uiBlock->rect.pos.elements[i] + offset;
 					} break;
-					case UI_ALIGN_END:
+					case UI_TEXT_ALIGN_RIGHT:
 					{
 						pos.elements[i] = uiBlock->rect.pos.elements[i] + uiBlock->rect.dim.elements[i] - uiBlock->textDim.elements[i];
 					} break;

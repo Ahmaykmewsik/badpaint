@@ -61,8 +61,8 @@ b32 WidgetBrushEffectButton(UiState *uiState, AppState *appState, UiInteractionH
 	block->uiBlockColors.borderColor = (active) ? COLORU32_BLACK: COLORU32_GRAY;
 	block->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 	block->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
-	block->uiAlignTypesText[UI_AXIS_X] = UI_ALIGN_CENTER;
-	block->uiAlignTypesText[UI_AXIS_Y] = UI_ALIGN_CENTER;
+	block->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
+	block->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
 
 	ColorU32 baseColor = BRUSH_EFFECT_COLORS_PRIMARY[brushEffect];
 	if (brushEffect == BRUSH_EFFECT_ERASE)
