@@ -112,6 +112,45 @@ void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock)
 	}
 }
 
+f32 GetSumOrMaxOfAllAutoSiblingsAndSelf(UiBlock *uiBlock, UI_AXIS uiAxis)
+{
+	f32 result = 0;
+	if (uiBlock)
+	{
+		UiBlock *siblingBlock = uiBlock;
+
+		UI_CHILD_LAYOUT_TYPE parentLayoutType = UI_CHILD_LAYOUT_LEFT_TO_RIGHT;
+		if (siblingBlock->parent)
+		{
+			parentLayoutType = siblingBlock->parent->uiChildLayoutType;
+		}
+
+		b32 inParentLayoutType = (uiAxis == UI_AXIS_X && parentLayoutType == UI_CHILD_LAYOUT_LEFT_TO_RIGHT) ||
+			(uiAxis == UI_AXIS_Y && parentLayoutType == UI_CHILD_LAYOUT_TOP_TO_BOTTOM);
+
+		while(siblingBlock->prev)
+		{
+			siblingBlock = siblingBlock->prev;
+		}
+		for (; siblingBlock; siblingBlock = siblingBlock->next)
+		{
+			if (siblingBlock->uiPosition[uiAxis].type == UI_POSITION_AUTO &&
+					siblingBlock->uiAlignTypesBlock[uiAxis] == uiBlock->uiAlignTypesBlock[uiAxis])
+			{
+				if (inParentLayoutType)
+				{
+					result += siblingBlock->rect.dim.elements[uiAxis];
+				}
+				else
+				{
+					result = MaxF32(siblingBlock->rect.dim.elements[uiAxis], result);
+				}
+			}
+		}
+	}
+	return result;
+}
+
 void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock)
 {
 	if (uiBlock)
@@ -127,22 +166,7 @@ void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock)
 			{
 				case UI_SIZE_SUM_OF_CHILDREN:
 				{
-					float sumOrMaxOfChildren = 0;
-					UiBlock *child = uiBlock->firstChild;
-					while (child)
-					{
-						ASSERT(child != uiBlock);
-						if ((i == UI_AXIS_X && uiBlock->uiAlignTypesBlock[i] == UI_CHILD_LAYOUT_LEFT_TO_RIGHT) ||
-							(i == UI_AXIS_Y && uiBlock->uiAlignTypesBlock[i] == UI_CHILD_LAYOUT_TOP_TO_BOTTOM))
-						{
-							 sumOrMaxOfChildren += child->rect.dim.elements[i];
-						}
-						else
-						{
-							sumOrMaxOfChildren = MaxF32(child->rect.dim.elements[i], sumOrMaxOfChildren);
-						}
-						child = child->next;
-					}
+					float sumOrMaxOfChildren = GetSumOrMaxOfAllAutoSiblingsAndSelf(uiBlock->firstChild, (UI_AXIS) i);
 					uiBlock->rect.dim.elements[i] = sumOrMaxOfChildren;
 					childrenNeedUpwardRebuild = true;
 				} break;
@@ -214,7 +238,8 @@ void CalculateUiPositionData(UiBuffer *uiBuffer, UiBlock *uiBlock, v2 *calculate
 					UiBlock *prevBlockInAlignment = {};
 					for (UiBlock *prev = uiBlock->prev; prev; prev = prev->prev)
 					{
-						if (prev->uiAlignTypesBlock[i] == uiBlock->uiAlignTypesBlock[i])
+						if (prev->uiAlignTypesBlock[i] == uiBlock->uiAlignTypesBlock[i] &&
+							prev->uiPosition[i].type == UI_POSITION_AUTO)
 						{
 							prevBlockInAlignment = prev;
 							break;
@@ -231,28 +256,6 @@ void CalculateUiPositionData(UiBuffer *uiBuffer, UiBlock *uiBlock, v2 *calculate
 					}
 					else
 					{
-						f32 sumOrMaxOfSiblingsAndSelf = 0;
-						UiBlock *childOfParent = uiBlock;
-						while(childOfParent->prev)
-						{
-							childOfParent = childOfParent->prev;
-						}
-						for (; childOfParent; childOfParent = childOfParent->next)
-						{
-							if (childOfParent->uiPosition[i].type == UI_POSITION_AUTO &&
-								childOfParent->uiAlignTypesBlock[i] == uiBlock->uiAlignTypesBlock[i])
-							{
-								if (inParentLayoutType)
-								{
-									sumOrMaxOfSiblingsAndSelf += childOfParent->rect.dim.elements[i];
-								}
-								else
-								{
-									sumOrMaxOfSiblingsAndSelf = MaxF32(childOfParent->rect.dim.elements[i], sumOrMaxOfSiblingsAndSelf);
-								}
-							}
-						}
-
 						switch(uiBlock->uiAlignTypesBlock[i])
 						{
 							case UI_ALIGN_START:
@@ -261,10 +264,12 @@ void CalculateUiPositionData(UiBuffer *uiBuffer, UiBlock *uiBlock, v2 *calculate
 							} break;
 							case UI_ALIGN_END:
 							{
+								f32 sumOrMaxOfSiblingsAndSelf = GetSumOrMaxOfAllAutoSiblingsAndSelf(uiBlock, (UI_AXIS) i);
 								calculatedPosition->elements[i] = parentSize - MinF32(parentSize, sumOrMaxOfSiblingsAndSelf);
 							} break;
 							case UI_ALIGN_CENTER:
 							{
+								f32 sumOrMaxOfSiblingsAndSelf = GetSumOrMaxOfAllAutoSiblingsAndSelf(uiBlock, (UI_AXIS) i);
 								calculatedPosition->elements[i] = (parentSize * 0.5f) - (MinF32(parentSize, sumOrMaxOfSiblingsAndSelf) * 0.5f);
 							} break;
 							InvalidDefaultCase;

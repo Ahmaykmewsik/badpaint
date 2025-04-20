@@ -130,7 +130,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	SetWindowPosition((u32) RoundF32(windowPosMiddle.x), (u32) RoundF32(windowPosMiddle.y));
 	SetWindowSize(windowDim.x, windowDim.y);
 
-	Font defaultFont = LoadFontFromMemory(".otf", PAINT_FONT_DATA, ARRAY_COUNT(PAINT_FONT_DATA), 18, 0, 0);
+	Font defaultFont = LoadFontFromMemory(".otf", PAINT_FONT_DATA, ARRAY_COUNT(PAINT_FONT_DATA), 12, 0, 0);
 	appState->defaultUiFont.id = defaultFont.texture.id;
 	appState->defaultUiFont.data = &defaultFont;
 
@@ -268,6 +268,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		defaultBlockColors.frontColor = COLORU32_BLACK;
 		defaultBlockColors.borderColor = COLORU32_DARKGRAY;
 
+#if 0
 		UiBlock *root = UiCreateBlock(uiState);
 		root->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) windowDim.x};
 		root->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) windowDim.y};
@@ -596,6 +597,109 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			b->uiFont = appState->defaultUiFont;
 			b->uiBlockColors.frontColor = COLORU32_DARKGRAY;
 		}
+#endif
+
+#if 1
+		UiBlock *root= UiCreateBlock(uiState);
+		root->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) windowDim.x};
+		root->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) windowDim.y};
+		root->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
+		UI_PARENT_SCOPE(uiState, root)
+		{
+			float menuBarHeight = 20;
+			UiBlock *menuBar = UiCreateBlock(uiState);
+			menuBar->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) windowDim.x};
+			menuBar->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, menuBarHeight};
+			UI_PARENT_SCOPE(uiState, menuBar)
+			{
+				String tempMenuStrings[] = {STRING("File"), STRING("Edit"), STRING("Image")};
+				for (u32 i = 0; i < ARRAY_COUNT(tempMenuStrings); i++)
+				{
+					UiBlock *m = UiCreateBlock(uiState);
+					m->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 10};
+					m->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+
+					UiBlock *b = UiCreateBlock(uiState);
+					b->flags = UI_FLAG_DRAW_TEXT;
+					b->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXT};
+					b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+					b->uiAlignTypesBlock[UI_AXIS_Y] = UI_ALIGN_CENTER;
+					b->uiAlignTypesText[UI_AXIS_X] = UI_ALIGN_CENTER;
+					b->uiAlignTypesText[UI_AXIS_Y] = UI_ALIGN_CENTER;
+					b->string = tempMenuStrings[i];
+					b->uiFont = appState->defaultUiFont;
+					b->uiBlockColors.frontColor = COLORU32_BLACK;
+				}
+			}
+			UiBlock *menuBarLine = UiCreateBlock(uiState);
+			menuBarLine->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;
+			menuBarLine->uiPosition[UI_AXIS_X] = {UI_POSITION_ABSOLUTE, 0};
+			menuBarLine->uiPosition[UI_AXIS_Y] = {UI_POSITION_ABSOLUTE, menuBarHeight - 10};
+			menuBarLine->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+			menuBarLine->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 10};
+			menuBarLine->uiBlockColors.frontColor = COLORU32_BLACK;
+
+			UiBlock *body = UiCreateBlock(uiState);
+			body->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+			body->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, windowDim.y -  20.0f};
+			UI_PARENT_SCOPE(uiState, body)
+			{
+				UiBlock *toolbar = UiCreateBlock(uiState);
+				//toolbar->flags = UI_FLAG_DRAW_BACKGROUND;
+				toolbar->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 100};
+				toolbar->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+				//toolbar->uiBlockColors.backColor = ColorU32{100, 100, 100, 100};
+				UI_PARENT_SCOPE(uiState, body)
+				{
+					{
+						UiBlock *seperator = UiCreateBlock(uiState);
+						seperator->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, 100}; //Need percent in parent here!
+						seperator->uiPosition[UI_AXIS_Y] = {UI_POSITION_RELATIVE, 0};
+						seperator->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;
+						seperator->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 4};
+						seperator->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+						seperator->uiBlockColors.frontColor = COLORU32_BLACK;
+					}
+
+					if (WidgetBrushEffectButton(uiState, appState, &uiInteractionHashes, BRUSH_EFFECT_ERASE, STRING("Ers"), COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE))
+					{
+						AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
+						appCommand->command = COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE;
+					}
+					if (WidgetBrushEffectButton(uiState, appState, &uiInteractionHashes, BRUSH_EFFECT_REMOVE, STRING("Rmv"), COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE))
+					{
+						AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
+						appCommand->command = COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE;
+					}
+
+					//toolbar
+				}
+
+				UiBlock *layerPanel = UiCreateBlock(uiState);
+				//layerPanel->flags = UI_FLAG_DRAW_BACKGROUND;
+				layerPanel->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 250};
+				layerPanel->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) windowDim.y - 10}; //Need fill here!
+				layerPanel->uiAlignTypesBlock[UI_AXIS_X] = UI_ALIGN_END;
+				//layerPanel->uiBlockColors.backColor = ColorU32{100, 0, 0, 100};
+				UI_PARENT_SCOPE(uiState, layerPanel)
+				{
+					{
+						UiBlock *seperator = UiCreateBlock(uiState);
+						seperator->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;
+						seperator->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, 0};
+						seperator->uiPosition[UI_AXIS_Y] = {UI_POSITION_RELATIVE, -20};
+						seperator->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 4};
+						seperator->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1.3f};
+						seperator->uiBlockColors.frontColor = COLORU32_BLACK;
+					}
+
+					//panel
+				}
+
+			}
+		}
+#endif
+
 
 		//----------------------------------------------------
 		//-----------------------APP--------------------------
@@ -1030,7 +1134,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 		BeginDrawing();
 
-		ClearBackground(Color{127, 127, 127, 255});
+		ClearBackground(Color{192, 192, 192, 255});
 
 		UiRaylibRenderBlocks(uiBufferCurrent);
 

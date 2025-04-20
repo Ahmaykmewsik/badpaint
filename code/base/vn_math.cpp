@@ -1455,3 +1455,14 @@ v4 HexToRGBV4(u32 hexValue)
 	result.a = 1;
 	return result;
 }
+
+ColorU32 HexToColorU32(u32 hexValue)
+{
+	ColorU32 result;
+	result.r = (hexValue >> 16) & 0xFF;
+	result.g = (hexValue >> 8) & 0xFF;
+	result.b = (hexValue) & 0xFF;
+	result.a = 1;
+	return result;
+}
+

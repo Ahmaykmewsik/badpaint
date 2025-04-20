@@ -165,6 +165,7 @@ union ColorU32
 #define COLORU32_GRAY      ColorU32{130, 130, 130, 255}
 #define COLORU32_DARKGRAY  ColorU32{80, 80, 80, 255}
 #define COLORU32_RED       ColorU32{230, 41, 55, 255}
+#define COLORU32_BLUE      ColorU32{0, 0, 255, 255}
 
 struct LineV2
 {
@@ -288,3 +289,4 @@ void ApplyAccelerationV2(v2 *pos, v2 *velocity, v2 acceleration, f64 timestep);
 
 v4 HSLToRGBV4(float hue, float saturation, float luminance);
 v4 HexToRGBV4(u32 hexValue);
+ColorU32 HexToColorU32(u32 hexValue);

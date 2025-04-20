@@ -88,6 +88,30 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 			DrawRectangleLines((u32)rect.pos.x, (u32)rect.pos.y, (u32)rect.dim.x, (u32)rect.dim.y, color);
 		}
 
+		if (uiBlock->flags & UI_FLAG_DRAW_LINE_TOPLEFT_BOTTOMRIGHT)
+		{
+			iv2 start;
+			iv2 end;
+			start.x = (u32) RoundF32(uiBlock->rect.pos.x);
+			start.y = (u32) RoundF32(uiBlock->rect.pos.y);
+			end.x = (u32) RoundF32(uiBlock->rect.pos.x + uiBlock->rect.dim.x);
+			end.y = (u32) RoundF32(uiBlock->rect.pos.y + uiBlock->rect.dim.y);
+			Color color = ColorU32ToRayColor(uiBlock->uiBlockColors.frontColor);
+			DrawLine(start.x, start.y, end.x, end.y, color);
+		}
+
+		if (uiBlock->flags & UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT)
+		{
+			iv2 start;
+			iv2 end;
+			start.x = (u32) RoundF32(uiBlock->rect.pos.x);
+			start.y = (u32) RoundF32(uiBlock->rect.pos.y + uiBlock->rect.dim.y);
+			end.x = (u32) RoundF32(uiBlock->rect.pos.x + uiBlock->rect.dim.x);
+			end.y = (u32) RoundF32(uiBlock->rect.pos.y);
+			Color color = ColorU32ToRayColor(uiBlock->uiBlockColors.frontColor);
+			DrawLine(start.x, start.y, end.x, end.y, color);
+		}
+
 		UiRenderBlockRaylib(uiBlock->firstChild, uiDepth + 2);
 		UiRenderBlockRaylib(uiBlock->next, uiDepth);
 	}
