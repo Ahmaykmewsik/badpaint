@@ -369,7 +369,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 							UiBlock *finalTexture = UiCreateBlock(uiState);
 							finalTexture->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
 							finalTexture->hash = HASH_FINAL_TEXTURE;
-							finalTexture->uiTexture = UiRaylibTextureToUiTexture(&loadedTexture);
+							finalTexture->uiTexture = UiRaylibTextureToUiTextureView(&loadedTexture);
 							finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(loadedTexture.width, loadedTexture.height)};
 							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 							finalTexture->uiAlignTypesBlock[UI_AXIS_X] = UI_ALIGN_CENTER;
@@ -412,7 +412,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					{
 						UiBlock *b = UiCreateBlock(uiState);
 						b->flags = UI_FLAG_DRAW_TEXTURE;
-						b->uiTexture = UiRaylibTextureToUiTexture(&canvas->textureVisualizedFilteredRootImage);
+						b->uiTexture = UiRaylibTextureToUiTextureView(&canvas->textureVisualizedFilteredRootImage);
 						b->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(b->uiTexture.dim.x, b->uiTexture.dim.y)};
 						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 						b->uiAlignTypesBlock[UI_AXIS_X] = UI_ALIGN_CENTER;
@@ -423,7 +423,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 								UiBlock *canvasBlock = UiCreateBlock(uiState);
 								canvasBlock->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
 								canvasBlock->hash = HASH_CANVAS;
-								canvasBlock->uiTexture = UiRaylibTextureToUiTexture(&canvas->textureDrawing);
+								canvasBlock->uiTexture = UiRaylibTextureToUiTextureView(&canvas->textureDrawing);
 								canvasBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(canvasBlock->uiTexture.dim.x, canvasBlock->uiTexture.dim.y)};
 								canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 							}
@@ -642,7 +642,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 			UiBlock *body = UiCreateBlock(uiState);
 			body->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-			body->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, windowDim.y -  20.0f};
+			body->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL};
 			UI_PARENT_SCOPE(uiState, body)
 			{
 				UiBlock *toolbar = UiCreateBlock(uiState);
@@ -689,6 +689,30 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					b->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
 					b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 					b->uiBlockColors.backColor = ColorU32{100, 100, 100, 255};
+					b->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
+					b->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
+					UI_PARENT_SCOPE(uiState, b)
+					{
+						if (!imageIsBroken)
+						{
+							UiBlock *finalTexture = UiCreateBlock(uiState);
+							finalTexture->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
+							finalTexture->hash = HASH_FINAL_TEXTURE;
+							finalTexture->uiTextureView = UiRaylibTextureToUiTextureView(&loadedTexture);
+							finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(loadedTexture.width, loadedTexture.height)};
+							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+						}
+						else
+						{
+							UiBlock *stringBlock = UiCreateBlock(uiState);
+							stringBlock->flags = UI_FLAG_DRAW_TEXT;
+							stringBlock->string = STRING("Congulations! You broke the image. (undo with Ctrl-Z)");
+							stringBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXT};
+							stringBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXT};
+							stringBlock->uiFont = appState->defaultUiFont;
+							stringBlock->uiBlockColors = defaultBlockColors;
+						}
+					}
 				}
 
 				UiBlock *layerPanel = UiCreateBlock(uiState);

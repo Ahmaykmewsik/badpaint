@@ -67,11 +67,15 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 
 		if (uiBlock->flags & UI_FLAG_DRAW_TEXTURE)
 		{
-			Texture *texture = (Texture *) uiBlock->uiTexture.data;
-			if (ASSERT(texture) && ASSERT(uiBlock->uiTexture.id == texture->id))
+			Texture *texture = (Texture *) uiBlock->uiTextureView.data;
+			if (ASSERT(texture) &&
+				ASSERT(uiBlock->uiTextureView.id == texture->id) &&
+				ASSERT(uiBlock->uiTextureView.dim.x == texture->width) &&
+				ASSERT(uiBlock->uiTextureView.dim.y == texture->height))
 			{
 				float scale = uiBlock->rect.dim.x / texture->width;
-				Rectangle source = {0.0f, 0.0f, (f32)texture->width, (f32)texture->height};
+				RectIV2 *viewRect = &uiBlock->uiTextureView.viewRect;
+				Rectangle source = {(f32)viewRect->pos.x, (f32)viewRect->pos.x, (f32)viewRect->dim.x, (f32)viewRect->dim.y};
 				Rectangle dest = {uiBlock->rect.pos.x, uiBlock->rect.pos.y, (f32)texture->width * scale, (f32)texture->height * scale};
 				DrawTexturePro(*texture, source, dest, Vector2{0, 0}, 0, WHITE);
 			}
@@ -148,12 +152,13 @@ void UiRaylibProcessStrings(UiBuffer *uiBuffer)
 	}
 }
 
-UiTexture UiRaylibTextureToUiTexture(Texture *texture)
+UiTextureView UiRaylibTextureToUiTextureView(Texture *texture)
 {
-	UiTexture result;
+	UiTextureView result = {};
 	result.id = texture->id;
 	result.dim.x = (i32) texture->width;
 	result.dim.y = (i32) texture->height;
+	result.viewRect.dim = result.dim;
 	result.data = texture;
 	return result;
 }

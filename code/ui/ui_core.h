@@ -86,10 +86,11 @@ struct UiFont
 	void *data;
 };
 
-struct UiTexture
+struct UiTextureView
 {
 	u32 id;
 	iv2 dim;
+	RectIV2 viewRect;
 	void *data;
 };
 
@@ -113,7 +114,7 @@ struct UiBlock
 	String string;
 	v2 textDim;
 	UiFont uiFont;
-	UiTexture uiTexture;
+	UiTextureView uiTextureView;
 	UiBlockColors uiBlockColors;
 
 	RectV2 rect;

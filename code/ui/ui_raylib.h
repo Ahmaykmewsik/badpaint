@@ -4,6 +4,6 @@
 #include <ui/ui_core.h>
 #include "../includes/raylib/src/raylib.h"
 
-UiTexture UiRaylibTextureToUiTexture(Texture *texture);
+UiTextureView UiRaylibTextureToUiTextureView(Texture *texture);
 void UiRaylibProcessStrings(UiBuffer *uiBuffer);
 void UiRaylibRenderBlocks(UiBuffer *uiBuffer);

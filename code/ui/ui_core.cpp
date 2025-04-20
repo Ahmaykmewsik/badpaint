@@ -418,7 +418,7 @@ void UiLayoutBlocks(UiBuffer *uiBuffer, iv2 windowDim, Arena *temporaryArena)
 				case UI_SIZE_TEXTURE:
 				{
 					//NOTE: (Ahmayk) :(
-					uiBlock->rect.dim.elements[j] = (f32) uiBlock->uiTexture.dim.elements[j];
+					uiBlock->rect.dim.elements[j] = (f32) uiBlock->uiTextureView.viewRect.dim.elements[j];
 				} break;
 				case UI_SIZE_PIXELS:
 				{
