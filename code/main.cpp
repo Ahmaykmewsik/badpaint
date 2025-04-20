@@ -144,12 +144,15 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 	Texture toolbrushSpriteSheet = LoadTexture("buttonSprites.png");
 	i32 spriteSheetBoxSize = 30;
-	Tool *pencil = &appState->tools[BADPAINT_TOOL_PENCIL];
-	for (i32 i = 0; i < 5; i++)
+	for (i32 toolIndex = 0; toolIndex < BADPAINT_TOOL_COUNT; toolIndex++)
 	{
-		pencil->uiTextureViews[i] = UiRaylibTextureToUiTextureView(&toolbrushSpriteSheet);
-		pencil->uiTextureViews[i].viewRect.pos = iv2{spriteSheetBoxSize * i, 0};
-		pencil->uiTextureViews[i].viewRect.dim = iv2{spriteSheetBoxSize, spriteSheetBoxSize};
+		Tool *tool = &appState->tools[toolIndex];
+		for (i32 interactionIndex = 0; interactionIndex < INTERACTION_STATE_COUNT; interactionIndex++)
+		{
+			tool->uiTextureViews[interactionIndex] = UiRaylibTextureToUiTextureView(&toolbrushSpriteSheet);
+			tool->uiTextureViews[interactionIndex].viewRect.pos = iv2{spriteSheetBoxSize * interactionIndex, spriteSheetBoxSize * toolIndex};
+			tool->uiTextureViews[interactionIndex].viewRect.dim = iv2{spriteSheetBoxSize, spriteSheetBoxSize};
+		}
 	}
 
 	*rootImageRaw = LoadDataIntoRawImage(&DEFAULT_IMAGE_DATA[0], ARRAY_COUNT(DEFAULT_IMAGE_DATA), &gameMemory);
@@ -339,7 +342,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 					{
 						UiBlock *b = UiCreateBlock(uiState);
-						b->hash = Murmur3String("brushPencil");
+						b->hash = Murmur3String("toolPencil");
 						b->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
 						b->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXTURE};
 						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXTURE};
@@ -348,6 +351,19 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						b32 downOverride = IsKeyDown(KEY_B);
 						INTERACTION_STATE interactionState = GetInteractionState(b->hash, &uiInteractionHashes, active, isDisabled, downOverride);
 						b->uiTextureView = appState->tools[BADPAINT_TOOL_PENCIL].uiTextureViews[interactionState];
+					}
+
+					{
+						UiBlock *b = UiCreateBlock(uiState);
+						b->hash = Murmur3String("toolEraser");
+						b->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
+						b->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXTURE};
+						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXTURE};
+						b32 active = true;
+						b32 isDisabled = false;
+						b32 downOverride = IsKeyDown(KEY_E);
+						INTERACTION_STATE interactionState = GetInteractionState(b->hash, &uiInteractionHashes, active, isDisabled, downOverride);
+						b->uiTextureView = appState->tools[BADPAINT_TOOL_ERASER].uiTextureViews[interactionState];
 					}
 
 					{
