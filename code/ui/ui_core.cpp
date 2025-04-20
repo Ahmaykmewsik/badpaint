@@ -93,6 +93,7 @@ void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock)
 			case UI_SIZE_PIXELS:
 			case UI_SIZE_TEXTURE:
 			case UI_SIZE_TEXT:
+			case UI_SIZE_FILL:
 				break;
 				InvalidDefaultCase
 			}
@@ -120,11 +121,10 @@ f32 GetSumOrMaxOfAllAutoSiblingsAndSelf(UiBlock *uiBlock, UI_AXIS uiAxis)
 		UiBlock *siblingBlock = uiBlock;
 
 		UI_CHILD_LAYOUT_TYPE parentLayoutType = UI_CHILD_LAYOUT_LEFT_TO_RIGHT;
-		if (siblingBlock->parent)
+		if (uiBlock->parent)
 		{
-			parentLayoutType = siblingBlock->parent->uiChildLayoutType;
+			parentLayoutType = uiBlock->parent->uiChildLayoutType;
 		}
-
 		b32 inParentLayoutType = (uiAxis == UI_AXIS_X && parentLayoutType == UI_CHILD_LAYOUT_LEFT_TO_RIGHT) ||
 								 (uiAxis == UI_AXIS_Y && parentLayoutType == UI_CHILD_LAYOUT_TOP_TO_BOTTOM);
 
@@ -150,12 +150,12 @@ f32 GetSumOrMaxOfAllAutoSiblingsAndSelf(UiBlock *uiBlock, UI_AXIS uiAxis)
 	return result;
 }
 
-void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock)
+void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock, v2 windowDim)
 {
 	if (uiBlock)
 	{
-		CalculateUiDownwardsDependentSizes(uiBlock->firstChild);
-		CalculateUiDownwardsDependentSizes(uiBlock->next);
+		CalculateUiDownwardsDependentSizes(uiBlock->firstChild, windowDim);
+		CalculateUiDownwardsDependentSizes(uiBlock->next, windowDim);
 
 		b32 childrenNeedUpwardRebuild = false;
 
@@ -167,6 +167,60 @@ void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock)
 				{
 					float sumOrMaxOfChildren = GetSumOrMaxOfAllAutoSiblingsAndSelf(uiBlock->firstChild, (UI_AXIS) i);
 					uiBlock->rect.dim.elements[i] = sumOrMaxOfChildren;
+					childrenNeedUpwardRebuild = true;
+				} break;
+				case UI_SIZE_FILL:
+				{
+					u32 fillBlockCount = 0;
+					f32 parentSize = (f32) windowDim.elements[i];
+					UI_CHILD_LAYOUT_TYPE parentLayoutType = UI_CHILD_LAYOUT_LEFT_TO_RIGHT;
+					if (uiBlock->parent)
+					{
+						parentLayoutType = uiBlock->parent->uiChildLayoutType;
+						parentSize = uiBlock->parent->rect.dim.elements[i];
+					}
+
+					UiBlock *siblingBlock = uiBlock;
+
+					b32 inParentLayoutType = (i == UI_AXIS_X && parentLayoutType == UI_CHILD_LAYOUT_LEFT_TO_RIGHT) ||
+						(i == UI_AXIS_Y && parentLayoutType == UI_CHILD_LAYOUT_TOP_TO_BOTTOM);
+
+					f32 sumOrMax = 0;
+					while(siblingBlock->prev)
+					{
+						siblingBlock = siblingBlock->prev;
+					}
+					for (; siblingBlock; siblingBlock = siblingBlock->next)
+					{
+						if (siblingBlock->uiSizes[i].type == UI_SIZE_FILL)
+						{
+							fillBlockCount++;
+						}
+						else if (siblingBlock->uiPosition[i].type == UI_POSITION_AUTO)
+						{
+							if (inParentLayoutType)
+							{
+								sumOrMax += siblingBlock->rect.dim.elements[i];
+							}
+							else
+							{
+								sumOrMax = MaxF32(siblingBlock->rect.dim.elements[i], sumOrMax);
+							}
+						}
+					}
+
+					if (ASSERT(fillBlockCount > 0))
+					{
+						if (inParentLayoutType)
+						{
+							f32 sizeToFill = MaxF32(0, parentSize - sumOrMax);
+							uiBlock->rect.dim.elements[i] = sizeToFill / fillBlockCount;
+						}
+						else
+						{
+							uiBlock->rect.dim.elements[i] = sumOrMax;
+						}
+					}
 					childrenNeedUpwardRebuild = true;
 				} break;
 				case UI_SIZE_PIXELS:
@@ -380,6 +434,7 @@ void UiLayoutBlocks(UiBuffer *uiBuffer, iv2 windowDim, Arena *temporaryArena)
 				case UI_SIZE_PERCENT_OF_PARENT:
 				case UI_SIZE_SUM_OF_CHILDREN:
 				case UI_SIZE_PERCENT_OF_OTHER_AXIS:
+				case UI_SIZE_FILL:
 				break;
 				InvalidDefaultCase
 			}
@@ -395,7 +450,7 @@ void UiLayoutBlocks(UiBuffer *uiBuffer, iv2 windowDim, Arena *temporaryArena)
 		if (!uiBlock->parent)
 		{
 			CalculateUiUpwardsDependentSizes(uiBlock);
-			CalculateUiDownwardsDependentSizes(uiBlock);
+			CalculateUiDownwardsDependentSizes(uiBlock, windowDim);
 			CalculateUiPositionData(uiBuffer, uiBlock, calculatedPositionDatas, windowDim);
 			CalculateUiPos(uiBuffer, uiBlock, calculatedPositionDatas);
 		}

@@ -608,7 +608,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		{
 			float menuBarHeight = 20;
 			UiBlock *menuBar = UiCreateBlock(uiState);
-			menuBar->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) windowDim.x};
+			menuBar->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 			menuBar->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, menuBarHeight};
 			menuBar->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
 			UI_PARENT_SCOPE(uiState, menuBar)
@@ -630,14 +630,15 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					b->uiFont = appState->defaultUiFont;
 					b->uiBlockColors.frontColor = COLORU32_BLACK;
 				}
+
+				UiBlock *menuBarLine = UiCreateBlock(uiState);
+				menuBarLine->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;
+				menuBarLine->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, 7};
+				menuBarLine->uiPosition[UI_AXIS_Y] = {UI_POSITION_PERCENT_OF_PARENT, 0.3f};
+				menuBarLine->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+				menuBarLine->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 0.7f};
+				menuBarLine->uiBlockColors.frontColor = COLORU32_BLACK;
 			}
-			UiBlock *menuBarLine = UiCreateBlock(uiState);
-			menuBarLine->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;
-			menuBarLine->uiPosition[UI_AXIS_X] = {UI_POSITION_ABSOLUTE, 0};
-			menuBarLine->uiPosition[UI_AXIS_Y] = {UI_POSITION_ABSOLUTE, menuBarHeight - 10};
-			menuBarLine->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-			menuBarLine->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 10};
-			menuBarLine->uiBlockColors.frontColor = COLORU32_BLACK;
 
 			UiBlock *body = UiCreateBlock(uiState);
 			body->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
@@ -646,11 +647,18 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			{
 				UiBlock *toolbar = UiCreateBlock(uiState);
 				//toolbar->flags = UI_FLAG_DRAW_BACKGROUND;
-				toolbar->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 100};
+				toolbar->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 80};
 				toolbar->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+				toolbar->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
 				//toolbar->uiBlockColors.backColor = ColorU32{100, 100, 100, 100};
 				UI_PARENT_SCOPE(uiState, toolbar)
 				{
+					{
+						UiBlock *b = UiCreateBlock(uiState);
+						b->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 5};
+					}
+
 					if (WidgetBrushEffectButton(uiState, appState, &uiInteractionHashes, BRUSH_EFFECT_ERASE, STRING("Ers"), COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE))
 					{
 						AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
@@ -675,20 +683,28 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 					//toolbar
 				}
 
+				{
+					UiBlock *b= UiCreateBlock(uiState);
+					b->flags = UI_FLAG_DRAW_BACKGROUND;
+					b->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
+					b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+					b->uiBlockColors.backColor = ColorU32{100, 100, 100, 255};
+				}
+
 				UiBlock *layerPanel = UiCreateBlock(uiState);
 				//layerPanel->flags = UI_FLAG_DRAW_BACKGROUND;
 				layerPanel->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 250};
-				layerPanel->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) windowDim.y - 10}; //Need fill here!
+				layerPanel->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL};
 				//layerPanel->uiBlockColors.backColor = ColorU32{100, 0, 0, 100};
 				UI_PARENT_SCOPE(uiState, layerPanel)
 				{
 					{
 						UiBlock *seperator = UiCreateBlock(uiState);
 						seperator->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;
-						seperator->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, 0};
-						seperator->uiPosition[UI_AXIS_Y] = {UI_POSITION_RELATIVE, -20};
+						seperator->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, -5};
+						seperator->uiPosition[UI_AXIS_Y] = {UI_POSITION_RELATIVE, 0};
 						seperator->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 4};
-						seperator->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1.3f};
+						seperator->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 0.95f};
 						seperator->uiBlockColors.frontColor = COLORU32_BLACK;
 					}
 
