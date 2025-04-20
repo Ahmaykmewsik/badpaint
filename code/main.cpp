@@ -664,7 +664,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 					{
 						UiBlock *seperator = UiCreateBlock(uiState);
-						seperator->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, 100}; //Need percent in parent here!
+						seperator->uiPosition[UI_AXIS_X] = {UI_POSITION_PERCENT_OF_PARENT, 1};
 						seperator->uiPosition[UI_AXIS_Y] = {UI_POSITION_RELATIVE, 0};
 						seperator->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;
 						seperator->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 4};

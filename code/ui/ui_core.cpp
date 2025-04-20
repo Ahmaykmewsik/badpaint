@@ -222,7 +222,14 @@ void CalculateUiPositionData(UiBuffer *uiBuffer, UiBlock *uiBlock, v2 *calculate
 				} break;
 				case UI_POSITION_RELATIVE:
 				{
-					calculatedPosition->elements[i] = uiBlock->uiPosition[i].valuePixels;
+					calculatedPosition->elements[i] = uiBlock->uiPosition[i].value;
+				} break;
+				case UI_POSITION_PERCENT_OF_PARENT:
+				{
+					if (ASSERT(uiBlock->parent))
+					{
+						calculatedPosition->elements[i] = uiBlock->parent->rect.dim.elements[i] * uiBlock->uiPosition[i].value;
+					}
 				} break;
 				case UI_POSITION_AUTO:
 				{
@@ -303,9 +310,10 @@ void CalculateUiPos(UiBuffer *uiBuffer, UiBlock *uiBlock, v2 *calculatedPosition
 			{
 				case UI_POSITION_ABSOLUTE:
 				{
-					uiBlock->rect.pos.elements[i] = uiBlock->uiPosition[i].valuePixels;
+					uiBlock->rect.pos.elements[i] = uiBlock->uiPosition[i].value;
 				} break;
 				case UI_POSITION_RELATIVE:
+				case UI_POSITION_PERCENT_OF_PARENT:
 				case UI_POSITION_AUTO:
 				{
 					uiBlock->rect.pos.elements[i] = parentPos.elements[i] + calculatedPosition->elements[i];
