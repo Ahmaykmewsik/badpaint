@@ -146,6 +146,55 @@ UiPanelPair SplitPanel(UiPanel *uiPanel, Arena *arena, UI_AXIS uiAxis, f32 perce
 	return result;
 }
 
+void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2 posInDrawnCanvas)
+{
+	UiPanel *stack[1024];
+	i32 stackIndex = 0;
+	stack[stackIndex] = &appState->rootUiPanel;
+	while (stackIndex >= 0)
+	{
+		UiPanel *uiPanel = stack[stackIndex--];
+
+		if (uiPanel->uiPanelType == UI_PANEL_TYPE_CANVAS)
+		{
+			u32 hash = Murmur3String("canvas", uiPanel->hash);
+			UiBlock *canvasBlockPrev = UiGetBlockOfHashLastFrame(uiState, hash);
+			if (canvasBlockPrev->hash)
+			{
+				v2 posTopLeft = (posInDrawnCanvas - (appState->toolSize * 0.5f));
+				v2 normalizedPos;
+				normalizedPos.x = SafeDivideF32(posTopLeft.x, (f32) appState->canvas.drawnImageData.dim.x);
+				normalizedPos.y = SafeDivideF32(posTopLeft.y, (f32) appState->canvas.drawnImageData.dim.y);
+				v2 absolutePos = (normalizedPos * canvasBlockPrev->rect.dim) + canvasBlockPrev->rect.pos;
+
+				f32 sizeNormalized = SafeDivideF32((f32)appState->toolSize, (f32) appState->canvas.drawnImageData.dim.x);
+				f32 sizeAbsolute = sizeNormalized * canvasBlockPrev->rect.dim.x;
+
+				UiBlock *t = UiCreateBlock(uiState);
+				t->flags = UI_FLAG_DRAW_BACKGROUND;
+				t->uiPosition[UI_AXIS_X] = {UI_POSITION_ABSOLUTE, absolutePos.x};
+				t->uiPosition[UI_AXIS_Y] = {UI_POSITION_ABSOLUTE, absolutePos.y};
+				t->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) sizeAbsolute};
+				t->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) sizeAbsolute};
+				t->uiBlockColors.backColor = BRUSH_EFFECT_COLORS_PROCESSING[appState->currentBrushEffect];
+			}
+		}
+		if (uiPanel->uiPanelType == UI_PANEL_TYPE_FINAL_TEXTURE)
+		{
+
+		}
+
+		for (UiPanel *child = uiPanel->lastChild; child; child = child->prev)
+		{
+			if (ASSERT(stackIndex < ARRAY_COUNT(stack)))
+			{
+				stack[++stackIndex] = child;
+			}
+		}
+	}
+
+}
+
 void BuildPanelTree(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, UiPanel *uiPanel)
 {
 	if (uiPanel)
@@ -232,6 +281,28 @@ void BuildPanelTree(UiState *uiState, AppState *appState, UiInteractionHashes *u
 									canvasBlock->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->textureDrawing);
 									canvasBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 									canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(canvasBlock->uiTextureView.dim.y, canvasBlock->uiTextureView.dim.x)};
+
+									if (canvasBlock->hash == uiInteractionHashes->hashMouseHover)
+									{
+										UiBlock *canvasBlockPrev = UiGetBlockOfHashLastFrame(uiState, canvasBlock->hash);
+										if (canvasBlockPrev->hash)
+										{
+											//TODO: (Ahmayk) Pass in mouse pos
+											v2 mousePixelPos = v2{(float)GetMouseX(), (float)GetMouseY()};
+											v2 relativeMousePos = mousePixelPos - canvasBlockPrev->rect.pos;
+											v2 normalizedPos;
+											normalizedPos.x = SafeDivideF32(relativeMousePos.x, canvasBlockPrev->rect.dim.x);
+											normalizedPos.y = SafeDivideF32(relativeMousePos.y, canvasBlockPrev->rect.dim.y);
+											v2 posInCanvas = normalizedPos * canvas->drawnImageData.dim;
+											DrawToolInCanvasOnPanelAndChildren(uiState, appState, posInCanvas);
+											if (canvasBlock->hash == uiInteractionHashes->hashMouseDown)
+											{
+												//TODO: (Ahmayk): send paint command!
+												//v2 cursorPosInDrawnImagePrevious = (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBlock->rect.pos) * scale;
+											}
+										}
+									}
+
 								}
 							}
 						}

@@ -134,7 +134,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	appState->defaultUiFont.data = &defaultFont;
 
 	appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_REMOVE;
-	appState->toolSize = 10;
+	//appState->toolSize = 10;
+	appState->toolSize = 50;
 	appState->currentTool = BADPAINT_TOOL_PENCIL;
 
 	v2 pressedMousePos = {};
@@ -396,7 +397,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						UiPanelPair panelPair1 = SplitPanel(&appState->rootUiPanel, &gameMemory.permanentArena, UI_AXIS_X, 0.85f);
 
 						UiPanelPair panelPairImages = SplitPanel(panelPair1.uiPanel1, &gameMemory.permanentArena, UI_AXIS_X, 0.5f);
-						panelPairImages.uiPanel1->uiPanelType = UI_PANEL_TYPE_FINAL_TEXTURE;
+						//panelPairImages.uiPanel1->uiPanelType = UI_PANEL_TYPE_FINAL_TEXTURE;
+						panelPairImages.uiPanel1->uiPanelType = UI_PANEL_TYPE_CANVAS;
 						panelPairImages.uiPanel2->uiPanelType = UI_PANEL_TYPE_CANVAS;
 
 						UiPanelPair panelPairRightSidebar = SplitPanel(panelPair1.uiPanel2, &gameMemory.permanentArena, UI_AXIS_Y, 0.2f);
@@ -499,6 +501,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		v2 cursorPosInDrawnImage = {};
 		b32 isDownOnPaintable = false;
 		b32 isHoveredOnPaintable = false;
+#if 0
 		if (canvasUiBlock && canvasUiBlock->hash == uiInteractionHashes.hashMouseHover)
 		{
 			f32 scale = canvas->drawnImageData.dim.x / canvasUiBlock->rect.dim.x;
@@ -515,6 +518,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			isDownOnPaintable = finalTextureUiBlock->hash == uiInteractionHashes.hashMouseDown;
 			isHoveredOnPaintable = true;
 		}
+#endif
 
 		if (!imageIsBroken && isDownOnPaintable)
 		{
@@ -871,6 +875,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 		UiRaylibRenderBlocks(uiBufferCurrent);
 
+#if 0
 		if (isHoveredOnPaintable)
 		{
 			v2 normalizedRelativePos = cursorPosInDrawnImage / canvas->drawnImageData.dim;
@@ -889,6 +894,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				DrawCircleLines((i32)hoverPos.x, (i32)hoverPos.y, size, outlineColor);
 			}
 		}
+#endif
 
 #if DEBUG_MODE
 		if (IsKeyDown(KEY_P))
