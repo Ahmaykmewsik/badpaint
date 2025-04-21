@@ -1,7 +1,8 @@
 #pragma once
 
 #include <ui/ui_core.h>
-#include <main.h>
+#include <image.h>
+#include <appCommands.h>
 
 static float G_TOOLBOX_WIDTH_AND_HEIGHT = 35;
 
@@ -25,6 +26,8 @@ struct UiInteractionHashes
 
 INTERACTION_STATE GetInteractionState(u32 hash, UiInteractionHashes *uiInteractionHashes, b32 isActive, b32 isDisabled, b32 downOverride);
 
+struct AppState;
+
 b32 WidgetBrushEffectButton(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, BADPAINT_BRUSH_EFFECT brushEffect, String string, COMMAND command);
 b32 WidgetToolButton(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, BADPAINT_TOOL_TYPE badpaintToolType, COMMAND command);
 
@@ -38,14 +41,15 @@ enum UI_PANEL_TYPE : u32
 
 struct UiPanel
 {
+	u32 hash;
+	UI_AXIS childSplitAxis;
+	f32 percentOfParent;
+
 	UiPanel *firstChild;
 	UiPanel *lastChild;
 	UiPanel *next;
 	UiPanel *prev;
 	UiPanel *parent;
-
-	UI_AXIS childSplitAxis;
-	f32 percentOfParent;
 
 	u32 uiPanelType;
 };
@@ -56,5 +60,15 @@ struct UiPanelPair
 	UiPanel *uiPanel2;
 };
 
+
 UiPanelPair SplitPanel(UiPanel *uiPanel, Arena *arena, UI_AXIS uiAxis, f32 percentOfParent);
 void BuildPanelTree(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, UiPanel *uiPanel);
+
+//TODO: (Ahmayk) Replace this stupid shit once we have better UI
+struct NotificationMessage
+{
+	String string;
+	f32 alpha;
+};
+
+void InitNotificationMessage(String string, Arena *circularNotificationBuffer);

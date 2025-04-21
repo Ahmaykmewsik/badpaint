@@ -3,6 +3,7 @@
 #include "platform_main.h"
 #include "../includes/raylib/src/raylib.h"
 #include "platform_win32.h"
+#include "ui/ui_core.h"
 
 enum PNG_FILTER_TYPE : i32
 {
@@ -139,3 +140,16 @@ static ColorU32 BRUSH_EFFECT_COLORS_PROCESSING[] =
 	{ 0, 121, 241, 127 }, //BLUE
 	{ 200, 122, 255, 127 }, //PURPLE
 };
+
+enum BADPAINT_TOOL_TYPE
+{
+	BADPAINT_TOOL_PENCIL,
+	BADPAINT_TOOL_ERASER,
+	BADPAINT_TOOL_COUNT,
+};
+
+struct Tool
+{
+	UiTextureView uiTextureViews[7]; //INTERACTION_STATE_COUNT
+};
+

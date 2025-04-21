@@ -2,6 +2,7 @@
 #include "widgets.h"
 #include "vn_math_external.h"
 #include "ui/ui_raylib.h"
+#include "main.h"
 
 ColorU32 AddConstantToColor(ColorU32 color, i8 constant)
 {
@@ -204,7 +205,7 @@ void BuildPanelTree(UiState *uiState, AppState *appState, UiInteractionHashes *u
 						{
 							UiBlock *finalTexture = UiCreateBlock(uiState);
 							finalTexture->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
-							finalTexture->hash = Murmur3String("finalTexture", (u32) (u64) uiPanel);
+							finalTexture->hash = Murmur3String("finalTexture", uiPanel->hash);
 							finalTexture->uiTextureView = UiRaylibTextureToUiTextureView(&appState->loadedTexture);
 							finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(appState->loadedTexture.height, appState->loadedTexture.width)};
@@ -227,7 +228,7 @@ void BuildPanelTree(UiState *uiState, AppState *appState, UiInteractionHashes *u
 								{
 									UiBlock *canvasBlock = UiCreateBlock(uiState);
 									canvasBlock->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
-									canvasBlock->hash = Murmur3String("canvas", (u32) (u64) uiPanel);
+									canvasBlock->hash = Murmur3String("canvas", uiPanel->hash);
 									canvasBlock->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->textureDrawing);
 									canvasBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 									canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(canvasBlock->uiTextureView.dim.y, canvasBlock->uiTextureView.dim.x)};

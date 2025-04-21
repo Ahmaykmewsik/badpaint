@@ -141,14 +141,16 @@ ImageRawRGBA32 LoadDataIntoRawImage(u8 *fileData, u32 fileSize, GameMemory *game
 		else
 		{
 			String notification = STRING("Failed to allocate memory for the image! Too bad!");
-			InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
+			//TODO: (Ahmayk) Handle error reporting outside this function!
+			//InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 		}
 		stbi_image_free(outputData);
 	}
 	else
 	{
 		String notification = STRING("I don't recognize that as an image. In the future you'll be able to load arbitrary data, but not yet.");
-		InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
+		//TODO: (Ahmayk) Handle error reporting outside this function!
+		//InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 	}
 
 	return result;
@@ -784,12 +786,14 @@ b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Can
 			if (rootImageRaw->dataSize > MegaByte * 500)
 			{
 				String notification = STRING("Yikes, this thing is huge! Sorry, but I failed to allocate the memory I needed to handle that. I'll need to be more memory efficent to handle that monster!");
-				InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
+				//TODO: (Ahmayk) Handle error reporting outside this function!
+				//InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 			}
 			else
 			{
 				String notification = STRING("Failed to allocate the memory I needed to handle the new image! Man, not your day, huh?");
-				InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
+				//TODO: (Ahmayk) Handle error reporting outside this function!
+				//InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 			}
 			*rootImageRaw = {};
 		}

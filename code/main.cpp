@@ -387,13 +387,13 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						f32 posX = ClampF32(middleOfScreenX - (moveRange * 0.5f), mousePixelPos.x, middleOfScreenX + (moveRange * 0.5f));
 					}
 #endif
-					static UiPanel panelRoot = {};
 					static b32 first = false;
 					if (!first)
 					{
 						first = true;
-						panelRoot.childSplitAxis = UI_AXIS_X;
-						UiPanelPair panelPair1 = SplitPanel(&panelRoot, &gameMemory.permanentArena, UI_AXIS_X, 0.85f);
+						appState->rootUiPanel.childSplitAxis = UI_AXIS_X;
+						appState->rootUiPanel.hash = Murmur3String("mainPanels");
+						UiPanelPair panelPair1 = SplitPanel(&appState->rootUiPanel, &gameMemory.permanentArena, UI_AXIS_X, 0.85f);
 
 						UiPanelPair panelPairImages = SplitPanel(panelPair1.uiPanel1, &gameMemory.permanentArena, UI_AXIS_X, 0.5f);
 						panelPairImages.uiPanel1->uiPanelType = UI_PANEL_TYPE_FINAL_TEXTURE;
@@ -404,7 +404,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						panelPairRightSidebar.uiPanel2->uiPanelType = UI_PANEL_TYPE_LAYERS;
 					}
 
-					BuildPanelTree(uiState, appState, &uiInteractionHashes, &panelRoot);
+					BuildPanelTree(uiState, appState, &uiInteractionHashes, &appState->rootUiPanel);
 				}
 			}
 		}
