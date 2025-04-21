@@ -1,6 +1,7 @@
 #pragma once
 
 #include "image.h"
+#include "main.h"
 #include "platform_win32.h"
 
 #include "../includes/raylib/src/external/stb_image.h"

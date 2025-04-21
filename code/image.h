@@ -1,5 +1,6 @@
-
-#include "main.h"
+#pragma once
+#include <base.h>
+#include "platform_main.h"
 #include "../includes/raylib/src/raylib.h"
 #include "platform_win32.h"
 
@@ -112,3 +113,29 @@ void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas);
 RectIV2 GetDrawingRectFromIndex(iv2 imageDim, iv2 rectDim, u32 i);
 
 PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread);
+
+enum BADPAINT_BRUSH_EFFECT : u32
+{
+    BADPAINT_BRUSH_EFFECT_REMOVE = 1,
+    BADPAINT_BRUSH_EFFECT_MAX = 2,
+    BADPAINT_BRUSH_EFFECT_SHIFT = 3,
+    BADPAINT_BRUSH_EFFECT_RANDOM = 4,
+};
+
+static ColorU32 BRUSH_EFFECT_COLORS_PRIMARY[] =
+{
+	{},
+	{ 230, 41, 55, 187 }, // RED
+	{ 230, 41, 55, 187 }, // RED
+	{ 253, 249, 0, 187 }, // YELLOW
+	{ 0, 121, 241, 187 }, //BLUE
+	{ 200, 122, 255, 187 }, //PURPLE
+};
+static ColorU32 BRUSH_EFFECT_COLORS_PROCESSING[] =
+{
+	{},
+	{ 230, 41, 55, 127 }, // RED
+	{ 253, 249, 0, 127 }, // YELLOW
+	{ 0, 121, 241, 127 }, //BLUE
+	{ 200, 122, 255, 127 }, //PURPLE
+};

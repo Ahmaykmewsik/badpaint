@@ -1,8 +1,9 @@
-#pragma once 
+#pragma once
 
 #include <base.h>
 #include <ui/ui_core.h>
 #include "../includes/raylib/src/raylib.h"
+#include "image.h"
 #include "platform_main.h"
 
 enum COMMAND : u32
@@ -31,37 +32,11 @@ struct AppCommandBuffer
 	ArenaMarker arenaMarker;
 };
 
-enum BADPAINT_BRUSH_EFFECT : u32
-{
-    BADPAINT_BRUSH_EFFECT_REMOVE = 1,
-    BADPAINT_BRUSH_EFFECT_MAX = 2,
-    BADPAINT_BRUSH_EFFECT_SHIFT = 3,
-    BADPAINT_BRUSH_EFFECT_RANDOM = 4,
-};
-
 enum BADPAINT_TOOL_TYPE
 {
 	BADPAINT_TOOL_PENCIL,
 	BADPAINT_TOOL_ERASER,
 	BADPAINT_TOOL_COUNT,
-};
-
-static ColorU32 BRUSH_EFFECT_COLORS_PRIMARY[] =
-{
-	{},
-	{ 230, 41, 55, 187 }, // RED
-	{ 230, 41, 55, 187 }, // RED
-	{ 253, 249, 0, 187 }, // YELLOW
-	{ 0, 121, 241, 187 }, //BLUE
-	{ 200, 122, 255, 187 }, //PURPLE
-};
-static ColorU32 BRUSH_EFFECT_COLORS_PROCESSING[] =
-{
-	{},
-	{ 230, 41, 55, 127 }, // RED
-	{ 253, 249, 0, 127 }, // YELLOW
-	{ 0, 121, 241, 127 }, //BLUE
-	{ 200, 122, 255, 127 }, //PURPLE
 };
 
 struct Tool
@@ -78,6 +53,7 @@ struct AppState
 	BADPAINT_TOOL_TYPE currentTool;
 	u32 toolSize;
 	Texture loadedTexture;
+	Canvas canvas;
 };
 
 b32 IsCommandKeyBindingDown(COMMAND command);
