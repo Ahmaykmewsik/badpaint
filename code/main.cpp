@@ -330,7 +330,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			{
 				UiBlock *toolbar = UiCreateBlock(uiState);
 				//toolbar->flags = UI_FLAG_DRAW_BACKGROUND;
-				toolbar->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 80};
+				toolbar->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 65};
 				toolbar->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 				toolbar->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
 				//toolbar->uiBlockColors.backColor = ColorU32{100, 100, 100, 100};
@@ -374,60 +374,143 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						seperator->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 						seperator->uiBlockColors.frontColor = COLORU32_BLACK;
 					}
-
-					//toolbar
 				}
 
+				UiBlock *panelArea = UiCreateBlock(uiState);
+				panelArea->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
+				panelArea->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL};
+				UI_PARENT_SCOPE(uiState, panelArea)
 				{
-					UiBlock *b= UiCreateBlock(uiState);
-					b->flags = UI_FLAG_DRAW_BACKGROUND;
-					b->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
-					b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-					b->uiBlockColors.backColor = ColorU32{100, 100, 100, 255};
-					b->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
-					b->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
-					UI_PARENT_SCOPE(uiState, b)
-					{
-						if (!imageIsBroken)
-						{
-							UiBlock *finalTexture = UiCreateBlock(uiState);
-							finalTexture->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
-							finalTexture->hash = HASH_FINAL_TEXTURE;
-							finalTexture->uiTextureView = UiRaylibTextureToUiTextureView(&loadedTexture);
-							finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(loadedTexture.width, loadedTexture.height)};
-							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-						}
-						else
-						{
-							UiBlock *stringBlock = UiCreateBlock(uiState);
-							stringBlock->flags = UI_FLAG_DRAW_TEXT;
-							stringBlock->string = STRING("Congulations! You broke the image. (undo with Ctrl-Z)");
-							stringBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXT};
-							stringBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXT};
-							stringBlock->uiFont = appState->defaultUiFont;
-							stringBlock->uiBlockColors = defaultBlockColors;
-						}
-					}
-				}
 
-				UiBlock *layerPanel = UiCreateBlock(uiState);
-				//layerPanel->flags = UI_FLAG_DRAW_BACKGROUND;
-				layerPanel->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 250};
-				layerPanel->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL};
-				//layerPanel->uiBlockColors.backColor = ColorU32{100, 0, 0, 100};
-				UI_PARENT_SCOPE(uiState, layerPanel)
-				{
+#if 0
+					f32 relativeX = 0.5f;
+					u32 leftPanelHash = Murmur3String("leftPanel");
+					UiBlock *leftPanelPrev = GetUiBlockOfHashLastFrame(uiState, leftPanelHash);
+					if (leftPanelPrev->hash)
 					{
-						UiBlock *seperator = UiCreateBlock(uiState);
-						seperator->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;
-						seperator->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, -5};
-						seperator->uiPosition[UI_AXIS_Y] = {UI_POSITION_RELATIVE, 0};
-						seperator->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 4};
-						seperator->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 0.95f};
-						seperator->uiBlockColors.frontColor = COLORU32_BLACK;
+						f32 middleOfScreenX = windowDim.x * 0.5f;
+						f32 moveRange = windowDim.x * 0.8f;
+						f32 posX = ClampF32(middleOfScreenX - (moveRange * 0.5f), mousePixelPos.x, middleOfScreenX + (moveRange * 0.5f));
+					}
+#endif
+#if 1
+					static UiPanel panelRoot = {};
+					static b32 first = false;
+					if (!first)
+					{
+						first = true;
+						panelRoot.childSplitAxis = UI_AXIS_X;
+						UiPanelPair panelPair1 = SplitPanel(&panelRoot, &gameMemory.permanentArena, UI_AXIS_X, 0.8f);
+
+						UiPanelPair panelPairImages = SplitPanel(panelPair1.uiPanel1, &gameMemory.permanentArena, UI_AXIS_X, 0.5f);
+						panelPairImages.uiPanel1->uiPanelType = UI_PANEL_TYPE_FINAL_TEXTURE;
+						panelPairImages.uiPanel2->uiPanelType = UI_PANEL_TYPE_CANVAS;
+
+						UiPanelPair panelPairRightSidebar = SplitPanel(panelPair1.uiPanel2, &gameMemory.permanentArena, UI_AXIS_Y, 0.2f);
+						panelPairRightSidebar.uiPanel1->uiPanelType = UI_PANEL_TYPE_PLACEHOLDER;
+						panelPairRightSidebar.uiPanel2->uiPanelType = UI_PANEL_TYPE_LAYERS;
 					}
 
-					//panel
+					BuildPanelTree(uiState, appState, &uiInteractionHashes, &panelRoot);
+#endif
+
+#if 0
+
+					{
+						UiBlock *b= UiCreateBlock(uiState);
+						//b->hash = leftPanelHash;
+						b->flags = UI_FLAG_DRAW_BACKGROUND;
+						b->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
+						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+						b->uiBlockColors.backColor = ColorU32{100, 100, 100, 255};
+						b->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
+						b->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
+						UI_PARENT_SCOPE(uiState, b)
+						{
+							if (!imageIsBroken)
+							{
+								UiBlock *finalTexture = UiCreateBlock(uiState);
+								finalTexture->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
+								finalTexture->hash = HASH_FINAL_TEXTURE;
+								finalTexture->uiTextureView = UiRaylibTextureToUiTextureView(&loadedTexture);
+								finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+								finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(loadedTexture.height, loadedTexture.width)};
+							}
+							else
+							{
+								UiBlock *stringBlock = UiCreateBlock(uiState);
+								stringBlock->flags = UI_FLAG_DRAW_TEXT;
+								stringBlock->string = STRING("Congulations! You broke the image. (undo with Ctrl-Z)");
+								stringBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXT};
+								stringBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXT};
+								stringBlock->uiFont = appState->defaultUiFont;
+								stringBlock->uiBlockColors = defaultBlockColors;
+							}
+						}
+
+						{
+							UiBlock *d= UiCreateBlock(uiState);
+							d->flags = UI_FLAG_DRAW_BACKGROUND;
+							d->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 2};
+							d->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+							d->uiBlockColors.backColor = ColorU32{0, 0, 0, 255};
+						};
+					}
+
+
+					{
+						UiBlock *panel = UiCreateBlock(uiState);
+						panel->flags = UI_FLAG_DRAW_BACKGROUND;
+						panel->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
+						panel->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+						panel->uiBlockColors.backColor = ColorU32{100, 100, 100, 255};
+						panel->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
+						panel->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
+						UI_PARENT_SCOPE(uiState, panel)
+						{
+							if (canvas->textureVisualizedFilteredRootImage.id)
+							{
+								UiBlock *b = UiCreateBlock(uiState);
+								b->flags = UI_FLAG_DRAW_TEXTURE;
+								b->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->textureVisualizedFilteredRootImage);
+								b->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+								b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(b->uiTextureView.dim.y, b->uiTextureView.dim.x)};
+								UI_PARENT_SCOPE(uiState, b)
+								{
+									if (canvas->textureDrawing.id)
+									{
+										UiBlock *canvasBlock = UiCreateBlock(uiState);
+										canvasBlock->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
+										canvasBlock->hash = HASH_CANVAS;
+										canvasBlock->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->textureDrawing);
+										canvasBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+										canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(canvasBlock->uiTextureView.dim.y, canvasBlock->uiTextureView.dim.x)};
+									}
+								}
+							}
+						}
+					}
+
+					UiBlock *layerPanel = UiCreateBlock(uiState);
+					//layerPanel->flags = UI_FLAG_DRAW_BACKGROUND;
+					layerPanel->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 250};
+					layerPanel->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL};
+					//layerPanel->uiBlockColors.backColor = ColorU32{100, 0, 0, 100};
+					UI_PARENT_SCOPE(uiState, layerPanel)
+					{
+						{
+							UiBlock *seperator = UiCreateBlock(uiState);
+							seperator->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;
+							seperator->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, -5};
+							seperator->uiPosition[UI_AXIS_Y] = {UI_POSITION_RELATIVE, 0};
+							seperator->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 4};
+							seperator->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 0.95f};
+							seperator->uiBlockColors.frontColor = COLORU32_BLACK;
+						}
+
+						//panel
+					}
+#endif
 				}
 
 			}
@@ -625,6 +708,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			}
 		}
 
+		//TODO: (Ahmayk) turn into app commands
 		if (IsKeyPressed(KEY_ZERO))
 			canvas->currentPNGFilterType = PNG_FILTER_TYPE_NONE;
 		if (IsKeyPressed(KEY_ONE))

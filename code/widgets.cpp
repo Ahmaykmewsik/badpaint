@@ -91,3 +91,126 @@ b32 WidgetToolButton(UiState *uiState, AppState *appState, UiInteractionHashes *
 	b32 result = (b->hash == uiInteractionHashes->hashMousePressed);
 	return result;
 }
+
+UiPanel *UiPanelCreateAndParent(Arena *arena, UiPanel *parent)
+{
+	UiPanel *result = ARENA_PUSH_STRUCT(arena, UiPanel);
+	*result = {};
+	result->parent = parent;
+	if (result->parent->firstChild)
+	{
+		ASSERT(result->parent->lastChild);
+		result->prev = result->parent->lastChild;
+		result->parent->lastChild->next = result;
+	}
+	else
+	{
+		result->parent->firstChild = result;
+	}
+	result->parent->lastChild = result;
+	parent->uiPanelType = {};
+	return result;
+}
+
+UiPanelPair SplitPanel(UiPanel *uiPanel, Arena *arena, UI_AXIS uiAxis, f32 percentOfParent)
+{
+	UiPanelPair result = {};
+	uiPanel->childSplitAxis = uiAxis;
+	uiPanel->uiPanelType = {};
+	result.uiPanel1 = UiPanelCreateAndParent(arena, uiPanel);
+	result.uiPanel1->percentOfParent = percentOfParent;
+	result.uiPanel2 = UiPanelCreateAndParent(arena, uiPanel);
+	result.uiPanel2->percentOfParent = 1 - percentOfParent;
+	return result;
+}
+
+void BuildPanelTree(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, UiPanel *uiPanel)
+{
+	if (uiPanel)
+	{
+		if (uiPanel->firstChild)
+		{
+			UiBlock *panelBlock = UiCreateBlock(uiState);
+			panelBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+			panelBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+			if (uiPanel->parent)
+			{
+				panelBlock->uiSizes[uiPanel->parent->childSplitAxis] = {UI_SIZE_PERCENT_OF_PARENT, uiPanel->percentOfParent};
+			}
+			panelBlock->uiChildLayoutType = UI_CHILD_LAYOUT_LEFT_TO_RIGHT;
+			if (uiPanel->childSplitAxis == UI_AXIS_Y)
+			{
+				panelBlock->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
+			}
+			UI_PARENT_SCOPE(uiState, panelBlock)
+			{
+				BuildPanelTree(uiState, appState, uiInteractionHashes, uiPanel->firstChild);
+			}
+		}
+		else
+		{
+			UiBlock *panelBlock = UiCreateBlock(uiState);
+			panelBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
+			panelBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL};
+			if (uiPanel->parent)
+			{
+				panelBlock->uiSizes[uiPanel->parent->childSplitAxis] = {UI_SIZE_PERCENT_OF_PARENT, uiPanel->percentOfParent};
+			}
+			switch(uiPanel->uiPanelType)
+			{
+				case UI_PANEL_TYPE_NULL:
+				{
+					panelBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT;
+					panelBlock->uiBlockColors.backColor = ColorU32{125, 125, 125, 255};
+					panelBlock->uiBlockColors.frontColor = ColorU32{0, 0, 0, 255};
+					panelBlock->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
+					panelBlock->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
+					panelBlock->string = STRING("EMPTY PANEL");
+					panelBlock->uiFont = appState->defaultUiFont;
+				} break;
+				case UI_PANEL_TYPE_PLACEHOLDER:
+				{
+					panelBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT;
+					panelBlock->uiBlockColors.backColor = ColorU32{255, 255, 0, 255};
+					panelBlock->uiBlockColors.frontColor = ColorU32{0, 0, 0, 255};
+					panelBlock->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
+					panelBlock->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
+					panelBlock->string = STRING("PLACEHOLDER");
+					panelBlock->uiFont = appState->defaultUiFont;
+				} break;
+				case UI_PANEL_TYPE_FINAL_TEXTURE:
+				{
+					panelBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT;
+					panelBlock->uiBlockColors.backColor = ColorU32{0, 255, 0, 255};
+					panelBlock->uiBlockColors.frontColor = ColorU32{0, 0, 0, 255};
+					panelBlock->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
+					panelBlock->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
+					panelBlock->string = STRING("TEXTURE");
+					panelBlock->uiFont = appState->defaultUiFont;
+				} break;
+				case UI_PANEL_TYPE_CANVAS:
+				{
+					panelBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT;
+					panelBlock->uiBlockColors.backColor = ColorU32{255, 0, 0, 255};
+					panelBlock->uiBlockColors.frontColor = ColorU32{0, 0, 0, 255};
+					panelBlock->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
+					panelBlock->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
+					panelBlock->string = STRING("CANVAS");
+					panelBlock->uiFont = appState->defaultUiFont;
+				} break;
+				case UI_PANEL_TYPE_LAYERS:
+				{
+					panelBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT;
+					panelBlock->uiBlockColors.backColor = ColorU32{0, 0, 255, 255};
+					panelBlock->uiBlockColors.frontColor = ColorU32{0, 0, 0, 255};
+					panelBlock->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
+					panelBlock->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
+					panelBlock->string = STRING("LAYERS");
+					panelBlock->uiFont = appState->defaultUiFont;
+				} break;
+				InvalidDefaultCase;
+			}
+		}
+		BuildPanelTree(uiState, appState, uiInteractionHashes, uiPanel->next);
+	}
+}

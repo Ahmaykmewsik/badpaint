@@ -28,5 +28,34 @@ INTERACTION_STATE GetInteractionState(u32 hash, UiInteractionHashes *uiInteracti
 b32 WidgetBrushEffectButton(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, BADPAINT_BRUSH_EFFECT brushEffect, String string, COMMAND command);
 b32 WidgetToolButton(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, BADPAINT_TOOL_TYPE badpaintToolType, COMMAND command);
 
+enum UI_PANEL_TYPE : u32
+{
+	UI_PANEL_TYPE_NULL,
+	UI_PANEL_TYPE_PLACEHOLDER,
+	UI_PANEL_TYPE_FINAL_TEXTURE,
+	UI_PANEL_TYPE_LAYERS,
+	UI_PANEL_TYPE_CANVAS,
+};
 
+struct UiPanel
+{
+	UiPanel *firstChild;
+	UiPanel *lastChild;
+	UiPanel *next;
+	UiPanel *prev;
+	UiPanel *parent;
 
+	UI_AXIS childSplitAxis;
+	f32 percentOfParent;
+
+	u32 uiPanelType;
+};
+
+struct UiPanelPair
+{
+	UiPanel *uiPanel1;
+	UiPanel *uiPanel2;
+};
+
+UiPanelPair SplitPanel(UiPanel *uiPanel, Arena *arena, UI_AXIS uiAxis, f32 percentOfParent);
+void BuildPanelTree(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, UiPanel *uiPanel);
