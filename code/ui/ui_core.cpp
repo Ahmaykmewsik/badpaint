@@ -73,7 +73,44 @@ void UiPopParent(UiState *uiState, UiBlock *uiBlock)
 	}
 }
 
-void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock)
+struct UiSolveData
+{
+	b32 isSizeSolved[UI_AXIS_COUNT];
+	v2 calculatedPosition;
+};
+
+struct UiSolveState
+{
+	UiBlock *uiBlocksStart;
+	UiSolveData *uiSolveData;
+	u32 solvedBlockSizeCount;
+	iv2 windowDim;
+};
+
+UiSolveData *GetUiSolveData(UiSolveState *uiSolveState, UiBlock *uiBlock)
+{
+	UiSolveData *result = uiSolveState->uiSolveData + (uiBlock - uiSolveState->uiBlocksStart);
+	return result;
+}
+
+b32 IsBlockSizeAxisSolved(UiSolveState *uiSolveState, UiBlock *uiBlock, UI_AXIS uiAxis)
+{
+	UiSolveData *uiSolveData = GetUiSolveData(uiSolveState, uiBlock);
+	b32 result = uiSolveData->isSizeSolved[uiAxis];
+	return result;
+}
+
+void MarkBlockSizeAxisAsSolved(UiSolveState *uiSolveState, UiBlock *uiBlock, UI_AXIS uiAxis)
+{
+	UiSolveData *uiSolveData = GetUiSolveData(uiSolveState, uiBlock);
+	uiSolveData->isSizeSolved[uiAxis] = true;
+	if (uiSolveData->isSizeSolved[0] && uiSolveData->isSizeSolved[1])
+	{
+		uiSolveState->solvedBlockSizeCount++;
+	}
+}
+
+void CalculateUiUpwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiBlock)
 {
 	if (uiBlock)
 	{
@@ -83,9 +120,12 @@ void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock)
 			{
 			case UI_SIZE_PERCENT_OF_PARENT:
 			{
-				if (ASSERT(uiBlock->parent))
+				if (!IsBlockSizeAxisSolved(uiSolveState, uiBlock, (UI_AXIS) i) &&
+					ASSERT(uiBlock->parent) &&
+					IsBlockSizeAxisSolved(uiSolveState, uiBlock->parent, (UI_AXIS) i))
 				{
 					uiBlock->rect.dim.elements[i] = (uiBlock->parent->rect.dim.elements[i] * uiBlock->uiSizes[i].value);
+					MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 				}
 			} break;
 			case UI_SIZE_PERCENT_OF_OTHER_AXIS:
@@ -100,16 +140,20 @@ void CalculateUiUpwardsDependentSizes(UiBlock *uiBlock)
 		}
 
 		//NOTE: (Ahmayk) percent of other axis done in a 2nd pass so we solve other axis first (if solveable).
-		for (int i = 0; i < ARRAY_COUNT(uiBlock->uiSizes); i++)
+		for (u32 i = 0; i < ARRAY_COUNT(uiBlock->uiSizes); i++)
 		{
-			if (uiBlock->uiSizes[i].type == UI_SIZE_PERCENT_OF_OTHER_AXIS)
+			if (uiBlock->uiSizes[i].type == UI_SIZE_PERCENT_OF_OTHER_AXIS &&
+				!IsBlockSizeAxisSolved(uiSolveState, uiBlock, (UI_AXIS) i) &&
+				ASSERT(uiBlock->uiSizes[1 - i].type != UI_SIZE_PERCENT_OF_OTHER_AXIS) &&
+				IsBlockSizeAxisSolved(uiSolveState, uiBlock, (UI_AXIS) (1 - i)))
 			{
 				uiBlock->rect.dim.elements[i] = uiBlock->rect.dim.elements[1 - i] * uiBlock->uiSizes[i].value;
+				MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 			}
 		}
 
-		CalculateUiUpwardsDependentSizes(uiBlock->firstChild);
-		CalculateUiUpwardsDependentSizes(uiBlock->next);
+		CalculateUiUpwardsDependentSizes(uiSolveState, uiBlock->firstChild);
+		CalculateUiUpwardsDependentSizes(uiSolveState, uiBlock->next);
 	}
 }
 
@@ -150,12 +194,31 @@ f32 GetSumOrMaxOfAllAutoSiblingsAndSelf(UiBlock *uiBlock, UI_AXIS uiAxis)
 	return result;
 }
 
-void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock, v2 windowDim)
+b32 IsSiblingsOfAxisSolved(UiSolveState *uiSolveState, UiBlock *uiBlock, UI_AXIS uiAxis)
+{
+	b32 result = true;
+	UiBlock *siblingBlock = uiBlock;
+	while(siblingBlock->prev)
+	{
+		siblingBlock = siblingBlock->prev;
+	}
+	for (; siblingBlock; siblingBlock = siblingBlock->next)
+	{
+		if (!IsBlockSizeAxisSolved(uiSolveState, siblingBlock, uiAxis))
+		{
+			result = false;
+			break;
+		}
+	}
+	return result;
+}
+
+void CalculateUiDownwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiBlock)
 {
 	if (uiBlock)
 	{
-		CalculateUiDownwardsDependentSizes(uiBlock->firstChild, windowDim);
-		CalculateUiDownwardsDependentSizes(uiBlock->next, windowDim);
+		CalculateUiDownwardsDependentSizes(uiSolveState, uiBlock->firstChild);
+		CalculateUiDownwardsDependentSizes(uiSolveState, uiBlock->next);
 
 		b32 childrenNeedUpwardRebuild = false;
 
@@ -165,63 +228,96 @@ void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock, v2 windowDim)
 			{
 				case UI_SIZE_SUM_OF_CHILDREN:
 				{
-					float sumOrMaxOfChildren = GetSumOrMaxOfAllAutoSiblingsAndSelf(uiBlock->firstChild, (UI_AXIS) i);
-					uiBlock->rect.dim.elements[i] = sumOrMaxOfChildren;
-					childrenNeedUpwardRebuild = true;
+					if (!IsBlockSizeAxisSolved(uiSolveState, uiBlock, (UI_AXIS) i) &&
+						IsSiblingsOfAxisSolved(uiSolveState, uiBlock->firstChild, (UI_AXIS) i))
+					{
+						float sumOrMaxOfChildren = GetSumOrMaxOfAllAutoSiblingsAndSelf(uiBlock->firstChild, (UI_AXIS) i);
+						uiBlock->rect.dim.elements[i] = sumOrMaxOfChildren;
+						MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
+					}
 				} break;
 				case UI_SIZE_FILL:
 				{
-					u32 fillBlockCount = 0;
-					f32 parentSize = (f32) windowDim.elements[i];
-					UI_CHILD_LAYOUT_TYPE parentLayoutType = UI_CHILD_LAYOUT_LEFT_TO_RIGHT;
-					if (uiBlock->parent)
+					if (!IsBlockSizeAxisSolved(uiSolveState, uiBlock, (UI_AXIS) i))
 					{
-						parentLayoutType = uiBlock->parent->uiChildLayoutType;
-						parentSize = uiBlock->parent->rect.dim.elements[i];
-					}
-
-					UiBlock *siblingBlock = uiBlock;
-
-					b32 inParentLayoutType = (i == UI_AXIS_X && parentLayoutType == UI_CHILD_LAYOUT_LEFT_TO_RIGHT) ||
-						(i == UI_AXIS_Y && parentLayoutType == UI_CHILD_LAYOUT_TOP_TO_BOTTOM);
-
-					f32 sumOrMax = 0;
-					while(siblingBlock->prev)
-					{
-						siblingBlock = siblingBlock->prev;
-					}
-					for (; siblingBlock; siblingBlock = siblingBlock->next)
-					{
-						if (siblingBlock->uiSizes[i].type == UI_SIZE_FILL)
+						b32 readyToSolve = true;
+						f32 parentSize = (f32) uiSolveState->windowDim.elements[i];
+						UI_CHILD_LAYOUT_TYPE parentLayoutType = UI_CHILD_LAYOUT_LEFT_TO_RIGHT;
+						if (uiBlock->parent)
 						{
-							fillBlockCount++;
-						}
-						else if (siblingBlock->uiPosition[i].type == UI_POSITION_AUTO)
-						{
-							if (inParentLayoutType)
+							if (IsBlockSizeAxisSolved(uiSolveState, uiBlock->parent, (UI_AXIS) i))
 							{
-								sumOrMax += siblingBlock->rect.dim.elements[i];
+								parentLayoutType = uiBlock->parent->uiChildLayoutType;
+								parentSize = uiBlock->parent->rect.dim.elements[i];
 							}
 							else
 							{
-								sumOrMax = MaxF32(siblingBlock->rect.dim.elements[i], sumOrMax);
+								readyToSolve = false;
 							}
 						}
-					}
 
-					if (ASSERT(fillBlockCount > 0))
-					{
-						if (inParentLayoutType)
+						f32 sumOrMax = 0;
+						u32 fillBlockCount = 0;
+						b32 inParentLayoutType = (i == UI_AXIS_X && parentLayoutType == UI_CHILD_LAYOUT_LEFT_TO_RIGHT) ||
+							(i == UI_AXIS_Y && parentLayoutType == UI_CHILD_LAYOUT_TOP_TO_BOTTOM);
+
+						if (readyToSolve)
 						{
-							f32 sizeToFill = MaxF32(0, parentSize - sumOrMax);
-							uiBlock->rect.dim.elements[i] = sizeToFill / fillBlockCount;
+							UiBlock *siblingBlock = uiBlock;
+
+							while(siblingBlock->prev)
+							{
+								siblingBlock = siblingBlock->prev;
+							}
+							for (; siblingBlock; siblingBlock = siblingBlock->next)
+							{
+								if (siblingBlock->uiSizes[i].type == UI_SIZE_FILL)
+								{
+									fillBlockCount++;
+								}
+								else if (siblingBlock->uiPosition[i].type == UI_POSITION_AUTO)
+								{
+									if (IsBlockSizeAxisSolved(uiSolveState, siblingBlock, (UI_AXIS) i))
+									{
+										if (inParentLayoutType)
+										{
+											sumOrMax += siblingBlock->rect.dim.elements[i];
+										}
+										else
+										{
+											sumOrMax = MaxF32(siblingBlock->rect.dim.elements[i], sumOrMax);
+										}
+									}
+									else
+									{
+										readyToSolve = false;
+										break;
+									}
+								}
+							}
 						}
-						else
+
+						if (readyToSolve)
 						{
-							uiBlock->rect.dim.elements[i] = sumOrMax;
+							if (ASSERT(fillBlockCount > 0))
+							{
+								if (inParentLayoutType)
+								{
+									f32 sizeToFill = MaxF32(0, parentSize - sumOrMax);
+									uiBlock->rect.dim.elements[i] = sizeToFill / fillBlockCount;
+								}
+								else if (sumOrMax > 0)
+								{
+									uiBlock->rect.dim.elements[i] = sumOrMax;
+								}
+								else
+								{
+									uiBlock->rect.dim.elements[i] = parentSize;
+								}
+							}
+							MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 						}
 					}
-					childrenNeedUpwardRebuild = true;
 				} break;
 				case UI_SIZE_PIXELS:
 				case UI_SIZE_TEXTURE:
@@ -232,15 +328,10 @@ void CalculateUiDownwardsDependentSizes(UiBlock *uiBlock, v2 windowDim)
 				InvalidDefaultCase
 			}
 		}
-
-		if (childrenNeedUpwardRebuild)
-		{
-			CalculateUiUpwardsDependentSizes(uiBlock->firstChild);
-		}
 	}
 }
 
-void CalculateUiPositionData(UiBuffer *uiBuffer, UiBlock *uiBlock, v2 *calculatedPositionDatas, iv2 windowDim)
+void CalculateUiPositionData(UiSolveState *uiSolveState, UiBlock *uiBlock)
 {
 	if (uiBlock)
 	{
@@ -264,7 +355,8 @@ void CalculateUiPositionData(UiBuffer *uiBuffer, UiBlock *uiBlock, v2 *calculate
 		}
 #endif
 
-		v2 *calculatedPosition = calculatedPositionDatas + (uiBlock - uiBuffer->uiBlocks);
+		UiSolveData *uiSolveData = GetUiSolveData(uiSolveState, uiBlock);
+		v2 *calculatedPosition = &uiSolveData->calculatedPosition;
 
 		for (u32 i = 0; i < UI_AXIS_COUNT; i++)
 		{
@@ -287,7 +379,7 @@ void CalculateUiPositionData(UiBuffer *uiBuffer, UiBlock *uiBlock, v2 *calculate
 				} break;
 				case UI_POSITION_AUTO:
 				{
-					f32 parentSize = (f32) windowDim.elements[i];
+					f32 parentSize = (f32) uiSolveState->windowDim.elements[i];
 					UI_CHILD_LAYOUT_TYPE parentLayoutType = UI_CHILD_LAYOUT_LEFT_TO_RIGHT;
 					UI_CHILD_ALIGN_TYPE parentAlignTypeOfAxis = UI_CHILD_ALIGN_START;
 					if (uiBlock->parent)
@@ -312,8 +404,8 @@ void CalculateUiPositionData(UiBuffer *uiBuffer, UiBlock *uiBlock, v2 *calculate
 
 					if (prevAutoBlock && inParentLayoutType)
 					{
-						v2 *calculatedPositionPrev = calculatedPositionDatas + (prevAutoBlock - uiBuffer->uiBlocks);
-						calculatedPosition->elements[i] = calculatedPositionPrev->elements[i] + prevAutoBlock->rect.dim.elements[i];
+						UiSolveData *uiSolveDataPrev = GetUiSolveData(uiSolveState, uiBlock->prev);
+						calculatedPosition->elements[i] = uiSolveDataPrev->calculatedPosition.elements[i] + prevAutoBlock->rect.dim.elements[i];
 					}
 					else
 					{
@@ -341,16 +433,17 @@ void CalculateUiPositionData(UiBuffer *uiBuffer, UiBlock *uiBlock, v2 *calculate
 			}
 		}
 
-		CalculateUiPositionData(uiBuffer, uiBlock->firstChild, calculatedPositionDatas, windowDim);
-		CalculateUiPositionData(uiBuffer, uiBlock->next, calculatedPositionDatas, windowDim);
+		CalculateUiPositionData(uiSolveState, uiBlock->firstChild);
+		CalculateUiPositionData(uiSolveState, uiBlock->next);
 	}
 }
 
-void CalculateUiPos(UiBuffer *uiBuffer, UiBlock *uiBlock, v2 *calculatedPositionDatas)
+void CalculateUiPos(UiSolveState *uiSolveState, UiBlock *uiBlock)
 {
 	if (uiBlock)
 	{
-		v2 *calculatedPosition = calculatedPositionDatas + (uiBlock - uiBuffer->uiBlocks);
+		UiSolveData *uiSolveData = GetUiSolveData(uiSolveState, uiBlock);
+		v2 *calculatedPosition = &uiSolveData->calculatedPosition;
 
 		v2 parentPos = {};
 		if (uiBlock->parent)
@@ -376,8 +469,8 @@ void CalculateUiPos(UiBuffer *uiBuffer, UiBlock *uiBlock, v2 *calculatedPosition
 			}
 		}
 
-		CalculateUiPos(uiBuffer, uiBlock->firstChild, calculatedPositionDatas);
-		CalculateUiPos(uiBuffer, uiBlock->next, calculatedPositionDatas);
+		CalculateUiPos(uiSolveState, uiBlock->firstChild);
+		CalculateUiPos(uiSolveState, uiBlock->next);
 	}
 }
 
@@ -405,8 +498,27 @@ UiBlock *UiGetBlockOfHashLastFrame(UiState *uiState, u32 hash)
     return result;
 }
 
+u32 GetNumBlocksInTree(UiBlock *uiBlock, u32 count = 0)
+{
+	u32 result = 0;
+	if (uiBlock)
+	{
+		result += 1;
+		result += GetNumBlocksInTree(uiBlock->firstChild, result);
+		result += GetNumBlocksInTree(uiBlock->next, result);
+	}
+	return result;
+}
+
 void UiLayoutBlocks(UiBuffer *uiBuffer, iv2 windowDim, Arena *temporaryArena)
 {
+	UiSolveState uiSolveState = {};
+	uiSolveState.windowDim = windowDim;
+	uiSolveState.uiBlocksStart = uiBuffer->uiBlocks;
+	ArenaMarker positionDataMarker;
+	uiSolveState.uiSolveData = ARENA_PUSH_ARRAY_MARKER(temporaryArena, uiBuffer->uiBlockCount, UiSolveData, &positionDataMarker);
+	memset(uiSolveState.uiSolveData, 0, uiBuffer->uiBlockCount * sizeof(UiSolveData));
+
 	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
 	{
 		UiBlock *uiBlock = &uiBuffer->uiBlocks[i];
@@ -419,10 +531,12 @@ void UiLayoutBlocks(UiBuffer *uiBuffer, iv2 windowDim, Arena *temporaryArena)
 				{
 					//NOTE: (Ahmayk) :(
 					uiBlock->rect.dim.elements[j] = (f32) uiBlock->uiTextureView.viewRect.dim.elements[j];
+					MarkBlockSizeAxisAsSolved(&uiSolveState, uiBlock, (UI_AXIS) j);
 				} break;
 				case UI_SIZE_PIXELS:
 				{
 					uiBlock->rect.dim.elements[j] = uiSize.value;
+					MarkBlockSizeAxisAsSolved(&uiSolveState, uiBlock, (UI_AXIS) j);
 				} break;
 				case UI_SIZE_TEXT:
 				{
@@ -430,6 +544,7 @@ void UiLayoutBlocks(UiBuffer *uiBuffer, iv2 windowDim, Arena *temporaryArena)
 					{
 						uiBlock->rect.dim.elements[j] = uiBlock->textDim.elements[j];
 					}
+					MarkBlockSizeAxisAsSolved(&uiSolveState, uiBlock, (UI_AXIS) j);
 				}
 				case UI_SIZE_PERCENT_OF_PARENT:
 				case UI_SIZE_SUM_OF_CHILDREN:
@@ -441,20 +556,42 @@ void UiLayoutBlocks(UiBuffer *uiBuffer, iv2 windowDim, Arena *temporaryArena)
 		}
 	}
 
-	ArenaMarker positionDataMarker;
-	v2 *calculatedPositionDatas = ARENA_PUSH_ARRAY_MARKER(temporaryArena, uiBuffer->uiBlockCount, v2, &positionDataMarker);
-	memset(calculatedPositionDatas, 0, uiBuffer->uiBlockCount * sizeof(v2));
 	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
 	{
 		UiBlock *uiBlock = &uiBuffer->uiBlocks[i];
 		if (!uiBlock->parent)
 		{
-			CalculateUiUpwardsDependentSizes(uiBlock);
-			CalculateUiDownwardsDependentSizes(uiBlock, windowDim);
-			CalculateUiPositionData(uiBuffer, uiBlock, calculatedPositionDatas, windowDim);
-			CalculateUiPos(uiBuffer, uiBlock, calculatedPositionDatas);
+			u32 blocksInTreeCount = GetNumBlocksInTree(uiBlock);
+			u32 solveIterationIndex = 0;
+			u32 solveIterationLimit = 100;
+			for (; solveIterationIndex < solveIterationLimit; solveIterationIndex++)
+			{
+				CalculateUiUpwardsDependentSizes(&uiSolveState, uiBlock);
+				if (uiSolveState.solvedBlockSizeCount == blocksInTreeCount)
+				{
+					break;
+				}
+				CalculateUiDownwardsDependentSizes(&uiSolveState, uiBlock);
+				if (uiSolveState.solvedBlockSizeCount == blocksInTreeCount)
+				{
+					break;
+				}
+			}
+			ASSERT(solveIterationIndex < solveIterationLimit);
+			uiSolveState.solvedBlockSizeCount = 0;
 		}
 	}
+
+	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
+	{
+		UiBlock *uiBlock = &uiBuffer->uiBlocks[i];
+		if (!uiBlock->parent)
+		{
+			CalculateUiPositionData(&uiSolveState, uiBlock);
+			CalculateUiPos(&uiSolveState, uiBlock);
+		}
+	}
+
 	ArenaPopMarker(positionDataMarker);
 }
 

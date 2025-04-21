@@ -118,6 +118,10 @@ struct UiBlock
 	UiBlockColors uiBlockColors;
 
 	RectV2 rect;
+
+#if DEBUG_MODE
+	String debugString;
+#endif
 };
 
 #define MAX_UI_BLOCKS 1000
