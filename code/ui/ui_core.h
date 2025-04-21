@@ -145,6 +145,7 @@ struct UiState
 UiState *UiInit(Arena *arena);
 UiBlock *UiGetBlockOfHashLastFrame(UiState *uiState, u32 hash);
 UiBlock *UiCreateBlock(UiState *uiState);
+UiBlock *UiCreateRootBlock(UiState *uiState);
 void UiPushParent(UiState *uiState, UiBlock *uiBlock);
 void UiPopParent(UiState *uiState, UiBlock *uiBlock);
 void UiLayoutBlocks(UiBuffer *uiBuffer, iv2 windowDim, Arena *temporaryArena);

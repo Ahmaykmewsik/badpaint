@@ -170,7 +170,7 @@ void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2
 				f32 sizeNormalized = SafeDivideF32((f32)appState->toolSize, (f32) appState->canvas.drawnImageData.dim.x);
 				f32 sizeAbsolute = sizeNormalized * canvasBlockPrev->rect.dim.x;
 
-				UiBlock *t = UiCreateBlock(uiState);
+				UiBlock *t = UiCreateRootBlock(uiState);
 				t->flags = UI_FLAG_DRAW_BACKGROUND;
 				t->uiPosition[UI_AXIS_X] = {UI_POSITION_ABSOLUTE, absolutePos.x};
 				t->uiPosition[UI_AXIS_Y] = {UI_POSITION_ABSOLUTE, absolutePos.y};

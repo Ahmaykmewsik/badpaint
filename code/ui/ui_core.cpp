@@ -55,6 +55,24 @@ UiBlock *UiCreateBlock(UiState *uiState)
 	return result;
 }
 
+UiBlock *UiCreateRootBlock(UiState *uiState)
+{
+	UiBlock *result = {};
+	UiBuffer *uiBuffer = &uiState->uiBuffers[uiState->uiBufferIndex];
+	if (ASSERT(uiBuffer->uiBlockCount < ARRAY_COUNT(uiBuffer->uiBlocks)))
+	{
+		result = &uiBuffer->uiBlocks[uiBuffer->uiBlockCount++];
+		*result = {};
+	}
+	if (!result)
+	{
+		static UiBlock stub = {};
+		result = &stub;
+		*result = {};
+	}
+	return result;
+}
+
 void UiPushParent(UiState *uiState, UiBlock *uiBlock)
 {
 	if (ASSERT(uiState->parentStackCount < ARRAY_COUNT(uiState->parentStack)))
@@ -107,6 +125,48 @@ void MarkBlockSizeAxisAsSolved(UiSolveState *uiSolveState, UiBlock *uiBlock, UI_
 	if (uiSolveData->isSizeSolved[0] && uiSolveData->isSizeSolved[1])
 	{
 		uiSolveState->solvedBlockSizeCount++;
+	}
+}
+
+void CalculateFixedSizes(UiSolveState *uiSolveState, UiBlock *uiBlock)
+{
+	if (uiBlock)
+	{
+		for (u32 i = 0; i < ARRAY_COUNT(uiBlock->uiSizes); i++)
+		{
+			UiSize uiSize = uiBlock->uiSizes[i];
+			switch (uiSize.type)
+			{
+				case UI_SIZE_TEXTURE:
+				{
+					//NOTE: (Ahmayk) :(
+					uiBlock->rect.dim.elements[i] = (f32) uiBlock->uiTextureView.viewRect.dim.elements[i];
+					MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
+				} break;
+				case UI_SIZE_PIXELS:
+				{
+					uiBlock->rect.dim.elements[i] = uiSize.value;
+					MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
+				} break;
+				case UI_SIZE_TEXT:
+				{
+					if (ASSERT(uiBlock->string.length && !IsZeroV2(uiBlock->textDim)))
+					{
+						uiBlock->rect.dim.elements[i] = uiBlock->textDim.elements[i];
+					}
+					MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
+				}
+				case UI_SIZE_PERCENT_OF_PARENT:
+				case UI_SIZE_SUM_OF_CHILDREN:
+				case UI_SIZE_PERCENT_OF_OTHER_AXIS:
+				case UI_SIZE_FILL:
+					break;
+					InvalidDefaultCase
+			}
+		}
+
+		CalculateFixedSizes(uiSolveState, uiBlock->firstChild);
+		CalculateFixedSizes(uiSolveState, uiBlock->next);
 	}
 }
 
@@ -522,71 +582,30 @@ void UiLayoutBlocks(UiBuffer *uiBuffer, iv2 windowDim, Arena *temporaryArena)
 	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
 	{
 		UiBlock *uiBlock = &uiBuffer->uiBlocks[i];
-		for (u32 j = 0; j < ARRAY_COUNT(uiBlock->uiSizes); j++)
-		{
-			UiSize uiSize = uiBlock->uiSizes[j];
-			switch (uiSize.type)
-			{
-				case UI_SIZE_TEXTURE:
-				{
-					//NOTE: (Ahmayk) :(
-					uiBlock->rect.dim.elements[j] = (f32) uiBlock->uiTextureView.viewRect.dim.elements[j];
-					MarkBlockSizeAxisAsSolved(&uiSolveState, uiBlock, (UI_AXIS) j);
-				} break;
-				case UI_SIZE_PIXELS:
-				{
-					uiBlock->rect.dim.elements[j] = uiSize.value;
-					MarkBlockSizeAxisAsSolved(&uiSolveState, uiBlock, (UI_AXIS) j);
-				} break;
-				case UI_SIZE_TEXT:
-				{
-					if (ASSERT(uiBlock->string.length && !IsZeroV2(uiBlock->textDim)))
-					{
-						uiBlock->rect.dim.elements[j] = uiBlock->textDim.elements[j];
-					}
-					MarkBlockSizeAxisAsSolved(&uiSolveState, uiBlock, (UI_AXIS) j);
-				}
-				case UI_SIZE_PERCENT_OF_PARENT:
-				case UI_SIZE_SUM_OF_CHILDREN:
-				case UI_SIZE_PERCENT_OF_OTHER_AXIS:
-				case UI_SIZE_FILL:
-				break;
-				InvalidDefaultCase
-			}
-		}
-	}
-
-	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
-	{
-		UiBlock *uiBlock = &uiBuffer->uiBlocks[i];
 		if (!uiBlock->parent)
 		{
 			u32 blocksInTreeCount = GetNumBlocksInTree(uiBlock);
-			u32 solveIterationIndex = 0;
-			u32 solveIterationLimit = 100;
-			for (; solveIterationIndex < solveIterationLimit; solveIterationIndex++)
+			CalculateFixedSizes(&uiSolveState, uiBlock);
+			if (uiSolveState.solvedBlockSizeCount != blocksInTreeCount)
 			{
-				CalculateUiUpwardsDependentSizes(&uiSolveState, uiBlock);
-				if (uiSolveState.solvedBlockSizeCount == blocksInTreeCount)
+				u32 solveIterationIndex = 0;
+				u32 solveIterationLimit = 100;
+				for (; solveIterationIndex < solveIterationLimit; solveIterationIndex++)
 				{
-					break;
+					CalculateUiUpwardsDependentSizes(&uiSolveState, uiBlock);
+					if (uiSolveState.solvedBlockSizeCount == blocksInTreeCount)
+					{
+						break;
+					}
+					CalculateUiDownwardsDependentSizes(&uiSolveState, uiBlock);
+					if (uiSolveState.solvedBlockSizeCount == blocksInTreeCount)
+					{
+						break;
+					}
 				}
-				CalculateUiDownwardsDependentSizes(&uiSolveState, uiBlock);
-				if (uiSolveState.solvedBlockSizeCount == blocksInTreeCount)
-				{
-					break;
-				}
+				ASSERT(solveIterationIndex < solveIterationLimit);
 			}
-			ASSERT(solveIterationIndex < solveIterationLimit);
 			uiSolveState.solvedBlockSizeCount = 0;
-		}
-	}
-
-	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
-	{
-		UiBlock *uiBlock = &uiBuffer->uiBlocks[i];
-		if (!uiBlock->parent)
-		{
 			CalculateUiPositionData(&uiSolveState, uiBlock);
 			CalculateUiPos(&uiSolveState, uiBlock);
 		}
