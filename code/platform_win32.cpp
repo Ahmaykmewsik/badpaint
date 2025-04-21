@@ -1,7 +1,7 @@
 
 #include "base.h"
 #include "platform_win32.h"
-#include "main.h"
+#include "platform_main.h"
 
 #include <intrin.h>
 #include "Windows.h"

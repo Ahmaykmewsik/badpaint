@@ -2,33 +2,8 @@
 
 #include <base.h>
 #include <ui/ui_core.h>
-
-#define VERSION_NUMBER "v0.0.3"
-
-static String G_NOTIFICATION_MESSAGE = {};
-static float G_NOTIFICATION_ALPHA = 0.0f;
-
-//NOTE: (Ahmayk) Leftovers from vn_intrinsic.h
-struct GameMemory
-{
-	Arena permanentArena;
-	Arena temporaryArena;
-	Arena mouseClickArena;
-	Arena circularNotificationBuffer;
-	Arena twoFrameArenaModIndex0;
-	Arena twoFrameArenaModIndex1;
-
-	Arena rootImageArena;
-	Arena canvasArena;
-	ArenaGroup conversionArenaGroup;
-	Arena canvasRollbackArena;
-};
-
-static const char *buildDate = __DATE__;
-static const char *buildTime = __TIME__;
-
-struct PlatformWorkQueue;
-void RunApp(PlatformWorkQueue *platformWorkQueue, GameMemory gameMemory, unsigned int threadCount);
+#include "../includes/raylib/src/raylib.h"
+#include "platform_main.h"
 
 enum COMMAND : u32
 {
@@ -102,6 +77,7 @@ struct AppState
     BADPAINT_BRUSH_EFFECT currentBrushEffect;
 	BADPAINT_TOOL_TYPE currentTool;
 	u32 toolSize;
+	Texture loadedTexture;
 };
 
 b32 IsCommandKeyBindingDown(COMMAND command);

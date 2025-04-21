@@ -1,6 +1,7 @@
 
 #include "widgets.h"
 #include "vn_math_external.h"
+#include "ui/ui_raylib.h"
 
 ColorU32 AddConstantToColor(ColorU32 color, i8 constant)
 {
@@ -156,59 +157,62 @@ void BuildPanelTree(UiState *uiState, AppState *appState, UiInteractionHashes *u
 			{
 				panelBlock->uiSizes[uiPanel->parent->childSplitAxis] = {UI_SIZE_PERCENT_OF_PARENT, uiPanel->percentOfParent};
 			}
-			switch(uiPanel->uiPanelType)
+			UI_PARENT_SCOPE(uiState, panelBlock)
 			{
-				case UI_PANEL_TYPE_NULL:
+				switch(uiPanel->uiPanelType)
 				{
-					panelBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT;
-					panelBlock->uiBlockColors.backColor = ColorU32{125, 125, 125, 255};
-					panelBlock->uiBlockColors.frontColor = ColorU32{0, 0, 0, 255};
-					panelBlock->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
-					panelBlock->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
-					panelBlock->string = STRING("EMPTY PANEL");
-					panelBlock->uiFont = appState->defaultUiFont;
-				} break;
-				case UI_PANEL_TYPE_PLACEHOLDER:
-				{
-					panelBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT;
-					panelBlock->uiBlockColors.backColor = ColorU32{255, 255, 0, 255};
-					panelBlock->uiBlockColors.frontColor = ColorU32{0, 0, 0, 255};
-					panelBlock->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
-					panelBlock->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
-					panelBlock->string = STRING("PLACEHOLDER");
-					panelBlock->uiFont = appState->defaultUiFont;
-				} break;
-				case UI_PANEL_TYPE_FINAL_TEXTURE:
-				{
-					panelBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT;
-					panelBlock->uiBlockColors.backColor = ColorU32{0, 255, 0, 255};
-					panelBlock->uiBlockColors.frontColor = ColorU32{0, 0, 0, 255};
-					panelBlock->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
-					panelBlock->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
-					panelBlock->string = STRING("TEXTURE");
-					panelBlock->uiFont = appState->defaultUiFont;
-				} break;
-				case UI_PANEL_TYPE_CANVAS:
-				{
-					panelBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT;
-					panelBlock->uiBlockColors.backColor = ColorU32{255, 0, 0, 255};
-					panelBlock->uiBlockColors.frontColor = ColorU32{0, 0, 0, 255};
-					panelBlock->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
-					panelBlock->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
-					panelBlock->string = STRING("CANVAS");
-					panelBlock->uiFont = appState->defaultUiFont;
-				} break;
-				case UI_PANEL_TYPE_LAYERS:
-				{
-					panelBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT;
-					panelBlock->uiBlockColors.backColor = ColorU32{0, 0, 255, 255};
-					panelBlock->uiBlockColors.frontColor = ColorU32{0, 0, 0, 255};
-					panelBlock->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
-					panelBlock->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
-					panelBlock->string = STRING("LAYERS");
-					panelBlock->uiFont = appState->defaultUiFont;
-				} break;
-				InvalidDefaultCase;
+					case UI_PANEL_TYPE_NULL:
+					{
+						panelBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT;
+						panelBlock->uiBlockColors.backColor = ColorU32{125, 125, 125, 255};
+						panelBlock->uiBlockColors.frontColor = ColorU32{0, 0, 0, 255};
+						panelBlock->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
+						panelBlock->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
+						panelBlock->string = STRING("EMPTY PANEL");
+						panelBlock->uiFont = appState->defaultUiFont;
+					} break;
+					case UI_PANEL_TYPE_FINAL_TEXTURE:
+					{
+						UiBlock *b= UiCreateBlock(uiState);
+						//b->hash = leftPanelHash;
+						b->flags = UI_FLAG_DRAW_BACKGROUND;
+						b->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
+						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+						b->uiBlockColors.backColor = ColorU32{100, 100, 100, 255};
+						b->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
+						b->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
+						UI_PARENT_SCOPE(uiState, b)
+						{
+							UiBlock *finalTexture = UiCreateBlock(uiState);
+							finalTexture->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
+							finalTexture->hash = Murmur3String("finalTexture", (u32) (u64) uiPanel);
+							finalTexture->uiTextureView = UiRaylibTextureToUiTextureView(&appState->loadedTexture);
+							finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(appState->loadedTexture.height, appState->loadedTexture.width)};
+						}
+					} break;
+					case UI_PANEL_TYPE_CANVAS:
+					{
+						panelBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT;
+						panelBlock->uiBlockColors.backColor = ColorU32{100, 0, 0, 255};
+						panelBlock->uiBlockColors.frontColor = ColorU32{0, 0, 0, 255};
+						panelBlock->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
+						panelBlock->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
+						panelBlock->string = STRING("CANVAS");
+						panelBlock->uiFont = appState->defaultUiFont;
+					} break;
+					case UI_PANEL_TYPE_LAYERS:
+					{
+						panelBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT;
+						panelBlock->uiBlockColors.backColor = ColorU32{100, 100, 100, 255};
+						panelBlock->uiBlockColors.frontColor = ColorU32{0, 0, 0, 255};
+						panelBlock->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
+						panelBlock->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
+						panelBlock->string = STRING("LAYERS");
+						panelBlock->uiFont = appState->defaultUiFont;
+					} break;
+					InvalidDefaultCase;
+				}
 			}
 		}
 		BuildPanelTree(uiState, appState, uiInteractionHashes, uiPanel->next);

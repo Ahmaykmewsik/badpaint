@@ -31,10 +31,9 @@ b32 WidgetToolButton(UiState *uiState, AppState *appState, UiInteractionHashes *
 enum UI_PANEL_TYPE : u32
 {
 	UI_PANEL_TYPE_NULL,
-	UI_PANEL_TYPE_PLACEHOLDER,
 	UI_PANEL_TYPE_FINAL_TEXTURE,
-	UI_PANEL_TYPE_LAYERS,
 	UI_PANEL_TYPE_CANVAS,
+	UI_PANEL_TYPE_LAYERS,
 };
 
 struct UiPanel

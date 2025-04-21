@@ -139,7 +139,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	appState->toolSize = 10;
 	appState->currentTool = BADPAINT_TOOL_PENCIL;
 
-	Texture loadedTexture = {};
 	v2 pressedMousePos = {};
 	//TODO: (Ahmayk) Remove
 	u32 draggedHash = {};
@@ -160,7 +159,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	*rootImageRaw = LoadDataIntoRawImage(&DEFAULT_IMAGE_DATA[0], ARRAY_COUNT(DEFAULT_IMAGE_DATA), &gameMemory);
 	if (rootImageRaw->dataSize)
 	{
-		InitializeNewImage(&gameMemory, rootImageRaw, canvas, &loadedTexture, processedImages, threadCount);
+		InitializeNewImage(&gameMemory, rootImageRaw, canvas, &appState->loadedTexture, processedImages, threadCount);
 	}
 
 	while (!WindowShouldClose())
@@ -213,7 +212,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 			if (rootImageRaw->dataSize)
 			{
-				InitializeNewImage(&gameMemory, rootImageRaw, canvas, &loadedTexture, processedImages, threadCount);
+				InitializeNewImage(&gameMemory, rootImageRaw, canvas, &appState->loadedTexture, processedImages, threadCount);
 				if (rootImageRaw->dataSize > MegaByte * 500)
 				{
 					String notification = STRING("You like to play dangerously, don't you?");
@@ -269,7 +268,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		//----------------------------------------------------
 
 		u32 HASH_CANVAS = Murmur3String("canvas");
-		u32 HASH_FINAL_TEXTURE = Murmur3String("finalTexture");
 
 		UiBuffer *uiBufferCurrent = &uiState->uiBuffers[uiState->uiBufferIndex];
 		// NOTE: We start at 1 so that we always have a null uiBlock
@@ -407,7 +405,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						panelPairImages.uiPanel2->uiPanelType = UI_PANEL_TYPE_CANVAS;
 
 						UiPanelPair panelPairRightSidebar = SplitPanel(panelPair1.uiPanel2, &gameMemory.permanentArena, UI_AXIS_Y, 0.2f);
-						panelPairRightSidebar.uiPanel1->uiPanelType = UI_PANEL_TYPE_PLACEHOLDER;
+						panelPairRightSidebar.uiPanel1->uiPanelType = UI_PANEL_TYPE_NULL;
 						panelPairRightSidebar.uiPanel2->uiPanelType = UI_PANEL_TYPE_LAYERS;
 					}
 
@@ -415,38 +413,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 #endif
 
 #if 0
-
-					{
-						UiBlock *b= UiCreateBlock(uiState);
-						//b->hash = leftPanelHash;
-						b->flags = UI_FLAG_DRAW_BACKGROUND;
-						b->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
-						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-						b->uiBlockColors.backColor = ColorU32{100, 100, 100, 255};
-						b->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
-						b->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
-						UI_PARENT_SCOPE(uiState, b)
-						{
-							if (!imageIsBroken)
-							{
-								UiBlock *finalTexture = UiCreateBlock(uiState);
-								finalTexture->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
-								finalTexture->hash = HASH_FINAL_TEXTURE;
-								finalTexture->uiTextureView = UiRaylibTextureToUiTextureView(&loadedTexture);
-								finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-								finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(loadedTexture.height, loadedTexture.width)};
-							}
-							else
-							{
-								UiBlock *stringBlock = UiCreateBlock(uiState);
-								stringBlock->flags = UI_FLAG_DRAW_TEXT;
-								stringBlock->string = STRING("Congulations! You broke the image. (undo with Ctrl-Z)");
-								stringBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXT};
-								stringBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXT};
-								stringBlock->uiFont = appState->defaultUiFont;
-								stringBlock->uiBlockColors = defaultBlockColors;
-							}
-						}
 
 						{
 							UiBlock *d= UiCreateBlock(uiState);
@@ -550,7 +516,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				} break;
 				case COMMAND_EXPORT_IMAGE:
 				{
-					if (loadedTexture.height && loadedTexture.width)
+					if (appState->loadedTexture.height && appState->loadedTexture.width)
 					{
 						ArenaMarker arenaMarker = ArenaPushMarker(&gameMemory.temporaryArena);
 						String filePath = AllocateString(256, &gameMemory.temporaryArena);
@@ -559,7 +525,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						filePath.length = filepathLength;
 						if (success && filePath.length)
 						{
-							Image exportImgae = LoadImageFromTexture(loadedTexture);
+							Image exportImgae = LoadImageFromTexture(appState->loadedTexture);
 							ExportImage(exportImgae, filePath);
 
 							String notification = STRING("You have given new life to: ") + filePath;
@@ -584,8 +550,9 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 		ArenaPopMarker(appCommandBuffer.arenaMarker);
 
-		UiBlock *canvasUiBlock = UiGetBlockOfHashLastFrame(uiState, HASH_CANVAS);
-		UiBlock *finalTextureUiBlock = UiGetBlockOfHashLastFrame(uiState, HASH_FINAL_TEXTURE);
+		//TODO: (Ahmayk) painting now needs to be an app command generated form UI!
+		UiBlock *canvasUiBlock = UiGetBlockOfHashLastFrame(uiState, 0);
+		UiBlock *finalTextureUiBlock = UiGetBlockOfHashLastFrame(uiState, 0);
 
 		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && canvas->saveRollbackOnNextPress)
 		{
@@ -663,6 +630,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			}
 		}
 
+		//TODO: (Ahmayk) turn into app commands
 		if ((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown((KEY_RIGHT_CONTROL))) && IsKeyPressed(KEY_Z))
 		{
 			if (canvas->rollbackIndexNext != canvas->rollbackIndexStart)
@@ -852,8 +820,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
 					}
 
-					glBindTexture(GL_TEXTURE_2D, loadedTexture.id);
-					glPixelStorei(GL_UNPACK_ROW_LENGTH, loadedTexture.width);
+					glBindTexture(GL_TEXTURE_2D, appState->loadedTexture.id);
+					glPixelStorei(GL_UNPACK_ROW_LENGTH, appState->loadedTexture.width);
 					for (u32 rectIndex = 0; rectIndex < canvas->finalImageRectCount; rectIndex++)
 					{
 						if (finalImageDirtyRects[rectIndex])
