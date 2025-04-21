@@ -397,8 +397,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						UiPanelPair panelPair1 = SplitPanel(&appState->rootUiPanel, &gameMemory.permanentArena, UI_AXIS_X, 0.85f);
 
 						UiPanelPair panelPairImages = SplitPanel(panelPair1.uiPanel1, &gameMemory.permanentArena, UI_AXIS_X, 0.5f);
-						//panelPairImages.uiPanel1->uiPanelType = UI_PANEL_TYPE_FINAL_TEXTURE;
-						panelPairImages.uiPanel1->uiPanelType = UI_PANEL_TYPE_CANVAS;
+						panelPairImages.uiPanel1->uiPanelType = UI_PANEL_TYPE_FINAL_TEXTURE;
 						panelPairImages.uiPanel2->uiPanelType = UI_PANEL_TYPE_CANVAS;
 
 						UiPanelPair panelPairRightSidebar = SplitPanel(panelPair1.uiPanel2, &gameMemory.permanentArena, UI_AXIS_Y, 0.2f);

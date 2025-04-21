@@ -181,7 +181,27 @@ void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2
 		}
 		if (uiPanel->uiPanelType == UI_PANEL_TYPE_FINAL_TEXTURE)
 		{
+			u32 hash = Murmur3String("finalTexture", uiPanel->hash);
+			UiBlock *canvasBlockPrev = UiGetBlockOfHashLastFrame(uiState, hash);
+			if (canvasBlockPrev->hash)
+			{
+				v2 posTopLeft = (posInDrawnCanvas - (appState->toolSize * 0.5f));
+				v2 normalizedPos;
+				normalizedPos.x = SafeDivideF32(posTopLeft.x, (f32) appState->canvas.drawnImageData.dim.x);
+				normalizedPos.y = SafeDivideF32(posTopLeft.y, (f32) appState->canvas.drawnImageData.dim.y);
+				v2 absolutePos = (normalizedPos * canvasBlockPrev->rect.dim) + canvasBlockPrev->rect.pos;
 
+				f32 sizeNormalized = SafeDivideF32((f32)appState->toolSize, (f32) appState->canvas.drawnImageData.dim.x);
+				f32 sizeAbsolute = sizeNormalized * canvasBlockPrev->rect.dim.x;
+
+				UiBlock *t = UiCreateRootBlock(uiState);
+				t->flags = UI_FLAG_DRAW_BACKGROUND;
+				t->uiPosition[UI_AXIS_X] = {UI_POSITION_ABSOLUTE, absolutePos.x};
+				t->uiPosition[UI_AXIS_Y] = {UI_POSITION_ABSOLUTE, absolutePos.y};
+				t->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) sizeAbsolute};
+				t->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) sizeAbsolute};
+				t->uiBlockColors.backColor = ColorU32{0, 0, 0, 100};
+			}
 		}
 
 		for (UiPanel *child = uiPanel->lastChild; child; child = child->prev)
@@ -190,6 +210,27 @@ void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2
 			{
 				stack[++stackIndex] = child;
 			}
+		}
+	}
+
+}
+
+void ProcessActiveInputInDrawableArea(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, UiBlock *drawableBlock)
+{
+	UiBlock *drawableBlockPrev = UiGetBlockOfHashLastFrame(uiState, drawableBlock->hash);
+	if (drawableBlockPrev->hash)
+	{
+		//TODO: (Ahmayk) Pass in mouse pos
+		v2 mousePixelPos = v2{(float)GetMouseX(), (float)GetMouseY()};
+		v2 relativeMousePos = mousePixelPos - drawableBlockPrev->rect.pos;
+		v2 normalizedPos;
+		normalizedPos.x = SafeDivideF32(relativeMousePos.x, drawableBlockPrev->rect.dim.x);
+		normalizedPos.y = SafeDivideF32(relativeMousePos.y, drawableBlockPrev->rect.dim.y);
+		v2 posInCanvas = normalizedPos * appState->canvas.drawnImageData.dim;
+		DrawToolInCanvasOnPanelAndChildren(uiState, appState, posInCanvas);
+		if (drawableBlock->hash == uiInteractionHashes->hashMouseDown)
+		{
+			//TODO: (Ahmayk): send paint command!
 		}
 	}
 
@@ -258,6 +299,10 @@ void BuildPanelTree(UiState *uiState, AppState *appState, UiInteractionHashes *u
 							finalTexture->uiTextureView = UiRaylibTextureToUiTextureView(&appState->loadedTexture);
 							finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(appState->loadedTexture.height, appState->loadedTexture.width)};
+							if (finalTexture->hash == uiInteractionHashes->hashMouseHover)
+							{
+								ProcessActiveInputInDrawableArea(uiState, appState, uiInteractionHashes, finalTexture);
+							}
 						}
 					} break;
 					case UI_PANEL_TYPE_CANVAS:
@@ -281,28 +326,11 @@ void BuildPanelTree(UiState *uiState, AppState *appState, UiInteractionHashes *u
 									canvasBlock->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->textureDrawing);
 									canvasBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 									canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(canvasBlock->uiTextureView.dim.y, canvasBlock->uiTextureView.dim.x)};
-
+									//TODO: (Ahmayk) This check needs to be more sophisticated regarding drawing just outside the canvas
 									if (canvasBlock->hash == uiInteractionHashes->hashMouseHover)
 									{
-										UiBlock *canvasBlockPrev = UiGetBlockOfHashLastFrame(uiState, canvasBlock->hash);
-										if (canvasBlockPrev->hash)
-										{
-											//TODO: (Ahmayk) Pass in mouse pos
-											v2 mousePixelPos = v2{(float)GetMouseX(), (float)GetMouseY()};
-											v2 relativeMousePos = mousePixelPos - canvasBlockPrev->rect.pos;
-											v2 normalizedPos;
-											normalizedPos.x = SafeDivideF32(relativeMousePos.x, canvasBlockPrev->rect.dim.x);
-											normalizedPos.y = SafeDivideF32(relativeMousePos.y, canvasBlockPrev->rect.dim.y);
-											v2 posInCanvas = normalizedPos * canvas->drawnImageData.dim;
-											DrawToolInCanvasOnPanelAndChildren(uiState, appState, posInCanvas);
-											if (canvasBlock->hash == uiInteractionHashes->hashMouseDown)
-											{
-												//TODO: (Ahmayk): send paint command!
-												//v2 cursorPosInDrawnImagePrevious = (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBlock->rect.pos) * scale;
-											}
-										}
+										ProcessActiveInputInDrawableArea(uiState, appState, uiInteractionHashes, canvasBlock);
 									}
-
 								}
 							}
 						}
