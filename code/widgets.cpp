@@ -61,10 +61,6 @@ b32 WidgetBrushEffectButton(UiState *uiState, AppState *appState, UiInteractionH
 	block->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
 
 	ColorU32 baseColor = BRUSH_EFFECT_COLORS_PRIMARY[brushEffect];
-	if (brushEffect == BADPAINT_BRUSH_EFFECT_ERASE)
-	{
-		baseColor = ColorU32{245, 245, 245, 255};
-	}
 
 	ColorU32 colors[INTERACTION_STATE_COUNT];
 	colors[INTERACTION_STATE_NONACTIVE_NEUTRAL] = AddConstantToColor(baseColor, -50);
@@ -76,5 +72,22 @@ b32 WidgetBrushEffectButton(UiState *uiState, AppState *appState, UiInteractionH
 	block->uiBlockColors.backColor = colors[interactionState];
 
 	b32 result = (hash == uiInteractionHashes->hashMousePressed);
+	return result;
+}
+
+b32 WidgetToolButton(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, BADPAINT_TOOL_TYPE badpaintToolType, COMMAND command)
+{
+	UiBlock *b = UiCreateBlock(uiState);
+	b->hash = Murmur3String("badpainttool", badpaintToolType);
+	b->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
+	b->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXTURE};
+	b->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXTURE};
+	b32 active = appState->currentTool == badpaintToolType;
+	b32 isDisabled = false;
+	b32 downOverride = IsCommandKeyBindingDown(command);
+	INTERACTION_STATE interactionState = GetInteractionState(b->hash, uiInteractionHashes, active, isDisabled, downOverride);
+	b->uiTextureView = appState->tools[badpaintToolType].uiTextureViews[interactionState];
+
+	b32 result = (b->hash == uiInteractionHashes->hashMousePressed);
 	return result;
 }

@@ -39,11 +39,12 @@ AppCommand *PushAppCommand(AppCommandBuffer *appCommandBuffer)
 //NOTE: (Ahmayk) This needs to be redesigned to include key modifiers 
 static KeyboardKey COMMAND_KEY_BINDINGS[] = {
 	KEY_NULL,
-	KEY_E,
 	KEY_R,
 	KEY_A,
 	KEY_S,
 	KEY_N,
+	KEY_P,
+	KEY_E,
 	KEY_NULL,
 };
 
@@ -136,6 +137,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 	appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_REMOVE;
 	appState->toolSize = 10;
+	appState->currentTool = BADPAINT_TOOL_PENCIL;
 
 	Texture loadedTexture = {};
 	v2 pressedMousePos = {};
@@ -340,30 +342,15 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 5};
 					}
 
+					if (WidgetToolButton(uiState, appState, &uiInteractionHashes, BADPAINT_TOOL_PENCIL, COMMAND_SWITCH_TOOL_TO_PENCIL))
 					{
-						UiBlock *b = UiCreateBlock(uiState);
-						b->hash = Murmur3String("toolPencil");
-						b->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
-						b->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXTURE};
-						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXTURE};
-						b32 active = true;
-						b32 isDisabled = false;
-						b32 downOverride = IsKeyDown(KEY_B);
-						INTERACTION_STATE interactionState = GetInteractionState(b->hash, &uiInteractionHashes, active, isDisabled, downOverride);
-						b->uiTextureView = appState->tools[BADPAINT_TOOL_PENCIL].uiTextureViews[interactionState];
+						AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
+						appCommand->command = COMMAND_SWITCH_TOOL_TO_PENCIL;
 					}
-
+					if (WidgetToolButton(uiState, appState, &uiInteractionHashes, BADPAINT_TOOL_ERASER, COMMAND_SWITCH_TOOL_TO_ERASER))
 					{
-						UiBlock *b = UiCreateBlock(uiState);
-						b->hash = Murmur3String("toolEraser");
-						b->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
-						b->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXTURE};
-						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXTURE};
-						b32 active = true;
-						b32 isDisabled = false;
-						b32 downOverride = IsKeyDown(KEY_E);
-						INTERACTION_STATE interactionState = GetInteractionState(b->hash, &uiInteractionHashes, active, isDisabled, downOverride);
-						b->uiTextureView = appState->tools[BADPAINT_TOOL_ERASER].uiTextureViews[interactionState];
+						AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
+						appCommand->command = COMMAND_SWITCH_TOOL_TO_ERASER;
 					}
 
 					{
@@ -372,11 +359,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 50};
 					}
 
-					if (WidgetBrushEffectButton(uiState, appState, &uiInteractionHashes, BADPAINT_BRUSH_EFFECT_ERASE, STRING("Ers"), COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE))
-					{
-						AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
-						appCommand->command = COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE;
-					}
 					if (WidgetBrushEffectButton(uiState, appState, &uiInteractionHashes, BADPAINT_BRUSH_EFFECT_REMOVE, STRING("Rmv"), COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE))
 					{
 						AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
@@ -459,10 +441,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		{
 			switch(appCommandBuffer.appCommands[i].command)
 			{
-				case COMMAND_SWITCH_BRUSH_EFFECT_TO_ERASE:
-				{
-					appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_ERASE;
-				} break;
 				case COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE:
 				{
 					appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_REMOVE;
@@ -478,6 +456,14 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				case COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM:
 				{
 					appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_RANDOM;
+				} break;
+				case COMMAND_SWITCH_TOOL_TO_PENCIL:
+				{
+					appState->currentTool = BADPAINT_TOOL_PENCIL;
+				} break;
+				case COMMAND_SWITCH_TOOL_TO_ERASER:
+				{
+					appState->currentTool = BADPAINT_TOOL_ERASER;
 				} break;
 				case COMMAND_EXPORT_IMAGE:
 				{
@@ -509,6 +495,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
 					}
 				}
+				InvalidDefaultCase
 			}
 		}
 
@@ -554,20 +541,37 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 		if (!imageIsBroken && isDownOnPaintable)
 		{
-			Color colorToPaint = {};
+			b32 drewSomething = false;
+			switch(appState->currentTool)
+			{
+				case BADPAINT_TOOL_PENCIL:
+				{
+					Color colorToPaint = {};
+					colorToPaint.r = (u8) appState->currentBrushEffect;
+					colorToPaint.g = (u8) RandomInRangeI32(0, 255);
+					colorToPaint.a = (u8) canvas->processBatchIndex;
+					iv2 startPosIV2;
+					startPosIV2.x = (u32) RoundF32(cursorPosInDrawnImagePrevious.x);
+					startPosIV2.y = (u32) RoundF32(cursorPosInDrawnImagePrevious.y);
+					iv2 endPosIV2;
+					endPosIV2.x = (u32) RoundF32(cursorPosInDrawnImage.x);
+					endPosIV2.y = (u32) RoundF32(cursorPosInDrawnImage.y);
+					drewSomething = CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, appState->toolSize, colorToPaint);
+				} break;
+				case BADPAINT_TOOL_ERASER:
+				{
+					Color colorToPaint = {};
+					colorToPaint.a = (u8) canvas->processBatchIndex;
+					iv2 startPosIV2;
+					startPosIV2.x = (u32) RoundF32(cursorPosInDrawnImagePrevious.x);
+					startPosIV2.y = (u32) RoundF32(cursorPosInDrawnImagePrevious.y);
+					iv2 endPosIV2;
+					endPosIV2.x = (u32) RoundF32(cursorPosInDrawnImage.x);
+					endPosIV2.y = (u32) RoundF32(cursorPosInDrawnImage.y);
+					drewSomething = CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, appState->toolSize, colorToPaint);
+				} break;
+			}
 
-			colorToPaint.r = (u8) appState->currentBrushEffect;
-			colorToPaint.g = (u8) RandomInRangeI32(0, 255);
-			colorToPaint.a = (u8) canvas->processBatchIndex;
-
-			iv2 startPosIV2;
-			startPosIV2.x = (u32) RoundF32(cursorPosInDrawnImagePrevious.x);
-			startPosIV2.y = (u32) RoundF32(cursorPosInDrawnImagePrevious.y);
-			iv2 endPosIV2;
-			endPosIV2.x = (u32) RoundF32(cursorPosInDrawnImage.x);
-			endPosIV2.y = (u32) RoundF32(cursorPosInDrawnImage.y);
-
-			b32 drewSomething = CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, appState->toolSize, colorToPaint);
 			if (drewSomething)
 			{
 				canvas->proccessAsap = true;

@@ -825,7 +825,6 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 			{
 				switch (canvasPixel[0])
 				{
-					case BADPAINT_BRUSH_EFFECT_ERASE: break;
 					case BADPAINT_BRUSH_EFFECT_REMOVE:
 					{
 						filteredPixel[0] = 0;
