@@ -110,6 +110,26 @@ UiPanel *UiPanelCreateAndParent(Arena *arena, UiPanel *parent)
 	}
 	result->parent->lastChild = result;
 	parent->uiPanelType = {};
+
+	//NOTE: (Ahmayk) Generate a hash for a panel based on the root and all other hashes in the tree.
+	//Not 100% sure if this checks out but what is life worth living for without a little risk and experimentation?
+	//root panel must be manually assigned hash for this to work
+	ASSERT(parent->hash);
+	UiPanel *parentOf = parent;
+	while(parentOf)
+	{
+		u32 seed = Murmur3String("Parent", result->hash);
+		result->hash = Murmur3U32(parentOf->hash, seed, result->hash);
+		parentOf = parentOf->parent;
+	}
+	UiPanel *prevSibling = result->prev;
+	while (prevSibling)
+	{
+		u32 seed = Murmur3String("Sibling", result->hash);
+		result->hash = Murmur3U32(prevSibling->hash, seed, result->hash);
+		prevSibling = prevSibling->prev;
+	}
+
 	return result;
 }
 
