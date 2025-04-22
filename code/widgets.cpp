@@ -222,20 +222,30 @@ void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2
 
 }
 
+v2 ScreenPosToCanvasPos(iv2 mousePos, RectV2 *blockRect, iv2 canvasDim)
+{
+	v2 relativeMousePos = mousePos - blockRect->pos;
+	v2 normalizedPos;
+	normalizedPos.x = SafeDivideF32(relativeMousePos.x, blockRect->dim.x);
+	normalizedPos.y = SafeDivideF32(relativeMousePos.y, blockRect->dim.y);
+	v2 result = normalizedPos * canvasDim;
+	return result;
+}
+
 void ProcessActiveInputInDrawableArea(UiState *uiState, AppState *appState, FrameState *frameState, UiBlock *drawableBlock)
 {
 	UiBlock *drawableBlockPrev = UiGetBlockOfHashLastFrame(uiState, drawableBlock->hash);
 	if (drawableBlockPrev->hash)
 	{
-		v2 relativeMousePos = frameState->mousePixelPos - drawableBlockPrev->rect.pos;
-		v2 normalizedPos;
-		normalizedPos.x = SafeDivideF32(relativeMousePos.x, drawableBlockPrev->rect.dim.x);
-		normalizedPos.y = SafeDivideF32(relativeMousePos.y, drawableBlockPrev->rect.dim.y);
-		v2 posInCanvas = normalizedPos * appState->canvas.drawnImageData.dim;
+		v2 posInCanvas = ScreenPosToCanvasPos(frameState->mousePixelPos, &drawableBlockPrev->rect, appState->canvas.drawnImageData.dim);
 		DrawToolInCanvasOnPanelAndChildren(uiState, appState, posInCanvas);
 		if (drawableBlock->hash == frameState->uiInteractionHashes.hashMouseDown)
 		{
-			//TODO: (Ahmayk): send paint command!
+			v2 posInCanvasPrevious = ScreenPosToCanvasPos(frameState->mousePixelPosPrevious, &drawableBlockPrev->rect, appState->canvas.drawnImageData.dim);
+			AppCommand *appCommand = PushAppCommand(&frameState->appCommandBuffer);
+			appCommand->command = COMMAND_PAINT_ON_CANVAS_BETWEEN_POSITIONS;
+			appCommand->value1V2 = posInCanvasPrevious;
+			appCommand->value2V2 = posInCanvas;
 		}
 	}
 

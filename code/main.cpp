@@ -41,8 +41,9 @@ static KeyboardKey COMMAND_KEY_BINDINGS[] = {
 	KEY_A,
 	KEY_S,
 	KEY_N,
-	KEY_P,
+	KEY_B,
 	KEY_E,
+	KEY_NULL,
 	KEY_NULL,
 };
 
@@ -186,6 +187,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 		frameState->windowDim.x = GetScreenWidth();
 		frameState->windowDim.y = GetScreenHeight();
 		frameState->mousePixelPos = iv2{GetMouseX(), GetMouseY()};
+		frameState->mousePixelPosPrevious.x = frameState->mousePixelPos.x - (i32) GetMouseDelta().x;
+		frameState->mousePixelPosPrevious.y = frameState->mousePixelPos.y - (i32) GetMouseDelta().y;
 		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
 		{
 			appState->lastPressedUiHash = {};
@@ -341,11 +344,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 					WidgetToolButton(uiState, appState, frameState, BADPAINT_TOOL_ERASER, COMMAND_SWITCH_TOOL_TO_ERASER);
 
 					{
-						AppCommand *appCommand = PushAppCommand(&frameState->appCommandBuffer);
-						appCommand->command = COMMAND_SWITCH_TOOL_TO_ERASER;
-					}
-
-					{
 						UiBlock *b = UiCreateBlock(uiState);
 						b->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 50};
@@ -394,8 +392,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 						panelPairImages.uiPanel2->uiPanelType = UI_PANEL_TYPE_CANVAS;
 
 						UiPanelPair panelPairRightSidebar = SplitPanel(panelPair1.uiPanel2, &gameMemory->permanentArena, UI_AXIS_Y, 0.2f);
-						panelPairRightSidebar.uiPanel1->uiPanelType = UI_PANEL_TYPE_NULL;
-						panelPairRightSidebar.uiPanel2->uiPanelType = UI_PANEL_TYPE_LAYERS;
+						panelPairRightSidebar.uiPanel1->uiPanelType = UI_PANEL_TYPE_FINAL_TEXTURE;
+						panelPairRightSidebar.uiPanel2->uiPanelType = UI_PANEL_TYPE_CANVAS;
 					}
 
 					BuildPanelTree(uiState, appState, frameState, &appState->rootUiPanel);
@@ -407,10 +405,12 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 		//-----------------------APP--------------------------
 		//----------------------------------------------------
 
+		Canvas *canvas = &appState->canvas;
 		AppCommandBuffer *appCommandBuffer = &frameState->appCommandBuffer;
 		for (u32 i = 0; i < appCommandBuffer->count; i++)
 		{
-			switch(appCommandBuffer->appCommands[i].command)
+			AppCommand *appCommand = &appCommandBuffer->appCommands[i];
+			switch(appCommand->command)
 			{
 				case COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE:
 				{
@@ -465,18 +465,52 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 						String notification = STRING("Bruh.");
 						InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 					}
-				}
+				} break;
+				case COMMAND_PAINT_ON_CANVAS_BETWEEN_POSITIONS:
+				{
+					if (!appState->imageIsBroken)
+					{
+						b32 drewSomething = false;
+
+						iv2 startPosIV2;
+						startPosIV2.x = (u32) RoundF32(appCommand->value1V2.x);
+						startPosIV2.y = (u32) RoundF32(appCommand->value1V2.y);
+						iv2 endPosIV2;
+						endPosIV2.x = (u32) RoundF32(appCommand->value2V2.x);
+						endPosIV2.y = (u32) RoundF32(appCommand->value2V2.y);
+
+						switch(appState->currentTool)
+						{
+							case BADPAINT_TOOL_PENCIL:
+							{
+								Color colorToPaint = {};
+								colorToPaint.r = (u8) appState->currentBrushEffect;
+								colorToPaint.g = (u8) RandomInRangeI32(0, 255);
+								colorToPaint.a = (u8) canvas->processBatchIndex;
+								drewSomething = CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, appState->toolSize, colorToPaint);
+							} break;
+							case BADPAINT_TOOL_ERASER:
+							{
+								Color colorToPaint = {};
+								colorToPaint.a = (u8) canvas->processBatchIndex;
+								drewSomething = CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, appState->toolSize, colorToPaint);
+							} break;
+						}
+
+						if (drewSomething)
+						{
+							canvas->proccessAsap = true;
+							canvas->saveRollbackOnNextPress = true;
+							canvas->dataOnCanvas = true;
+						}
+					}
+
+				} break;
 				InvalidDefaultCase
 			}
 		}
 
 		ArenaPopMarker(appCommandBuffer->arenaMarker);
-
-		//TODO: (Ahmayk) painting now needs to be an app command generated form UI!
-		UiBlock *canvasUiBlock = UiGetBlockOfHashLastFrame(uiState, 0);
-		UiBlock *finalTextureUiBlock = UiGetBlockOfHashLastFrame(uiState, 0);
-
-		Canvas *canvas = &appState->canvas;
 
 		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && canvas->saveRollbackOnNextPress)
 		{
@@ -492,69 +526,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 			canvas->saveRollbackOnNextPress = false;
 		}
 
-		v2 cursorPosInDrawnImagePrevious = {};
-		v2 cursorPosInDrawnImage = {};
-		b32 isDownOnPaintable = false;
-		b32 isHoveredOnPaintable = false;
-#if 0
-		if (canvasUiBlock && canvasUiBlock->hash == uiInteractionHashes.hashMouseHover)
-		{
-			f32 scale = canvas->drawnImageData.dim.x / canvasUiBlock->rect.dim.x;
-			cursorPosInDrawnImagePrevious = (mousePixelPos - RayVectorToV2(GetMouseDelta()) - canvasUiBlock->rect.pos) * scale;
-			cursorPosInDrawnImage = (mousePixelPos - canvasUiBlock->rect.pos) * scale;
-			isDownOnPaintable = canvasUiBlock->hash == uiInteractionHashes.hashMouseDown;
-			isHoveredOnPaintable = true;
-		}
-		if (finalTextureUiBlock && finalTextureUiBlock->hash == uiInteractionHashes.hashMouseHover)
-		{
-			f32 scale = rootImageRaw->dim.x / finalTextureUiBlock->rect.dim.x;
-			cursorPosInDrawnImagePrevious = (mousePixelPos - RayVectorToV2(GetMouseDelta()) - finalTextureUiBlock->rect.pos) * scale;
-			cursorPosInDrawnImage = (mousePixelPos - finalTextureUiBlock->rect.pos) * scale;
-			isDownOnPaintable = finalTextureUiBlock->hash == uiInteractionHashes.hashMouseDown;
-			isHoveredOnPaintable = true;
-		}
-#endif
-
-		if (!appState->imageIsBroken && isDownOnPaintable)
-		{
-			b32 drewSomething = false;
-			switch(appState->currentTool)
-			{
-				case BADPAINT_TOOL_PENCIL:
-				{
-					Color colorToPaint = {};
-					colorToPaint.r = (u8) appState->currentBrushEffect;
-					colorToPaint.g = (u8) RandomInRangeI32(0, 255);
-					colorToPaint.a = (u8) canvas->processBatchIndex;
-					iv2 startPosIV2;
-					startPosIV2.x = (u32) RoundF32(cursorPosInDrawnImagePrevious.x);
-					startPosIV2.y = (u32) RoundF32(cursorPosInDrawnImagePrevious.y);
-					iv2 endPosIV2;
-					endPosIV2.x = (u32) RoundF32(cursorPosInDrawnImage.x);
-					endPosIV2.y = (u32) RoundF32(cursorPosInDrawnImage.y);
-					drewSomething = CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, appState->toolSize, colorToPaint);
-				} break;
-				case BADPAINT_TOOL_ERASER:
-				{
-					Color colorToPaint = {};
-					colorToPaint.a = (u8) canvas->processBatchIndex;
-					iv2 startPosIV2;
-					startPosIV2.x = (u32) RoundF32(cursorPosInDrawnImagePrevious.x);
-					startPosIV2.y = (u32) RoundF32(cursorPosInDrawnImagePrevious.y);
-					iv2 endPosIV2;
-					endPosIV2.x = (u32) RoundF32(cursorPosInDrawnImage.x);
-					endPosIV2.y = (u32) RoundF32(cursorPosInDrawnImage.y);
-					drewSomething = CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, appState->toolSize, colorToPaint);
-				} break;
-			}
-
-			if (drewSomething)
-			{
-				canvas->proccessAsap = true;
-				canvas->saveRollbackOnNextPress = true;
-				canvas->dataOnCanvas = true;
-			}
-		}
 
 		//TODO: (Ahmayk) turn into app commands
 		if ((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown((KEY_RIGHT_CONTROL))) && IsKeyPressed(KEY_Z))
@@ -869,27 +840,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 		ClearBackground(Color{192, 192, 192, 255});
 
 		UiRaylibRenderBlocks(uiBufferCurrent);
-
-#if 0
-		if (isHoveredOnPaintable)
-		{
-			v2 normalizedRelativePos = cursorPosInDrawnImage / canvas->drawnImageData.dim;
-			if (canvasUiBlock)
-			{
-				v2 hoverPos = canvasUiBlock->rect.pos + (canvasUiBlock->rect.dim * normalizedRelativePos);
-				Color hoverCursorColor = ColorU32ToRayColor( BRUSH_EFFECT_COLORS_PROCESSING[appState->currentBrushEffect]);
-				f32 size = appState->toolSize * SafeDivideF32(canvasUiBlock->rect.dim.x, (f32) canvas->drawnImageData.dim.x);
-				DrawCircle((i32)hoverPos.x, (i32)hoverPos.y, size, hoverCursorColor);
-			}
-			if (finalTextureUiBlock)
-			{
-				v2 hoverPos = finalTextureUiBlock->rect.pos + (finalTextureUiBlock->rect.dim * normalizedRelativePos);
-				Color outlineColor = Color{0, 0, 0, 100};
-				f32 size = appState->toolSize * SafeDivideF32(finalTextureUiBlock->rect.dim.x, (f32) canvas->drawnImageData.dim.x);
-				DrawCircleLines((i32)hoverPos.x, (i32)hoverPos.y, size, outlineColor);
-			}
-		}
-#endif
 
 #if DEBUG_MODE
 		if (IsKeyDown(KEY_P))

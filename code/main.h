@@ -33,6 +33,7 @@ struct FrameState
 	v2 pressedMousePos;
 	iv2 windowDim;
 	iv2 mousePixelPos;
+	iv2 mousePixelPosPrevious;
 	UiInteractionHashes uiInteractionHashes;
 	AppCommandBuffer appCommandBuffer;
 };
