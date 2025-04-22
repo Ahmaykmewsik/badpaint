@@ -43,24 +43,24 @@ INTERACTION_STATE GetInteractionState(u32 hash, UiInteractionHashes *uiInteracti
 	return result;
 }
 
-b32 WidgetBrushEffectButton(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, BADPAINT_BRUSH_EFFECT brushEffect, String string, COMMAND command)
+UiBlock *WidgetBrushEffectButton(UiState *uiState, AppState *appState, FrameState *frameState, BADPAINT_BRUSH_EFFECT brushEffect, String string, COMMAND command)
 {
 	u32 hash = Murmur3String("brushEffect", brushEffect);
 	b32 active = appState->currentBrushEffect == brushEffect;
 	b32 isDisabled = false;
 	b32 downOverride = IsCommandKeyBindingDown(command);
 
-	UiBlock *block = UiCreateBlock(uiState);
-	block->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_INTERACTABLE;
-	block->hash = hash;
-	block->string = string;
-	block->uiFont = appState->defaultUiFont;
-	block->uiBlockColors.frontColor = COLORU32_BLACK;
-	block->uiBlockColors.borderColor = (active) ? COLORU32_BLACK: COLORU32_GRAY;
-	block->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
-	block->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
-	block->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
-	block->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
+	UiBlock *result = UiCreateBlock(uiState);
+	result->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER | UI_FLAG_DRAW_TEXT | UI_FLAG_INTERACTABLE;
+	result->hash = hash;
+	result->string = string;
+	result->uiFont = appState->defaultUiFont;
+	result->uiBlockColors.frontColor = COLORU32_BLACK;
+	result->uiBlockColors.borderColor = (active) ? COLORU32_BLACK: COLORU32_GRAY;
+	result->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
+	result->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
+	result->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
+	result->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
 
 	ColorU32 baseColor = BRUSH_EFFECT_COLORS_PRIMARY[brushEffect];
 
@@ -70,27 +70,34 @@ b32 WidgetBrushEffectButton(UiState *uiState, AppState *appState, UiInteractionH
 	colors[INTERACTION_STATE_DOWN] = AddConstantToColor(baseColor, -100);
 	colors[INTERACTION_STATE_ACTIVE_NEUTRAL] = AddConstantToColor(baseColor, 0);
 	colors[INTERACTION_STATE_ACTIVE_HOVERED] = AddConstantToColor(baseColor, 10);
-	INTERACTION_STATE interactionState = GetInteractionState(hash, uiInteractionHashes, active, isDisabled, downOverride);
-	block->uiBlockColors.backColor = colors[interactionState];
+	INTERACTION_STATE interactionState = GetInteractionState(hash, &frameState->uiInteractionHashes, active, isDisabled, downOverride);
+	result->uiBlockColors.backColor = colors[interactionState];
 
-	b32 result = (hash == uiInteractionHashes->hashMousePressed);
+	if (result->hash == frameState->uiInteractionHashes.hashMousePressed)
+	{
+		AppCommand *appCommand = PushAppCommand(&frameState->appCommandBuffer);
+		appCommand->command = command;
+	}
 	return result;
 }
 
-b32 WidgetToolButton(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, BADPAINT_TOOL_TYPE badpaintToolType, COMMAND command)
+UiBlock *WidgetToolButton(UiState *uiState, AppState *appState, FrameState *frameState, BADPAINT_TOOL_TYPE badpaintToolType, COMMAND command)
 {
-	UiBlock *b = UiCreateBlock(uiState);
-	b->hash = Murmur3String("badpainttool", badpaintToolType);
-	b->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
-	b->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXTURE};
-	b->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXTURE};
+	UiBlock *result = UiCreateBlock(uiState);
+	result->hash = Murmur3String("badpainttool", badpaintToolType);
+	result->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
+	result->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXTURE};
+	result->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXTURE};
 	b32 active = appState->currentTool == badpaintToolType;
 	b32 isDisabled = false;
 	b32 downOverride = IsCommandKeyBindingDown(command);
-	INTERACTION_STATE interactionState = GetInteractionState(b->hash, uiInteractionHashes, active, isDisabled, downOverride);
-	b->uiTextureView = appState->tools[badpaintToolType].uiTextureViews[interactionState];
-
-	b32 result = (b->hash == uiInteractionHashes->hashMousePressed);
+	INTERACTION_STATE interactionState = GetInteractionState(result->hash, &frameState->uiInteractionHashes, active, isDisabled, downOverride);
+	result->uiTextureView = appState->tools[badpaintToolType].uiTextureViews[interactionState];
+	if (result->hash == frameState->uiInteractionHashes.hashMousePressed)
+	{
+		AppCommand *appCommand = PushAppCommand(&frameState->appCommandBuffer);
+		appCommand->command = command;
+	}
 	return result;
 }
 
@@ -215,20 +222,18 @@ void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2
 
 }
 
-void ProcessActiveInputInDrawableArea(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, UiBlock *drawableBlock)
+void ProcessActiveInputInDrawableArea(UiState *uiState, AppState *appState, FrameState *frameState, UiBlock *drawableBlock)
 {
 	UiBlock *drawableBlockPrev = UiGetBlockOfHashLastFrame(uiState, drawableBlock->hash);
 	if (drawableBlockPrev->hash)
 	{
-		//TODO: (Ahmayk) Pass in mouse pos
-		v2 mousePixelPos = v2{(float)GetMouseX(), (float)GetMouseY()};
-		v2 relativeMousePos = mousePixelPos - drawableBlockPrev->rect.pos;
+		v2 relativeMousePos = frameState->mousePixelPos - drawableBlockPrev->rect.pos;
 		v2 normalizedPos;
 		normalizedPos.x = SafeDivideF32(relativeMousePos.x, drawableBlockPrev->rect.dim.x);
 		normalizedPos.y = SafeDivideF32(relativeMousePos.y, drawableBlockPrev->rect.dim.y);
 		v2 posInCanvas = normalizedPos * appState->canvas.drawnImageData.dim;
 		DrawToolInCanvasOnPanelAndChildren(uiState, appState, posInCanvas);
-		if (drawableBlock->hash == uiInteractionHashes->hashMouseDown)
+		if (drawableBlock->hash == frameState->uiInteractionHashes.hashMouseDown)
 		{
 			//TODO: (Ahmayk): send paint command!
 		}
@@ -236,7 +241,7 @@ void ProcessActiveInputInDrawableArea(UiState *uiState, AppState *appState, UiIn
 
 }
 
-void BuildPanelTree(UiState *uiState, AppState *appState, UiInteractionHashes *uiInteractionHashes, UiPanel *uiPanel)
+void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState, UiPanel *uiPanel)
 {
 	if (uiPanel)
 	{
@@ -256,7 +261,7 @@ void BuildPanelTree(UiState *uiState, AppState *appState, UiInteractionHashes *u
 			}
 			UI_PARENT_SCOPE(uiState, panelBlock)
 			{
-				BuildPanelTree(uiState, appState, uiInteractionHashes, uiPanel->firstChild);
+				BuildPanelTree(uiState, appState, frameState, uiPanel->firstChild);
 			}
 		}
 		else
@@ -299,9 +304,9 @@ void BuildPanelTree(UiState *uiState, AppState *appState, UiInteractionHashes *u
 							finalTexture->uiTextureView = UiRaylibTextureToUiTextureView(&appState->loadedTexture);
 							finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(appState->loadedTexture.height, appState->loadedTexture.width)};
-							if (finalTexture->hash == uiInteractionHashes->hashMouseHover)
+							if (finalTexture->hash == frameState->uiInteractionHashes.hashMouseHover)
 							{
-								ProcessActiveInputInDrawableArea(uiState, appState, uiInteractionHashes, finalTexture);
+								ProcessActiveInputInDrawableArea(uiState, appState, frameState, finalTexture);
 							}
 						}
 					} break;
@@ -327,9 +332,9 @@ void BuildPanelTree(UiState *uiState, AppState *appState, UiInteractionHashes *u
 									canvasBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 									canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(canvasBlock->uiTextureView.dim.y, canvasBlock->uiTextureView.dim.x)};
 									//TODO: (Ahmayk) This check needs to be more sophisticated regarding drawing just outside the canvas
-									if (canvasBlock->hash == uiInteractionHashes->hashMouseHover)
+									if (canvasBlock->hash == frameState->uiInteractionHashes.hashMouseHover)
 									{
-										ProcessActiveInputInDrawableArea(uiState, appState, uiInteractionHashes, canvasBlock);
+										ProcessActiveInputInDrawableArea(uiState, appState, frameState, canvasBlock);
 									}
 								}
 							}
@@ -349,6 +354,6 @@ void BuildPanelTree(UiState *uiState, AppState *appState, UiInteractionHashes *u
 				}
 			}
 		}
-		BuildPanelTree(uiState, appState, uiInteractionHashes, uiPanel->next);
+		BuildPanelTree(uiState, appState, frameState, uiPanel->next);
 	}
 }

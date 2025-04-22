@@ -9,7 +9,12 @@
 
 struct AppState
 {
+	Font defaultFont;
 	UiFont defaultUiFont;
+	Texture toolbrushSpriteSheet;
+
+	ImageRawRGBA32 rootImageRaw;
+	ProcessedImage *processedImages;
 
 	Tool tools[BADPAINT_TOOL_COUNT];
     BADPAINT_BRUSH_EFFECT currentBrushEffect;
@@ -18,5 +23,16 @@ struct AppState
 	Texture loadedTexture;
 	Canvas canvas;
 	UiPanel rootUiPanel;
+
+	b32 imageIsBroken;
+	u32 lastPressedUiHash;
 };
 
+struct FrameState
+{
+	v2 pressedMousePos;
+	iv2 windowDim;
+	iv2 mousePixelPos;
+	UiInteractionHashes uiInteractionHashes;
+	AppCommandBuffer appCommandBuffer;
+};

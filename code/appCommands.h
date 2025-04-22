@@ -30,3 +30,4 @@ struct AppCommandBuffer
 
 b32 IsCommandKeyBindingDown(COMMAND command);
 b32 IsCommandKeyBindingPressed(COMMAND command);
+AppCommand *PushAppCommand(AppCommandBuffer *appCommandBuffer);

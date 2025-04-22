@@ -990,7 +990,6 @@ int CALLBACK WinMain(HINSTANCE instance,
 
 	GameMemory gameMemory = {};
 	gameMemory.permanentArena = ArenaInit(MegaByte * 15);
-	gameMemory.mouseClickArena = ArenaInitFromArena(&gameMemory.permanentArena, MegaByte * 1);
 	gameMemory.circularNotificationBuffer = ArenaInitFromArena(&gameMemory.permanentArena, MegaByte * 1);
 	gameMemory.circularNotificationBuffer.flags |= ARENA_FLAG_CIRCULAR;
 
@@ -1020,7 +1019,7 @@ int CALLBACK WinMain(HINSTANCE instance,
 
 		PlatformWorkQueue *threadWorkQueue = SetupThreads(threadCount, &gameMemory);
 
-		RunApp(threadWorkQueue, gameMemory, threadCount);
+		RunApp(threadWorkQueue, &gameMemory, threadCount);
 	}
 	else
 	{

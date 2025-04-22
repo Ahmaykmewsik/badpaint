@@ -9,7 +9,6 @@ struct GameMemory
 {
 	Arena permanentArena;
 	Arena temporaryArena;
-	Arena mouseClickArena;
 	Arena circularNotificationBuffer;
 	Arena twoFrameArenaModIndex0;
 	Arena twoFrameArenaModIndex1;
@@ -24,4 +23,4 @@ static const char *buildDate = __DATE__;
 static const char *buildTime = __TIME__;
 
 struct PlatformWorkQueue;
-void RunApp(PlatformWorkQueue *platformWorkQueue, GameMemory gameMemory, unsigned int threadCount);
+void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned int threadCount);

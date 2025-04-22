@@ -85,26 +85,22 @@ void InitNotificationMessage(String string, Arena *circularNotificationBuffer)
 	notificationMessage.alpha = 1.0f;
 }
 
-void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned int threadCount)
+AppState *InitApp(GameMemory *gameMemory, u32 threadCount)
 {
-	AppState *appState = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, AppState);
-	ImageRawRGBA32 *rootImageRaw = ARENA_PUSH_STRUCT(&gameMemory.permanentArena, ImageRawRGBA32);
-
+	AppState *appState = ARENA_PUSH_STRUCT(&gameMemory->permanentArena, AppState);
 	Canvas *canvas = &appState->canvas;
 	canvas->currentPNGFilterType = PNG_FILTER_TYPE_OPTIMAL;
 
 	bool imageIsBroken = {};
 
-	ProcessedImage *processedImages = ARENA_PUSH_ARRAY(&gameMemory.permanentArena, threadCount, ProcessedImage);
+	appState->processedImages = ARENA_PUSH_ARRAY(&gameMemory->permanentArena, threadCount, ProcessedImage);
 	for (u32 i = 0; i < threadCount; i++)
 	{
-		ProcessedImage *processedImage = processedImages + i;
-		processedImage->rootImageRaw = rootImageRaw;
+		ProcessedImage *processedImage = appState->processedImages + i;
+		processedImage->rootImageRaw = &appState->rootImageRaw;
 		processedImage->canvas = canvas;
 		processedImage->index = i;
 	}
-
-	UiState *uiState = UiInit(&gameMemory.permanentArena);
 
 	SetTraceLogLevel(LOG_NONE);
 
@@ -124,42 +120,45 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 	iv2 windowDim;
 	windowDim.x = (u32) RoundF32(screenDim.x * 0.8f);
 	windowDim.y = (u32) RoundF32(screenDim.y * 0.8f);
-
 	v2 windowPosMiddle = PositionInCenterV2(screenDim, windowDim);
 	SetWindowPosition((u32) RoundF32(windowPosMiddle.x), (u32) RoundF32(windowPosMiddle.y));
 	SetWindowSize(windowDim.x, windowDim.y);
 
-	Font defaultFont = LoadFontFromMemory(".otf", PAINT_FONT_DATA, ARRAY_COUNT(PAINT_FONT_DATA), 12, 0, 0);
-	appState->defaultUiFont.id = defaultFont.texture.id;
-	appState->defaultUiFont.data = &defaultFont;
+	appState->defaultFont = LoadFontFromMemory(".otf", PAINT_FONT_DATA, ARRAY_COUNT(PAINT_FONT_DATA), 12, 0, 0);
+	appState->defaultUiFont.id = appState->defaultFont.texture.id;
+	appState->defaultUiFont.data = &appState->defaultFont;
 
 	appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_REMOVE;
 	//appState->toolSize = 10;
 	appState->toolSize = 50;
 	appState->currentTool = BADPAINT_TOOL_PENCIL;
 
-	v2 pressedMousePos = {};
-	//TODO: (Ahmayk) Remove
-	u32 draggedHash = {};
-
-	Texture toolbrushSpriteSheet = LoadTexture("buttonSprites.png");
+	appState->toolbrushSpriteSheet = LoadTexture("buttonSprites.png");
 	i32 spriteSheetBoxSize = 30;
 	for (i32 toolIndex = 0; toolIndex < BADPAINT_TOOL_COUNT; toolIndex++)
 	{
 		Tool *tool = &appState->tools[toolIndex];
 		for (i32 interactionIndex = 0; interactionIndex < INTERACTION_STATE_COUNT; interactionIndex++)
 		{
-			tool->uiTextureViews[interactionIndex] = UiRaylibTextureToUiTextureView(&toolbrushSpriteSheet);
+			tool->uiTextureViews[interactionIndex] = UiRaylibTextureToUiTextureView(&appState->toolbrushSpriteSheet);
 			tool->uiTextureViews[interactionIndex].viewRect.pos = iv2{spriteSheetBoxSize * interactionIndex, spriteSheetBoxSize * toolIndex};
 			tool->uiTextureViews[interactionIndex].viewRect.dim = iv2{spriteSheetBoxSize, spriteSheetBoxSize};
 		}
 	}
 
-	*rootImageRaw = LoadDataIntoRawImage(&DEFAULT_IMAGE_DATA[0], ARRAY_COUNT(DEFAULT_IMAGE_DATA), &gameMemory);
-	if (rootImageRaw->dataSize)
+	appState->rootImageRaw = LoadDataIntoRawImage(&DEFAULT_IMAGE_DATA[0], ARRAY_COUNT(DEFAULT_IMAGE_DATA), gameMemory);
+	if (appState->rootImageRaw.dataSize)
 	{
-		InitializeNewImage(&gameMemory, rootImageRaw, canvas, &appState->loadedTexture, processedImages, threadCount);
+		InitializeNewImage(gameMemory, &appState->rootImageRaw, canvas, &appState->loadedTexture, appState->processedImages, threadCount);
 	}
+
+	return appState;
+}
+
+void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned int threadCount)
+{
+	AppState *appState = InitApp(gameMemory, threadCount);
+	UiState *uiState = UiInit(&gameMemory->permanentArena);
 
 	while (!WindowShouldClose())
 	{
@@ -172,73 +171,74 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				IsKeyDown(KEY_H) &&
 				IsKeyDown(KEY_RIGHT_CONTROL))
 		{
+#if OS_WINDOWS
 			__debugbreak();
+#else
+#error Unimplemented platform crash thing here
+#endif
 		}
 
-		windowDim.x = GetScreenWidth();
-		windowDim.y = GetScreenHeight();
+		//NOTE: (Ahmayk) this nonsense is so that we can make a pointer to a variable on the stack
+		//havving this be a pointer makes code refernecing this easier to maintain when we move code from here to elsewhere
+		FrameState _frameState = {};
+		FrameState *frameState = &_frameState;
 
-		v2 mousePixelPos = v2{(float)GetMouseX(), (float)GetMouseY()};
+		frameState->windowDim.x = GetScreenWidth();
+		frameState->windowDim.y = GetScreenHeight();
+		frameState->mousePixelPos = iv2{GetMouseX(), GetMouseY()};
 		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
 		{
-			ArenaReset(&gameMemory.mouseClickArena);
-			draggedHash = {};
-
-			if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-				pressedMousePos = mousePixelPos;
+			appState->lastPressedUiHash = {};
 		}
 
 		if (IsFileDropped())
 		{
 			FilePathList droppedFiles = LoadDroppedFiles();
 			char *fileName = droppedFiles.paths[0];
-			ArenaMarker loadMarker = ArenaPushMarker(&gameMemory.temporaryArena);
+			ArenaMarker loadMarker = ArenaPushMarker(&gameMemory->temporaryArena);
 			unsigned int fileSize = {};
-			u8 *fileData = LoadDataFromDisk(fileName, &fileSize, &gameMemory.temporaryArena);
+			u8 *fileData = LoadDataFromDisk(fileName, &fileSize, &gameMemory->temporaryArena);
 			const char *getFileExtension = GetFileExtension(fileName);
 			if (fileData)
 			{
-				//NOTE: (Ahmayk) prints error internally (may want to change?)
-				*rootImageRaw = LoadDataIntoRawImage(fileData, fileSize, &gameMemory);
+				//NOTE: (Ahmayk) prints error internally (need to change)
+				appState->rootImageRaw = LoadDataIntoRawImage(fileData, fileSize, gameMemory);
 			}
 			else
 			{
 				String notification = STRING("Oops! I failed to read the file at all! Sorry! Guess you're out of luck pal. No badpaint for that file today.");
-				InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
+				InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 			}
 			UnloadDroppedFiles(droppedFiles);
 			ArenaPopMarker(loadMarker);
 
-			if (rootImageRaw->dataSize)
+			if (appState->rootImageRaw.dataSize)
 			{
-				InitializeNewImage(&gameMemory, rootImageRaw, canvas, &appState->loadedTexture, processedImages, threadCount);
-				if (rootImageRaw->dataSize > MegaByte * 500)
+				InitializeNewImage(gameMemory, &appState->rootImageRaw, &appState->canvas, &appState->loadedTexture, appState->processedImages, threadCount);
+				if (appState->rootImageRaw.dataSize > MegaByte * 500)
 				{
 					String notification = STRING("You like to play dangerously, don't you?");
-					InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
+					InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 				}
-				else if (rootImageRaw->dataSize > MegaByte * 100)
+				else if (appState->rootImageRaw.dataSize > MegaByte * 100)
 				{
 					String notification = STRING("This image is CHUNKY! Some things might be a little slow.");
-					InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
+					InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 				}
 			}
 		}
 
-		AppCommandBuffer appCommandBuffer = {};
-		appCommandBuffer.size = 50;
-		appCommandBuffer.appCommands = ARENA_PUSH_ARRAY_MARKER(&gameMemory.temporaryArena, appCommandBuffer.size, AppCommand, &appCommandBuffer.arenaMarker);
+		frameState->appCommandBuffer.size = 50;
+		frameState->appCommandBuffer.appCommands = ARENA_PUSH_ARRAY_MARKER(&gameMemory->temporaryArena, frameState->appCommandBuffer.size, AppCommand, &frameState->appCommandBuffer.arenaMarker);
 
 		for (u32 i = 0; i < COMMAND_COUNT; i++)
 		{
 			if (IsCommandKeyBindingPressed((COMMAND) i))
 			{
-				AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
+				AppCommand *appCommand = PushAppCommand(&frameState->appCommandBuffer);
 				appCommand->command = (COMMAND) i;
 			}
 		}
-
-		UiInteractionHashes uiInteractionHashes = {};
 
 		UiBuffer *uiBufferLastFrame = &uiState->uiBuffers[1 - uiState->uiBufferIndex];
 		for (u32 i = 0; i < uiBufferLastFrame->uiBlockCount; i++)
@@ -246,17 +246,17 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			UiBlock *uiBlock = &uiBufferLastFrame->uiBlocks[i];
 			if ((uiBlock->flags & UI_FLAG_INTERACTABLE) && ASSERT(uiBlock->hash))
 			{
-				if (IsInRectV2(mousePixelPos, uiBlock->rect))
+				if (IsInRectV2(frameState->mousePixelPos, uiBlock->rect))
 				{
-					uiInteractionHashes.hashMouseHover = uiBlock->hash;
+					frameState->uiInteractionHashes.hashMouseHover = uiBlock->hash;
 					if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
 					{
-						uiInteractionHashes.hashMousePressed = uiBlock->hash;
-						draggedHash = uiBlock->hash;
+						frameState->uiInteractionHashes.hashMousePressed = uiBlock->hash;
+						appState->lastPressedUiHash = uiBlock->hash;
 					}
 					if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
 					{
-						uiInteractionHashes.hashMouseDown = uiBlock->hash;
+						frameState->uiInteractionHashes.hashMouseDown = uiBlock->hash;
 					}
 				}
 			}
@@ -279,8 +279,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		defaultBlockColors.borderColor = COLORU32_DARKGRAY;
 
 		UiBlock *root= UiCreateBlock(uiState);
-		root->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) windowDim.x};
-		root->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) windowDim.y};
+		root->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) frameState->windowDim.x};
+		root->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) frameState->windowDim.y};
 		root->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
 		UI_PARENT_SCOPE(uiState, root)
 		{
@@ -337,14 +337,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 5};
 					}
 
-					if (WidgetToolButton(uiState, appState, &uiInteractionHashes, BADPAINT_TOOL_PENCIL, COMMAND_SWITCH_TOOL_TO_PENCIL))
+					WidgetToolButton(uiState, appState, frameState, BADPAINT_TOOL_PENCIL, COMMAND_SWITCH_TOOL_TO_PENCIL);
+					WidgetToolButton(uiState, appState, frameState, BADPAINT_TOOL_ERASER, COMMAND_SWITCH_TOOL_TO_ERASER);
+
 					{
-						AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
-						appCommand->command = COMMAND_SWITCH_TOOL_TO_PENCIL;
-					}
-					if (WidgetToolButton(uiState, appState, &uiInteractionHashes, BADPAINT_TOOL_ERASER, COMMAND_SWITCH_TOOL_TO_ERASER))
-					{
-						AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
+						AppCommand *appCommand = PushAppCommand(&frameState->appCommandBuffer);
 						appCommand->command = COMMAND_SWITCH_TOOL_TO_ERASER;
 					}
 
@@ -354,11 +351,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 50};
 					}
 
-					if (WidgetBrushEffectButton(uiState, appState, &uiInteractionHashes, BADPAINT_BRUSH_EFFECT_REMOVE, STRING("Rmv"), COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE))
-					{
-						AppCommand *appCommand = PushAppCommand(&appCommandBuffer);
-						appCommand->command = COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE;
-					}
+					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_BRUSH_EFFECT_REMOVE, STRING("Rmv"), COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE);
 
 					{
 						UiBlock *seperator = UiCreateBlock(uiState);
@@ -394,18 +387,18 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 						first = true;
 						appState->rootUiPanel.childSplitAxis = UI_AXIS_X;
 						appState->rootUiPanel.hash = Murmur3String("mainPanels");
-						UiPanelPair panelPair1 = SplitPanel(&appState->rootUiPanel, &gameMemory.permanentArena, UI_AXIS_X, 0.85f);
+						UiPanelPair panelPair1 = SplitPanel(&appState->rootUiPanel, &gameMemory->permanentArena, UI_AXIS_X, 0.85f);
 
-						UiPanelPair panelPairImages = SplitPanel(panelPair1.uiPanel1, &gameMemory.permanentArena, UI_AXIS_X, 0.5f);
+						UiPanelPair panelPairImages = SplitPanel(panelPair1.uiPanel1, &gameMemory->permanentArena, UI_AXIS_X, 0.5f);
 						panelPairImages.uiPanel1->uiPanelType = UI_PANEL_TYPE_FINAL_TEXTURE;
 						panelPairImages.uiPanel2->uiPanelType = UI_PANEL_TYPE_CANVAS;
 
-						UiPanelPair panelPairRightSidebar = SplitPanel(panelPair1.uiPanel2, &gameMemory.permanentArena, UI_AXIS_Y, 0.2f);
+						UiPanelPair panelPairRightSidebar = SplitPanel(panelPair1.uiPanel2, &gameMemory->permanentArena, UI_AXIS_Y, 0.2f);
 						panelPairRightSidebar.uiPanel1->uiPanelType = UI_PANEL_TYPE_NULL;
 						panelPairRightSidebar.uiPanel2->uiPanelType = UI_PANEL_TYPE_LAYERS;
 					}
 
-					BuildPanelTree(uiState, appState, &uiInteractionHashes, &appState->rootUiPanel);
+					BuildPanelTree(uiState, appState, frameState, &appState->rootUiPanel);
 				}
 			}
 		}
@@ -414,9 +407,10 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		//-----------------------APP--------------------------
 		//----------------------------------------------------
 
-		for (u32 i = 0; i < appCommandBuffer.count; i++)
+		AppCommandBuffer *appCommandBuffer = &frameState->appCommandBuffer;
+		for (u32 i = 0; i < appCommandBuffer->count; i++)
 		{
-			switch(appCommandBuffer.appCommands[i].command)
+			switch(appCommandBuffer->appCommands[i].command)
 			{
 				case COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE:
 				{
@@ -446,8 +440,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				{
 					if (appState->loadedTexture.height && appState->loadedTexture.width)
 					{
-						ArenaMarker arenaMarker = ArenaPushMarker(&gameMemory.temporaryArena);
-						String filePath = AllocateString(256, &gameMemory.temporaryArena);
+						ArenaMarker arenaMarker = ArenaPushMarker(&gameMemory->temporaryArena);
+						String filePath = AllocateString(256, &gameMemory->temporaryArena);
 						u32 filepathLength;
 						b32 success = GetPngImageFilePathFromUser(filePath.chars, filePath.length, &filepathLength);
 						filePath.length = filepathLength;
@@ -457,30 +451,32 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 							ExportImage(exportImgae, filePath);
 
 							String notification = STRING("You have given new life to: ") + filePath;
-							InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
+							InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 						}
 						else
 						{
 							String notification = STRING("Sorry the save failed. You fail too. You suck. Sorry.");
-							InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
+							InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 						}
 						ArenaPopMarker(arenaMarker);
 					}
 					else
 					{
 						String notification = STRING("Bruh.");
-						InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
+						InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 					}
 				}
 				InvalidDefaultCase
 			}
 		}
 
-		ArenaPopMarker(appCommandBuffer.arenaMarker);
+		ArenaPopMarker(appCommandBuffer->arenaMarker);
 
 		//TODO: (Ahmayk) painting now needs to be an app command generated form UI!
 		UiBlock *canvasUiBlock = UiGetBlockOfHashLastFrame(uiState, 0);
 		UiBlock *finalTextureUiBlock = UiGetBlockOfHashLastFrame(uiState, 0);
+
+		Canvas *canvas = &appState->canvas;
 
 		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && canvas->saveRollbackOnNextPress)
 		{
@@ -519,7 +515,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		}
 #endif
 
-		if (!imageIsBroken && isDownOnPaintable)
+		if (!appState->imageIsBroken && isDownOnPaintable)
 		{
 			b32 drewSomething = false;
 			switch(appState->currentTool)
@@ -570,7 +566,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				memcpy(canvas->drawnImageData.dataU8, rollbackImage, canvas->drawnImageData.dataSize);
 				memset(canvas->drawingRectDirtyListFrame, 1, canvas->drawingRectCount * sizeof(b32));
 				canvas->proccessAsap = true;
-				imageIsBroken = false;
+				appState->imageIsBroken = false;
 				canvas->rollbackHasRolledBackOnce = true;
 				canvas->saveRollbackOnNextPress = false;
 				//printf("UNDO! start: %d next: %d\n", canvas->rollbackIndexStart, canvas->rollbackIndexNext);
@@ -583,7 +579,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 				memset(canvas->drawnImageData.dataU8, 0, canvas->drawnImageData.dataSize);
 				memset(canvas->drawingRectDirtyListFrame, 1, canvas->drawingRectCount * sizeof(b32));
 				canvas->proccessAsap = true;
-				imageIsBroken = false;
+				appState->imageIsBroken = false;
 				canvas->rollbackHasRolledBackOnce = true;
 				canvas->saveRollbackOnNextPress = false;
 				canvas->dataOnCanvas = false;
@@ -592,17 +588,17 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			else if (canvas->rollbackStartHasProgressed)
 			{
 				String notification = STRING("Tragedy has struck! For you must now live with your mistakes. You've run out of undos!");
-				InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
+				InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 			}
 			else if (canvas->rollbackHasRolledBackOnce)
 			{
 				String notification = STRING("You cannot go before the begining of time, my friend. (Nothing else to undo)");
-				InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
+				InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 			}
 			else
 			{
 				String notification = STRING("You must go forward before you can go backwards. (No undo history yet! Draw something!!!!)");
-				InitNotificationMessage(notification, &gameMemory.circularNotificationBuffer);
+				InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 			}
 		}
 
@@ -622,16 +618,16 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 		if (canvas->initialized && canvas->imagePNGFiltered.pngFilterType != canvas->currentPNGFilterType)
 		{
-			SetPNGFilterType(canvas, rootImageRaw, &gameMemory);
+			SetPNGFilterType(canvas, &appState->rootImageRaw, gameMemory);
 			canvas->proccessAsap = true;
 		}
 
 		if (canvas->initialized && canvas->proccessAsap)
 		{
-			ProcessedImage *processedImage = GetFreeProcessedImage(processedImages, threadCount);
+			ProcessedImage *processedImage = GetFreeProcessedImage(appState->processedImages, threadCount);
 			if (processedImage)
 			{
-				ArenaPair arenaPair = ArenaPairAssign(&gameMemory.conversionArenaGroup);
+				ArenaPair arenaPair = ArenaPairAssign(&gameMemory->conversionArenaGroup);
 				if (arenaPair.arena1 && arenaPair.arena2)
 				{
 					processedImage->arenaPair = arenaPair;
@@ -655,7 +651,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		ProcessedImage *latestCompletedProcessedImage = {};
 		for (u32 threadIndex = 0; threadIndex < threadCount; threadIndex++)
 		{
-			ProcessedImage *processedImageOfIndex = processedImages + threadIndex;
+			ProcessedImage *processedImageOfIndex = appState->processedImages + threadIndex;
 			if (processedImageOfIndex->active && processedImageOfIndex->processingComplete)
 			{
 				for (u32 rectIndex = 0; rectIndex < canvas->drawingRectCount; rectIndex++)
@@ -711,7 +707,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 				iv2 finalImageDim = latestCompletedProcessedImage->finalProcessedImageRaw.dim;
 				ArenaMarker marker = {};
-				b32 *finalImageDirtyRects = ARENA_PUSH_ARRAY_MARKER(&gameMemory.temporaryArena, canvas->finalImageRectCount, b32, &marker);
+				b32 *finalImageDirtyRects = ARENA_PUSH_ARRAY_MARKER(&gameMemory->temporaryArena, canvas->finalImageRectCount, b32, &marker);
 				memset(finalImageDirtyRects, 1, canvas->finalImageRectCount * sizeof(b32));
 
 				b32 atLeastOneDirtyRect = false;
@@ -776,7 +772,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 			}
 			else
 			{
-				imageIsBroken = true;
+				appState->imageIsBroken = true;
 			}
 			ResetProcessedImage(latestCompletedProcessedImage, canvas);
 		}
@@ -855,7 +851,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 		//----------------------------------------------------
 
 		UiRaylibProcessStrings(uiBufferCurrent);
-		UiLayoutBlocks(uiBufferCurrent, windowDim, &gameMemory.temporaryArena);
+		UiLayoutBlocks(uiBufferCurrent, frameState->windowDim, &gameMemory->temporaryArena);
 
 #if DEBUG_MODE
 		if (IsKeyDown(KEY_L))
@@ -914,7 +910,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory gameMemory, unsigned 
 
 		EndDrawing();
 
-		ArenaReset(&gameMemory.temporaryArena);
+		ArenaReset(&gameMemory->temporaryArena);
 
 		UiEndFrame(uiState);
 
