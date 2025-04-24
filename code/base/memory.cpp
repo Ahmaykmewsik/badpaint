@@ -244,128 +244,19 @@ Arena *ArenaGroupPushArena(ArenaGroup *arenaGroup)
 		if (arenaGroup->arenas[i].flags & ARENA_FLAG_READY_FOR_ASSIGNMENT)
 		{
 			result = &arenaGroup->arenas[i];
-			result->flags |= ARENA_FLAG_READY_FOR_ASSIGNMENT;
+			result->flags &= ~ARENA_FLAG_READY_FOR_ASSIGNMENT;
 			break;
 		}
 	}
 
-	ASSERT(result);
-	ASSERT(result->used == 0);
-
 	return result;
 }
 
-ArenaPair ArenaPairAssign(ArenaGroup *arenaGroup)
+void ArenaResetAndMarkAsReadyForAssignment(Arena *arena)
 {
-	ArenaPair result = {};
-	for (u32 i = 0; i < arenaGroup->count; i++)
+	if (arena)
 	{
-		if (arenaGroup->arenas[i].flags & ARENA_FLAG_READY_FOR_ASSIGNMENT)
-		{
-			if (!result.arena1)
-			{
-				result.arena1 = &arenaGroup->arenas[i];
-			}
-			else if (!result.arena2)
-			{
-				result.arena2 = &arenaGroup->arenas[i];
-				break;
-			}
-		}
+		ArenaReset(arena);
+		arena->flags |= ARENA_FLAG_READY_FOR_ASSIGNMENT;
 	}
-
-	if (result.arena1 && result.arena2)
-	{
-		result.arena1->flags &= ~ARENA_FLAG_READY_FOR_ASSIGNMENT;
-		result.arena2->flags &= ~ARENA_FLAG_READY_FOR_ASSIGNMENT;
-		ASSERT(result.arena1->used == 0);
-		ASSERT(result.arena2->used == 0);
-	}
-	else
-	{
-		//NOTE: (Ahmayk) pair of areans not free, so no luck
-		result = {};
-	}
-
-	return result;
-}
-
-Arena *ArenaPairPushOldest(ArenaPair *alternatingAreans, Arena *finishedArena)
-{
-	Arena *result = {};
-
-	ASSERT(alternatingAreans->arena1);
-	ASSERT(alternatingAreans->arena2);
-
-	if (finishedArena)
-	{
-		ASSERT(alternatingAreans->lastPushedArena != finishedArena);
-		if (alternatingAreans->arena1 == finishedArena)
-		{
-			result = alternatingAreans->arena1;
-		}
-		if (alternatingAreans->arena2 == finishedArena)
-		{
-			result = alternatingAreans->arena2;
-		}
-	}
-	else
-	{
-		if (!alternatingAreans->arena1->used)
-		{
-			result = alternatingAreans->arena1;
-		}
-		if (!alternatingAreans->arena2->used)
-		{
-			result = alternatingAreans->arena2;
-		}
-	}
-
-	if (ASSERT(result))
-	{
-		alternatingAreans->lastPushedArena = result;
-		ASSERT(!(result->flags & ARENA_FLAG_READY_FOR_ASSIGNMENT));
-	}
-	else
-	{
-		//TODO: (Ahmayk) Log that we fucked up
-		result = alternatingAreans->arena1;
-	}
-	ArenaReset(result);
-
-	return result;
-}
-
-void ArenaPairFreeOldest(ArenaPair *arenaPair)
-{
-	if (arenaPair->lastPushedArena)
-	{
-		if (arenaPair->arena1 == arenaPair->lastPushedArena && arenaPair->arena2)
-		{
-			ArenaReset(arenaPair->arena2);
-			arenaPair->arena2->flags |= ARENA_FLAG_READY_FOR_ASSIGNMENT;
-			arenaPair->arena2 = {};
-		}
-		if (arenaPair->arena2 == arenaPair->lastPushedArena && arenaPair->arena1)
-		{
-			ArenaReset(arenaPair->arena1);
-			arenaPair->arena2->flags |= ARENA_FLAG_READY_FOR_ASSIGNMENT;
-			arenaPair->arena1 = {};
-		}
-	}
-}
-
-void ArenaPairFreeAll(ArenaPair *arenaPair)
-{
-	if (arenaPair->arena1)
-	{
-		ArenaReset(arenaPair->arena1);
-		arenaPair->arena1->flags |= ARENA_FLAG_READY_FOR_ASSIGNMENT;
-	}
-	if (arenaPair->arena2)
-	{
-		ArenaReset(arenaPair->arena2);
-		arenaPair->arena2->flags |= ARENA_FLAG_READY_FOR_ASSIGNMENT;
-	}
-	*arenaPair = {};
 }

@@ -136,25 +136,18 @@ void HashImageRects(ImageRawRGBA32 *imageRaw, iv2 rectDim, u32 **outHashes)
 	}
 }
 
-void UpdateBpImageOnThread(ProcessedImage *processedImage)
+void ApplyDataPaint(ImagePNGFiltered *imagePNGFiltered, ImageRawRGBA32 *drawnImageData)
 {
-	// Print("Staring Work on thread " + IntToString(processedImage->index));
-
-	Canvas *canvas = processedImage->canvas;
-
-	Arena *arenaFiltered = ArenaPairPushOldest(&processedImage->arenaPair, {});
-	ImagePNGFiltered imagePNGFiltered = PiratedSTB_EncodePngFilters(processedImage->rootImageRaw, arenaFiltered, canvas->currentPNGFilterType);
-
-	for (u32 y = 0; y < (u32) canvas->imagePNGFiltered.dim.y; y++)
+	for (u32 y = 0; y < (u32) imagePNGFiltered->dim.y; y++)
 	{
 		u32 filterByteOffset = y + 1;
-		u32 startIndex = imagePNGFiltered.dim.x * y;
-		u32 endIndex = startIndex + imagePNGFiltered.dim.x;
+		u32 startIndex = imagePNGFiltered->dim.x * y;
+		u32 endIndex = startIndex + imagePNGFiltered->dim.x;
 
 		for (u32 i = startIndex; i < endIndex; i++)
 		{
-			u8 *filteredPixel = imagePNGFiltered.dataU8 + (i * 4) + filterByteOffset;
-			u8 *canvasPixel = canvas->drawnImageData.dataU8 + (i * 4);
+			u8 *filteredPixel = imagePNGFiltered->dataU8 + (i * 4) + filterByteOffset;
+			u8 *canvasPixel = drawnImageData->dataU8 + (i * 4);
 
 			if (canvasPixel[0])
 			{
@@ -177,7 +170,7 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 					case BADPAINT_BRUSH_EFFECT_SHIFT:
 					{
 						int shiftAmount = 36;
-						if (i < imagePNGFiltered.dataSize - shiftAmount)
+						if (i < imagePNGFiltered->dataSize - shiftAmount)
 						{
 							filteredPixel[0] = filteredPixel[0 + shiftAmount];
 							filteredPixel[1] = filteredPixel[1 + shiftAmount];
@@ -197,11 +190,48 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 			}
 		}
 	}
+}
 
-	Arena *arenaFinalRaw = ArenaPairPushOldest(&processedImage->arenaPair, {});
-	processedImage->finalProcessedImageRaw = PiratedLoadPNG_Defilter(&imagePNGFiltered, arenaFinalRaw);
+ImageRawRGBA32 VisualizePNGFiltered(ImagePNGFiltered *imagePNGFiltered, Arena *arena)
+{
+	ImageRawRGBA32 result = {};
+	result.dim = imagePNGFiltered->dim;
+	result.dataSize = imagePNGFiltered->dim.x * imagePNGFiltered->dim.y * 4;
+	result.dataU8 = (u8*) ArenaPushSize(arena, result.dataSize, {});
+	for (u32 y = 0; y < (u32) result.dim.y; y++)
+	{
+		u32 filterByteOffset = y + 1;
+		u32 startIndex = result.dim.x * y;
+		u32 endIndex = startIndex + result.dim.x;
 
-	ArenaPairFreeOldest(&processedImage->arenaPair);
+		u8 *scanlineFiltered = imagePNGFiltered->dataU8 + (startIndex * 4) + filterByteOffset;
+		u8 *scanlineVisualized = result.dataU8 + (startIndex * 4);
+		memcpy(scanlineVisualized, scanlineFiltered, result.dim.x * 4);
+
+		for (u32 i = startIndex; i < endIndex; i++)
+		{
+			u8 *filteredPixel = imagePNGFiltered->dataU8 + (i * 4) + filterByteOffset;
+			u8 *visualizedPixel = result.dataU8 + (i * 4);
+			visualizedPixel[3] = 255;
+		}
+	}
+
+	return result;
+}
+
+void UpdateBpImageOnThread(ProcessedImage *processedImage)
+{
+	// Print("Staring Work on thread " + IntToString(processedImage->index));
+
+	Canvas *canvas = processedImage->canvas;
+
+	ImagePNGFiltered imagePNGFiltered = PiratedSTB_EncodePngFilters(processedImage->rootImageRaw, processedImage->arenaFiltered, canvas->currentPNGFilterType);
+
+	ApplyDataPaint(&imagePNGFiltered, &canvas->drawnImageData);
+
+	processedImage->imageFilteredVisualized = VisualizePNGFiltered(&imagePNGFiltered, processedImage->arenaVisualized);
+	processedImage->finalProcessedImageRaw = PiratedLoadPNG_Defilter(&imagePNGFiltered, processedImage->arenaFinal);
+
 	HashImageRects(&processedImage->finalProcessedImageRaw, canvas->finalImageRectDim, &processedImage->finalImageRectHashes);
 	// Print("Converted to final PNG on thead " + IntToString(processedImage->index));
 	processedImage->processingComplete = true;
@@ -213,7 +243,12 @@ void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas)
 	processedImage->frameStarted = 0;
 	processedImage->processingComplete = false;
 	processedImage->finalProcessedImageRaw = {};
-	ArenaPairFreeAll(&processedImage->arenaPair);
+	ArenaResetAndMarkAsReadyForAssignment(processedImage->arenaFiltered);
+	ArenaResetAndMarkAsReadyForAssignment(processedImage->arenaVisualized);
+	ArenaResetAndMarkAsReadyForAssignment(processedImage->arenaFinal);
+	processedImage->arenaFiltered = {};
+	processedImage->arenaVisualized = {};
+	processedImage->arenaFinal = {};
 }
 
 ProcessedImage *GetFreeProcessedImage(ProcessedImage *processedImages, unsigned int threadCount)

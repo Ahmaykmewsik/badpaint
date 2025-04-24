@@ -45,57 +45,6 @@ void UpdateRectInTexture(Texture *texture, void *data, RectIV2 rect)
 	}
 }
 
-void SetPNGFilterType(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *gameMemory)
-{
-	ArenaReset(&canvas->arenaFilteredPNG);
-	canvas->imagePNGFiltered = PiratedSTB_EncodePngFilters(rootImageRaw, &canvas->arenaFilteredPNG, canvas->currentPNGFilterType);
-
-#if 0
-#if DEBUG_MODE
-	MemoryProtectWrite(canvas->arenaFilteredPNG.memory, canvas->arenaFilteredPNG.used);
-#endif
-#endif
-
-	iv2 canvasDim = rootImageRaw->dim; 
-	u32 visualizedCanvasDataSize = canvasDim.x * canvasDim.y * sizeof(Color);
-
-	ArenaMarker marker = {};
-	ImageRawRGBA32 visualizedFilteredRootImage = {};
-	visualizedFilteredRootImage.dim = canvasDim;
-	visualizedFilteredRootImage.dataSize = visualizedCanvasDataSize;
-	visualizedFilteredRootImage.dataU8 = (u8*) ArenaPushSize(&gameMemory->temporaryArena, visualizedCanvasDataSize, &marker);
-	for (u32 y = 0; y < (u32) canvasDim.y; y++)
-	{
-		u32 filterByteOffset = y + 1;
-		u32 startIndex = canvasDim.x * y;
-		u32 endIndex = startIndex + canvasDim.x;
-
-		u8 *scanlineFiltered = canvas->imagePNGFiltered.dataU8 + (startIndex * 4) + filterByteOffset;
-		u8 *scanlineVisualized = visualizedFilteredRootImage.dataU8 + (startIndex * 4);
-		memcpy(scanlineVisualized, scanlineFiltered, canvasDim.x * 4);
-
-		for (u32 i = startIndex; i < endIndex; i++)
-		{
-			u8 *filteredPixel = canvas->imagePNGFiltered.dataU8 + (i * 4) + filterByteOffset;
-			u8 *visualizedPixel = visualizedFilteredRootImage.dataU8 + (i * 4);
-			visualizedPixel[3] = 255;
-		}
-	}
-
-	if (!canvas->textureVisualizedFilteredRootImage.id)
-	{
-		canvas->textureVisualizedFilteredRootImage.id = rlLoadTexture(visualizedFilteredRootImage.dataU8, visualizedFilteredRootImage.dim.x, visualizedFilteredRootImage.dim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
-		canvas->textureVisualizedFilteredRootImage.width = canvasDim.x;
-		canvas->textureVisualizedFilteredRootImage.height = canvasDim.y; 
-		canvas->textureVisualizedFilteredRootImage.mipmaps = 1;
-		canvas->textureVisualizedFilteredRootImage.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
-	}
-	RectIV2 rect = {};
-	rect.dim = canvasDim;
-	UpdateRectInTexture(&canvas->textureVisualizedFilteredRootImage, visualizedFilteredRootImage.dataU8, rect);
-	ArenaPopMarker(marker);
-}
-
 RectIV2 GetDrawingRectFromIndex(iv2 imageDim, iv2 rectDim, u32 i)
 {
 	RectIV2 result;
@@ -150,7 +99,7 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 	conversionArenaSize = (u32) (conversionArenaSize * 1.2f);
 	AlignPow2U32(&conversionArenaSize, 256);
 
-	//NOTE: (Ahmayk) drawn image, visualized image, drawingRects, dirtyRectsForEachProcesssImage, finalImageRectHashes
+	//NOTE: (Ahmayk) drawn image, drawingRects, dirtyRectsForEachProcesssImage, finalImageRectHashes
 	u32 canvasArneaSize = (u32) MaxU32(MegaByte * 1, (u32) (conversionArenaSize * 2.1f));
 	gameMemory->canvasArena = ArenaInit(canvasArneaSize);
 	//TODO: (Ahmayk) have a better undo plan!
@@ -172,8 +121,6 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 		canvas->drawnImageData.dataSize = visualizedCanvasDataSize;
 		memset(canvas->drawnImageData.dataU8, 0, visualizedCanvasDataSize);
 
-		canvas->arenaFilteredPNG = ArenaInitFromArena(&gameMemory->canvasArena, conversionArenaSize);
-
 		ArenaGroupResetAndFill(&gameMemory->conversionArenaGroup, conversionArenaSize);
 
 		UploadAndReplaceTexture(&canvas->drawnImageData, &canvas->textureDrawing);
@@ -183,7 +130,6 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 			rlUnloadTexture(canvas->textureVisualizedFilteredRootImage.id);
 			canvas->textureVisualizedFilteredRootImage = {};
 		}
-		SetPNGFilterType(canvas, rootImageRaw, gameMemory);
 
 		if (canvas->initialized)
 		{

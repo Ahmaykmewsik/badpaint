@@ -6,6 +6,7 @@
 
 #include "../includes/raylib/src/raylib.h"
 #include "../includes//raylib//src/external/glfw/include/GLFW/glfw3.h"
+#include "../includes/raylib/src/rlgl.h"
 
 #include "ui/ui_raylib.h"
 #include "widgets.h"
@@ -614,21 +615,33 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 
 		//TODO: (Ahmayk) turn into app commands
 		if (IsKeyPressed(KEY_ZERO))
-			canvas->currentPNGFilterType = PNG_FILTER_TYPE_NONE;
-		if (IsKeyPressed(KEY_ONE))
-			canvas->currentPNGFilterType = PNG_FILTER_TYPE_SUB;
-		if (IsKeyPressed(KEY_TWO))
-			canvas->currentPNGFilterType = PNG_FILTER_TYPE_UP;
-		if (IsKeyPressed(KEY_THREE))
-			canvas->currentPNGFilterType = PNG_FILTER_TYPE_AVERAGE;
-		if (IsKeyPressed(KEY_FOUR))
-			canvas->currentPNGFilterType = PNG_FILTER_TYPE_PAETH;
-		if (IsKeyPressed(KEY_FIVE))
-			canvas->currentPNGFilterType = PNG_FILTER_TYPE_OPTIMAL;
-
-		if (canvas->initialized && canvas->imagePNGFiltered.pngFilterType != canvas->currentPNGFilterType)
 		{
-			SetPNGFilterType(canvas, &appState->rootImageRaw, gameMemory);
+			canvas->currentPNGFilterType = PNG_FILTER_TYPE_NONE;
+			canvas->proccessAsap = true;
+		}
+		if (IsKeyPressed(KEY_ONE))
+		{
+			canvas->currentPNGFilterType = PNG_FILTER_TYPE_SUB;
+			canvas->proccessAsap = true;
+		}
+		if (IsKeyPressed(KEY_TWO))
+		{
+			canvas->currentPNGFilterType = PNG_FILTER_TYPE_UP;
+			canvas->proccessAsap = true;
+		}
+		if (IsKeyPressed(KEY_THREE))
+		{
+			canvas->currentPNGFilterType = PNG_FILTER_TYPE_AVERAGE;
+			canvas->proccessAsap = true;
+		}
+		if (IsKeyPressed(KEY_FOUR))
+		{
+			canvas->currentPNGFilterType = PNG_FILTER_TYPE_PAETH;
+			canvas->proccessAsap = true;
+		}
+		if (IsKeyPressed(KEY_FIVE))
+		{
+			canvas->currentPNGFilterType = PNG_FILTER_TYPE_OPTIMAL;
 			canvas->proccessAsap = true;
 		}
 
@@ -637,10 +650,14 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 			ProcessedImage *processedImage = GetFreeProcessedImage(appState->processedImages, threadCount);
 			if (processedImage)
 			{
-				ArenaPair arenaPair = ArenaPairAssign(&gameMemory->conversionArenaGroup);
-				if (arenaPair.arena1 && arenaPair.arena2)
+				Arena *arenaFiltered = ArenaGroupPushArena(&gameMemory->conversionArenaGroup);
+				Arena *arenaVisualized = ArenaGroupPushArena(&gameMemory->conversionArenaGroup);
+				Arena *arenaFinal = ArenaGroupPushArena(&gameMemory->conversionArenaGroup);
+				if (arenaFiltered && arenaVisualized && arenaFinal)
 				{
-					processedImage->arenaPair = arenaPair;
+					processedImage->arenaFiltered = arenaFiltered;
+					processedImage->arenaVisualized = arenaVisualized;
+					processedImage->arenaFinal = arenaFinal;
 					memcpy(processedImage->dirtyRectsInProcess, canvas->drawingRectDirtyListProcess, canvas->drawingRectCount * sizeof(b32));
 					canvas->proccessAsap = false;
 					processedImage->active = true;
@@ -654,6 +671,12 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 					memset(canvas->drawingRectDirtyListProcess, 0, canvas->drawingRectCount * sizeof(b32));
 					PlatformAddThreadWorkEntry(threadWorkQueue, ProcessImageOnThread, (void *)processedImage);
 					// Print("Queueing Work on thread " + IntToString(processedImage->index));
+				}
+				else
+				{
+					ArenaResetAndMarkAsReadyForAssignment(arenaFiltered);
+					ArenaResetAndMarkAsReadyForAssignment(arenaVisualized);
+					ArenaResetAndMarkAsReadyForAssignment(arenaFinal);
 				}
 			}
 		}
@@ -707,14 +730,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 		{
 			if (latestCompletedProcessedImage->finalProcessedImageRaw.dataU8)
 			{
-				//UploadAndReplaceTexture(&latestCompletedProcessedImage->finalProcessedImageRaw, &loadedTexture);
-				// Print("Uploading New Image from thread " + IntToString(latestCompletedProcessedImage->index));
-				//RectIV2 drawingRect = {};
-				//drawingRect.dim = latestCompletedProcessedImage->finalProcessedImageRaw.dim;
-				//UpdateRectInTexture(&loadedTexture, latestCompletedProcessedImage->finalProcessedImageRaw.dataU8, drawingRect);
-
-#if 1
-
 				iv2 finalImageDim = latestCompletedProcessedImage->finalProcessedImageRaw.dim;
 				ArenaMarker marker = {};
 				b32 *finalImageDirtyRects = ARENA_PUSH_ARRAY_MARKER(&gameMemory->temporaryArena, canvas->finalImageRectCount, b32, &marker);
@@ -778,12 +793,28 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 
 					memcpy(canvas->cachedFinalImageRectHashes, latestCompletedProcessedImage->finalImageRectHashes, canvas->finalImageRectCount * sizeof(u32));
 				}
-#endif
 			}
 			else
 			{
 				appState->imageIsBroken = true;
 			}
+
+			if (latestCompletedProcessedImage->imageFilteredVisualized.dataU8)
+			{
+				ImageRawRGBA32 *visualizedImage = &latestCompletedProcessedImage->imageFilteredVisualized;
+				if (!canvas->textureVisualizedFilteredRootImage.id)
+				{
+					canvas->textureVisualizedFilteredRootImage.id = rlLoadTexture(visualizedImage->dataU8, visualizedImage->dim.x, visualizedImage->dim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
+					canvas->textureVisualizedFilteredRootImage.width = visualizedImage->dim.x;
+					canvas->textureVisualizedFilteredRootImage.height = visualizedImage->dim.y; 
+					canvas->textureVisualizedFilteredRootImage.mipmaps = 1;
+					canvas->textureVisualizedFilteredRootImage.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+				}
+				RectIV2 rect = {};
+				rect.dim = visualizedImage->dim;
+				UpdateRectInTexture(&canvas->textureVisualizedFilteredRootImage, visualizedImage->dataU8, rect);
+			}
+
 			ResetProcessedImage(latestCompletedProcessedImage, canvas);
 		}
 

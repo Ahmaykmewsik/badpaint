@@ -10,12 +10,16 @@ struct ProcessedImage
 	u8 processBatchIndex;
 	ImageRawRGBA32 *rootImageRaw;
 	Canvas *canvas;
-	ArenaPair arenaPair;
 	ImageRawRGBA32 finalProcessedImageRaw;
+	ImageRawRGBA32 imageFilteredVisualized;
 	unsigned int frameStarted;
 	b32 processingComplete;
 	b32 *dirtyRectsInProcess;
 	u32 *finalImageRectHashes;
+
+	Arena *arenaFiltered;
+	Arena *arenaVisualized;
+	Arena *arenaFinal;
 };
 
 ProcessedImage *GetFreeProcessedImage(ProcessedImage *processedImages, unsigned int threadCount);

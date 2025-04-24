@@ -60,15 +60,4 @@ void ArenaGroupFree(ArenaGroup *arenaGroup);
 void ArenaGroupReset(ArenaGroup *arenaGroup);
 void ArenaGroupResetAndFill(ArenaGroup *arenaGroup, u32 blockSize);
 Arena *ArenaGroupPushArena(ArenaGroup *arenaGroup);
-
-struct ArenaPair
-{
-	Arena *arena1;
-	Arena *arena2;
-	Arena *lastPushedArena;
-};
-
-ArenaPair ArenaPairAssign(ArenaGroup *arenaGroup);
-Arena *ArenaPairPushOldest(ArenaPair *alternatingAreans, Arena *finishedArena);
-void ArenaPairFreeOldest(ArenaPair *alternatingAreans);
-void ArenaPairFreeAll(ArenaPair *alternatingAreans);
+void ArenaResetAndMarkAsReadyForAssignment(Arena *arena);

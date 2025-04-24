@@ -48,9 +48,10 @@ struct ImagePNGChecksumed
 struct Canvas
 {
 	b32 initialized;
-	ImagePNGFiltered imagePNGFiltered;
-	Arena arenaFilteredPNG;
 
+	Arena *areaFiltered;
+	Arena *areaVisualized;
+	Arena *areaFinal;
 	Texture textureVisualizedFilteredRootImage;
 
 	//Data in drawnImageData:
@@ -89,9 +90,9 @@ struct Canvas
 struct ProcessedImage;
 
 b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, ProcessedImage *processedImages, u32 threadCount);
-void SetPNGFilterType(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *gameMemory);
 RectIV2 GetDrawingRectFromIndex(iv2 imageDim, iv2 rectDim, u32 i);
 u32 GetDrawingRectCount(iv2 imageDim, iv2 rectDim);
+void UpdateRectInTexture(Texture *texture, void *data, RectIV2 rect);
 
 enum BADPAINT_BRUSH_EFFECT : u32
 {
