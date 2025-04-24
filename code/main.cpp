@@ -12,6 +12,7 @@
 #include "vn_math_external.h"
 #include "platform_win32.h"
 #include "main.h"
+#include "imageFile.h"
 
 #include "assets/font.h"
 #include "assets/defaultImage.h"
@@ -399,8 +400,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 						panelPairImages.uiPanel2->uiPanelType = UI_PANEL_TYPE_CANVAS;
 
 						UiPanelPair panelPairRightSidebar = SplitPanel(panelPair1.uiPanel2, &gameMemory->permanentArena, UI_AXIS_Y, 0.2f);
-						panelPairRightSidebar.uiPanel1->uiPanelType = UI_PANEL_TYPE_FINAL_TEXTURE;
-						panelPairRightSidebar.uiPanel2->uiPanelType = UI_PANEL_TYPE_CANVAS;
+						panelPairRightSidebar.uiPanel1->uiPanelType = UI_PANEL_TYPE_NULL;
+						panelPairRightSidebar.uiPanel2->uiPanelType = UI_PANEL_TYPE_LAYERS;
 					}
 
 					BuildPanelTree(uiState, appState, frameState, &appState->rootUiPanel);

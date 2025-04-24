@@ -103,10 +103,7 @@ struct ProcessedImage
 	u32 *finalImageRectHashes;
 };
 
-u8 *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, Arena *arena);
-ImageRawRGBA32 LoadDataIntoRawImage(u8 *fileData, u32 fileSize, GameMemory *gameMemory);
 b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, ProcessedImage *processedImages, u32 threadCount);
-bool ExportImage(Image image, String filepath);
 b32 CanvasDrawCircleStroke(Canvas *canvas, iv2 startPos, iv2 endPos, u32 radius, Color color);
 b32 CanvasSwapPoints(Canvas *canvas, iv2 pos1, iv2 pos2);
 void SetPNGFilterType(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *gameMemory);

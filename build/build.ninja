@@ -34,12 +34,13 @@ build ui_core.obj: compile ../code/ui/ui_core.cpp | $directory_name
 build ui_raylib.obj: compile ../code/ui/ui_raylib.cpp | $directory_name
 build main.obj: compile ../code/main.cpp | $directory_name
 build image.obj: compile ../code/image.cpp | $directory_name
+build imageFile.obj: compile ../code/imageFile.cpp | $directory_name
 build widgets.obj: compile ../code/widgets.cpp | $directory_name
 
 rule link
   command = link /DEBUG /nologo $in $libraries /PDB:$directory_name/badpaint.pdb /OUT:$out
   description = Linking...
   deps = msvc
-build $directory_name/badpaint.exe: link memory.obj profiler.obj vn_math.obj vn_string.obj multithreading.obj platform_win32.obj main.obj image.obj ui_core.obj ui_raylib.obj widgets.obj | $directory_name
+build $directory_name/badpaint.exe: link memory.obj profiler.obj vn_math.obj vn_string.obj multithreading.obj platform_win32.obj main.obj image.obj imageFile.obj ui_core.obj ui_raylib.obj widgets.obj | $directory_name
 
 default $directory_name/badpaint.exe
