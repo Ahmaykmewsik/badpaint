@@ -14,6 +14,7 @@
 #include "main.h"
 #include "imageFile.h"
 #include "imageProcess.h"
+#include "imageDraw.h"
 
 #include "assets/font.h"
 #include "assets/defaultImage.h"

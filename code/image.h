@@ -90,8 +90,6 @@ struct Canvas
 struct ProcessedImage;
 
 b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, ProcessedImage *processedImages, u32 threadCount);
-b32 CanvasDrawCircleStroke(Canvas *canvas, iv2 startPos, iv2 endPos, u32 radius, Color color);
-b32 CanvasSwapPoints(Canvas *canvas, iv2 pos1, iv2 pos2);
 void SetPNGFilterType(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *gameMemory);
 RectIV2 GetDrawingRectFromIndex(iv2 imageDim, iv2 rectDim, u32 i);
 u32 GetDrawingRectCount(iv2 imageDim, iv2 rectDim);
