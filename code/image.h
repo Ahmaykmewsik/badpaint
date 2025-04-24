@@ -2,7 +2,6 @@
 #include <base.h>
 #include "platform_main.h"
 #include "../includes/raylib/src/raylib.h"
-#include "platform_win32.h"
 #include "ui/ui_core.h"
 
 enum PNG_FILTER_TYPE : i32
@@ -88,30 +87,14 @@ struct Canvas
 	b32 dataOnCanvas;
 };
 
-struct ProcessedImage
-{
-	bool active;
-	unsigned int index;
-	u8 processBatchIndex;
-	ImageRawRGBA32 *rootImageRaw;
-	Canvas *canvas;
-	ArenaPair arenaPair;
-	ImageRawRGBA32 finalProcessedImageRaw;
-	unsigned int frameStarted;
-	b32 processingComplete;
-	b32 *dirtyRectsInProcess;
-	u32 *finalImageRectHashes;
-};
+struct ProcessedImage;
 
 b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, ProcessedImage *processedImages, u32 threadCount);
 b32 CanvasDrawCircleStroke(Canvas *canvas, iv2 startPos, iv2 endPos, u32 radius, Color color);
 b32 CanvasSwapPoints(Canvas *canvas, iv2 pos1, iv2 pos2);
 void SetPNGFilterType(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *gameMemory);
-ProcessedImage *GetFreeProcessedImage(ProcessedImage *processedImages, unsigned int threadCount);
-void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas);
 RectIV2 GetDrawingRectFromIndex(iv2 imageDim, iv2 rectDim, u32 i);
-
-PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread);
+u32 GetDrawingRectCount(iv2 imageDim, iv2 rectDim);
 
 enum BADPAINT_BRUSH_EFFECT : u32
 {

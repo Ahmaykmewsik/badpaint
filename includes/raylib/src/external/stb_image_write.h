@@ -194,8 +194,9 @@ STBIWDEF int stbi_write_jpg_to_func(stbi_write_func *func, void *context, int x,
 
 STBIWDEF void stbi_flip_vertically_on_write(int flip_boolean);
 
-//NOTE: (Ahmayk) exposing this internal function
+//NOTE: (Ahmayk) exposing these internal functions
 STBIWDEF unsigned char *stbi_write_png_to_mem(const unsigned char *pixels, int stride_bytes, int x, int y, int n, int *out_len);
+void stbiw__encode_png_line(unsigned char *pixels, int stride_bytes, int width, int height, int y, int n, int filter_type, signed char *line_buffer);
 
 #endif//INCLUDE_STB_IMAGE_WRITE_H
 
@@ -1097,7 +1098,7 @@ static unsigned char stbiw__paeth(int a, int b, int c)
 }
 
 // @OPTIMIZE: provide an option that always forces left-predict or paeth predict
-static void stbiw__encode_png_line(unsigned char *pixels, int stride_bytes, int width, int height, int y, int n, int filter_type, signed char *line_buffer)
+void stbiw__encode_png_line(unsigned char *pixels, int stride_bytes, int width, int height, int y, int n, int filter_type, signed char *line_buffer)
 {
    static int mapping[] = { 0,1,2,3,4 };
    static int firstmap[] = { 0,1,0,5,6 };

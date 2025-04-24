@@ -13,6 +13,7 @@
 #include "platform_win32.h"
 #include "main.h"
 #include "imageFile.h"
+#include "imageProcess.h"
 
 #include "assets/font.h"
 #include "assets/defaultImage.h"
