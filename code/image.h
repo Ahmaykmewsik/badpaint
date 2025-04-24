@@ -50,7 +50,6 @@ struct Canvas
 	b32 initialized;
 	ImagePNGFiltered imagePNGFiltered;
 	Arena arenaFilteredPNG;
-	b32 filterLock;
 
 	Texture textureVisualizedFilteredRootImage;
 

@@ -47,7 +47,6 @@ void UpdateRectInTexture(Texture *texture, void *data, RectIV2 rect)
 
 void SetPNGFilterType(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *gameMemory)
 {
-	LockOnBool(&canvas->filterLock);
 	ArenaReset(&canvas->arenaFilteredPNG);
 	canvas->imagePNGFiltered = PiratedSTB_EncodePngFilters(rootImageRaw, &canvas->arenaFilteredPNG, canvas->currentPNGFilterType);
 
@@ -56,8 +55,6 @@ void SetPNGFilterType(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 	MemoryProtectWrite(canvas->arenaFilteredPNG.memory, canvas->arenaFilteredPNG.used);
 #endif
 #endif
-
-	UnlockOnBool(&canvas->filterLock);
 
 	iv2 canvasDim = rootImageRaw->dim; 
 	u32 visualizedCanvasDataSize = canvasDim.x * canvasDim.y * sizeof(Color);

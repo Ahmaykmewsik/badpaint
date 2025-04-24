@@ -21,6 +21,11 @@
 
 #include <cstring>  //memcpy
 
+//NOTE: (Ahmayk) force us to delete printfs in release mode
+#if DEBUG_MODE
+#include  "stdio.h"
+#endif
+
 AppCommand *PushAppCommand(AppCommandBuffer *appCommandBuffer)
 {
 	AppCommand *result;
@@ -511,19 +516,21 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 							} break;
 							case BADPAINT_TOOL_TEST:
 							{
-								i32 minX = MinI32(startPosIV2.x, endPosIV2.x); 
-								i32 minY = MinI32(startPosIV2.y, endPosIV2.y); 
-								i32 maxX = MaxI32(startPosIV2.x, endPosIV2.x); 
-								i32 maxY = MaxI32(startPosIV2.y, endPosIV2.y); 
-								for (u32 i = 0; i < 30; i++)
+								i32 halfBrushSize = (i32) RoundF32(appState->toolSize * 0.5f);
+								i32 minX = MinI32(startPosIV2.x, endPosIV2.x) - halfBrushSize; 
+								i32 minY = MinI32(startPosIV2.y, endPosIV2.y) - halfBrushSize; 
+								i32 maxX = MaxI32(startPosIV2.x, endPosIV2.x) + halfBrushSize;
+								i32 maxY = MaxI32(startPosIV2.y, endPosIV2.y) + halfBrushSize;
+								for (u32 i = 0; i < 100; i++)
 								{
-									iv2 randomPoint1;
-									randomPoint1.x = RandomInRangeI32(minX, maxX);
-									randomPoint1.y = RandomInRangeI32(minY, maxY);
 									iv2 randomPoint2;
 									randomPoint2.x = RandomInRangeI32(minX, maxX);
 									randomPoint2.y = RandomInRangeI32(minY, maxY);
-									drewSomething |= CanvasSwapPoints(canvas, randomPoint1, randomPoint2);
+									iv2 randomPoint1;
+									randomPoint1.x = RandomInRangeI32(minX, maxX);
+									randomPoint1.y = RandomInRangeI32(minY, maxY);
+									ImageSwapPoints(&appState->rootImageRaw, randomPoint1, randomPoint2);
+									drewSomething = true;
 								}
 							} break;
 							InvalidDefaultCase

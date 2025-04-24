@@ -1,7 +1,6 @@
 
 #include "image.h"
 #include "imageProcess.h"
-#include "platform_win32.h"
 
 #include "../includes/lodepng.h"
 #include "../includes/lodepng.c"
@@ -144,12 +143,7 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 	Canvas *canvas = processedImage->canvas;
 
 	Arena *arenaFiltered = ArenaPairPushOldest(&processedImage->arenaPair, {});
-
-	LockOnBool(&canvas->filterLock);
-	ImagePNGFiltered imagePNGFiltered = canvas->imagePNGFiltered;
-	imagePNGFiltered.dataU8 = ArenaPushSize(arenaFiltered, imagePNGFiltered.dataSize, {});
-	memcpy(imagePNGFiltered.dataU8, canvas->imagePNGFiltered.dataU8, imagePNGFiltered.dataSize);
-	UnlockOnBool(&canvas->filterLock);
+	ImagePNGFiltered imagePNGFiltered = PiratedSTB_EncodePngFilters(processedImage->rootImageRaw, arenaFiltered, canvas->currentPNGFilterType);
 
 	for (u32 y = 0; y < (u32) canvas->imagePNGFiltered.dim.y; y++)
 	{

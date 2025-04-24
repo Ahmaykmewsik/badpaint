@@ -270,28 +270,37 @@ u8 *GetPNGFilteredPixel(ImagePNGFiltered *imagePNGFiltered, iv2 pos)
 	return result;
 }
 
-b32 CanvasSwapPoints(Canvas *canvas, iv2 pos1, iv2 pos2)
+u8 *GetImageRawRGBA32Pixel(ImageRawRGBA32 *imageRaw, iv2 pos)
+{
+	u8 *result = {};
+	if (ASSERT(pos.x <= imageRaw->dim.x && pos.x >= 0 && pos.y <= imageRaw->dim.y && pos.y >= 0))
+	{
+		result = imageRaw->dataU8 + (4 * ((imageRaw->dim.x * pos.y) + pos.x));
+	}
+	else
+	{
+		result = imageRaw->dataU8;
+	}
+
+	return result;
+}
+
+b32 ImageSwapPoints(ImageRawRGBA32 *imageRaw, iv2 pos1, iv2 pos2)
 {
 	b32 result = false;
 
-	pos1.x = ClampI32(0, pos1.x, canvas->imagePNGFiltered.dim.x);
-	pos1.y = ClampI32(0, pos1.y, canvas->imagePNGFiltered.dim.y);
-	pos2.x = ClampI32(0, pos2.x, canvas->imagePNGFiltered.dim.x);
-	pos2.y = ClampI32(0, pos2.y, canvas->imagePNGFiltered.dim.y);
-
-#if 1
-	LockOnBool(&canvas->filterLock);
+	pos1.x = ClampI32(0, pos1.x, imageRaw->dim.x - 1);
+	pos1.y = ClampI32(0, pos1.y, imageRaw->dim.y - 1);
+	pos2.x = ClampI32(0, pos2.x, imageRaw->dim.x - 1);
+	pos2.y = ClampI32(0, pos2.y, imageRaw->dim.y - 1);
 	
-	u8 *pixel1 = GetPNGFilteredPixel(&canvas->imagePNGFiltered, pos1);
-	u8 *pixel2 = GetPNGFilteredPixel(&canvas->imagePNGFiltered, pos2);
+	u8 *pixel1 = GetImageRawRGBA32Pixel(imageRaw, pos1);
+	u8 *pixel2 = GetImageRawRGBA32Pixel(imageRaw, pos2);
 
 	u32 tempPixel;
 	memcpy(&tempPixel, pixel1, sizeof(u32));
 	memcpy(pixel1, pixel2, sizeof(u32));
 	memcpy(pixel2, &tempPixel, sizeof(u32));
-
-	UnlockOnBool(&canvas->filterLock);
-#endif
 
 	//Image dst = ImageRawToRayImage(&canvas->drawnImageData);
 	//CanvasImageDrawPixel(&dst, pos1.x, pos1.y, Color{1, 0, 0, 0});
@@ -299,6 +308,7 @@ b32 CanvasSwapPoints(Canvas *canvas, iv2 pos1, iv2 pos2)
 
 	result = true;
 
+#if 0
 	if (result)
 	{
 		RectIV2 updateArea;
@@ -309,6 +319,7 @@ b32 CanvasSwapPoints(Canvas *canvas, iv2 pos1, iv2 pos2)
 		updateArea.pos = pos2;
 		CanvasSetDirtyRect(canvas, updateArea);
 	}
+#endif
 
 	return result;
 }

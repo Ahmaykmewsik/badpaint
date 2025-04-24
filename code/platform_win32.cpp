@@ -14,6 +14,10 @@
 
 #include "nonRepo.h"
 
+#if DEBUG_MODE
+#include  "stdio.h"
+#endif
+
 struct WorkQueueEntry
 {
 	void *data;
@@ -981,11 +985,13 @@ int CALLBACK WinMain(HINSTANCE instance,
 {
 
 #if DEBUG_MODE
-    //AllocConsole();
-    //freopen("CONOUT$", "w", stdout);
-    //freopen("CONOUT$", "w", stderr);
-    //freopen("CONIN$", "r", stdin);
-    //setvbuf(stdout, NULL, _IONBF, 0);
+	AllocConsole();
+	HWND consoleWindow = GetConsoleWindow();
+	SetWindowPos(consoleWindow, NULL, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+	freopen("CONOUT$", "w", stdout);
+	freopen("CONOUT$", "w", stderr);
+	freopen("CONIN$", "r", stdin);
+	setvbuf(stdout, NULL, _IONBF, 0);
 #endif
 
 	GameMemory gameMemory = {};

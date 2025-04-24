@@ -6,6 +6,7 @@
 #include <time.h>
 #include <xmmintrin.h>
 
+#include <stdlib.h> // rand()
 // ------------------------------------------------------------------------
 // ------------------------------- v2, v2 ---------------------------------
 // ------------------------------------------------------------------------
@@ -1401,7 +1402,9 @@ i32 RandomInRangeI32(i32 min, i32 max)
 		min = tmp;
 	}
 
-	return (vn_rand() % (abs(max - min) + 1) + min);
+	u32 randU32 = rand();
+	i32 result = (randU32 % (abs(max - min) + 1) + min);
+	return result; 
 }
 
 f32 RandomF32ZeroToOne()
