@@ -43,6 +43,7 @@ static KeyboardKey COMMAND_KEY_BINDINGS[] = {
 	KEY_N,
 	KEY_B,
 	KEY_E,
+	KEY_T,
 	KEY_NULL,
 	KEY_NULL,
 };
@@ -134,15 +135,20 @@ AppState *InitApp(GameMemory *gameMemory, u32 threadCount)
 	appState->toolSize = 50;
 	appState->currentTool = BADPAINT_TOOL_PENCIL;
 
+	BADPAINT_TOOL_TYPE badpaintSpriteSheetOrder[] = {
+		BADPAINT_TOOL_TEST,
+		BADPAINT_TOOL_PENCIL,
+		BADPAINT_TOOL_ERASER,
+	};
 	appState->toolbrushSpriteSheet = LoadTexture("buttonSprites.png");
 	i32 spriteSheetBoxSize = 30;
-	for (i32 toolIndex = 0; toolIndex < BADPAINT_TOOL_COUNT; toolIndex++)
+	for (u32 i = 0; i < ARRAY_COUNT(badpaintSpriteSheetOrder); i++)
 	{
-		Tool *tool = &appState->tools[toolIndex];
+		Tool *tool = &appState->tools[badpaintSpriteSheetOrder[i]];
 		for (i32 interactionIndex = 0; interactionIndex < INTERACTION_STATE_COUNT; interactionIndex++)
 		{
 			tool->uiTextureViews[interactionIndex] = UiRaylibTextureToUiTextureView(&appState->toolbrushSpriteSheet);
-			tool->uiTextureViews[interactionIndex].viewRect.pos = iv2{spriteSheetBoxSize * interactionIndex, spriteSheetBoxSize * toolIndex};
+			tool->uiTextureViews[interactionIndex].viewRect.pos = iv2{spriteSheetBoxSize * interactionIndex, spriteSheetBoxSize * (i32) i};
 			tool->uiTextureViews[interactionIndex].viewRect.dim = iv2{spriteSheetBoxSize, spriteSheetBoxSize};
 		}
 	}
@@ -342,6 +348,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 
 					WidgetToolButton(uiState, appState, frameState, BADPAINT_TOOL_PENCIL, COMMAND_SWITCH_TOOL_TO_PENCIL);
 					WidgetToolButton(uiState, appState, frameState, BADPAINT_TOOL_ERASER, COMMAND_SWITCH_TOOL_TO_ERASER);
+					WidgetToolButton(uiState, appState, frameState, BADPAINT_TOOL_TEST, COMMAND_SWITCH_TOOL_TO_TEST);
 
 					{
 						UiBlock *b = UiCreateBlock(uiState);
@@ -407,9 +414,9 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 
 		Canvas *canvas = &appState->canvas;
 		AppCommandBuffer *appCommandBuffer = &frameState->appCommandBuffer;
-		for (u32 i = 0; i < appCommandBuffer->count; i++)
+		for (u32 commandIndex = 0; commandIndex < appCommandBuffer->count; commandIndex++)
 		{
-			AppCommand *appCommand = &appCommandBuffer->appCommands[i];
+			AppCommand *appCommand = &appCommandBuffer->appCommands[commandIndex];
 			switch(appCommand->command)
 			{
 				case COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE:
@@ -435,6 +442,10 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 				case COMMAND_SWITCH_TOOL_TO_ERASER:
 				{
 					appState->currentTool = BADPAINT_TOOL_ERASER;
+				} break;
+				case COMMAND_SWITCH_TOOL_TO_TEST:
+				{
+					appState->currentTool = BADPAINT_TOOL_TEST;
 				} break;
 				case COMMAND_EXPORT_IMAGE:
 				{
@@ -495,6 +506,24 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 								colorToPaint.a = (u8) canvas->processBatchIndex;
 								drewSomething = CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, appState->toolSize, colorToPaint);
 							} break;
+							case BADPAINT_TOOL_TEST:
+							{
+								i32 minX = MinI32(startPosIV2.x, endPosIV2.x); 
+								i32 minY = MinI32(startPosIV2.y, endPosIV2.y); 
+								i32 maxX = MaxI32(startPosIV2.x, endPosIV2.x); 
+								i32 maxY = MaxI32(startPosIV2.y, endPosIV2.y); 
+								for (u32 i = 0; i < 30; i++)
+								{
+									iv2 randomPoint1;
+									randomPoint1.x = RandomInRangeI32(minX, maxX);
+									randomPoint1.y = RandomInRangeI32(minY, maxY);
+									iv2 randomPoint2;
+									randomPoint2.x = RandomInRangeI32(minX, maxX);
+									randomPoint2.y = RandomInRangeI32(minY, maxY);
+									drewSomething |= CanvasSwapPoints(canvas, randomPoint1, randomPoint2);
+								}
+							} break;
+							InvalidDefaultCase
 						}
 
 						if (drewSomething)

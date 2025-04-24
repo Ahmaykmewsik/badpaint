@@ -303,8 +303,10 @@ void SetPNGFilterType(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 	ArenaReset(&canvas->arenaFilteredPNG);
 	canvas->imagePNGFiltered = PiratedSTB_EncodePngFilters(rootImageRaw, &canvas->arenaFilteredPNG, canvas->currentPNGFilterType);
 
+#if 0
 #if DEBUG_MODE
 	MemoryProtectWrite(canvas->arenaFilteredPNG.memory, canvas->arenaFilteredPNG.used);
+#endif
 #endif
 
 	UnlockOnBool(&canvas->filterLock);
@@ -629,6 +631,65 @@ b32 CanvasDrawCircleStroke(Canvas *canvas, iv2 startPos, iv2 endPos, u32 radius,
 			result |= CanvasFillConvexQuad(canvas, points[0], points[1], points[2], points[3], color);
 		}
 	}
+	return result;
+}
+
+u8 *GetPNGFilteredPixel(ImagePNGFiltered *imagePNGFiltered, iv2 pos)
+{
+	u8 *result = {};
+	if (ASSERT(pos.x <= imagePNGFiltered->dim.x && pos.x >= 0 && pos.y <= imagePNGFiltered->dim.y && pos.y >= 0))
+	{
+		u32 filterByteOffset = pos.y + 1;
+		result = imagePNGFiltered->dataU8 + (4 * ((imagePNGFiltered->dim.x * pos.y) + pos.x)) + filterByteOffset;
+	}
+	else
+	{
+		result = imagePNGFiltered->dataU8;
+	}
+
+	return result;
+}
+
+b32 CanvasSwapPoints(Canvas *canvas, iv2 pos1, iv2 pos2)
+{
+	b32 result = false;
+
+	pos1.x = ClampI32(0, pos1.x, canvas->imagePNGFiltered.dim.x);
+	pos1.y = ClampI32(0, pos1.y, canvas->imagePNGFiltered.dim.y);
+	pos2.x = ClampI32(0, pos2.x, canvas->imagePNGFiltered.dim.x);
+	pos2.y = ClampI32(0, pos2.y, canvas->imagePNGFiltered.dim.y);
+
+#if 1
+	LockOnBool(&canvas->filterLock);
+	
+	u8 *pixel1 = GetPNGFilteredPixel(&canvas->imagePNGFiltered, pos1);
+	u8 *pixel2 = GetPNGFilteredPixel(&canvas->imagePNGFiltered, pos2);
+
+	u32 tempPixel;
+	memcpy(&tempPixel, pixel1, sizeof(u32));
+	memcpy(pixel1, pixel2, sizeof(u32));
+	memcpy(pixel2, &tempPixel, sizeof(u32));
+
+	UnlockOnBool(&canvas->filterLock);
+#endif
+
+	//Image dst = ImageRawToRayImage(&canvas->drawnImageData);
+	//CanvasImageDrawPixel(&dst, pos1.x, pos1.y, Color{1, 0, 0, 0});
+	//CanvasImageDrawPixel(&dst, pos2.x, pos2.y, Color{1, 0, 0, 0});
+
+	result = true;
+
+	if (result)
+	{
+		RectIV2 updateArea;
+		updateArea.dim.x = 1; 
+		updateArea.dim.y = 1;
+		updateArea.pos = pos1;
+		CanvasSetDirtyRect(canvas, updateArea);
+		updateArea.pos = pos2;
+		CanvasSetDirtyRect(canvas, updateArea);
+	}
+
 	return result;
 }
 

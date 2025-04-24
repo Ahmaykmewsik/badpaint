@@ -931,6 +931,18 @@ u32 MinU32(u32 i, u32 j)
 	return result;
 }
 
+i32 MinI32(i32 i, i32 j)
+{
+	u32 result = i;
+
+	if (i > j)
+	{
+		result = j;
+	}
+
+	return result;
+}
+
 f32 MinF32(f32 i, f32 j)
 {
 	f32 result = i;
