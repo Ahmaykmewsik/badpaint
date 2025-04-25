@@ -10,6 +10,7 @@ struct ProcessedImage
 	u8 processBatchIndex;
 	ImageRawRGBA32 *rootImageRaw;
 	Canvas *canvas;
+	ImageRawRGBA32 rootImageRawProcessed;
 	ImageRawRGBA32 finalProcessedImageRaw;
 	ImageRawRGBA32 imageFilteredVisualized;
 	unsigned int frameStarted;
@@ -17,6 +18,7 @@ struct ProcessedImage
 	b32 *dirtyRectsInProcess;
 	u32 *finalImageRectHashes;
 
+	Arena *arenaRoot;
 	Arena *arenaFiltered;
 	Arena *arenaVisualized;
 	Arena *arenaFinal;

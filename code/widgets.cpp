@@ -276,6 +276,33 @@ void ProcessActiveInputInDrawableArea(UiState *uiState, AppState *appState, Fram
 
 }
 
+void WidgetImageCanvas(UiState *uiState, AppState *appState, FrameState *frameState, UiPanel *uiPanel, u32 hash,
+		TextureGPU *textureGPUImage, TextureGPU *textureGPUDrawable)
+{
+	if (textureGPUImage->texture.id)
+	{
+		UiBlock *b = UiCreateBlock(uiState);
+		b->flags = UI_FLAG_DRAW_TEXTURE;
+		b->uiTextureView = UiRaylibTextureToUiTextureView(&textureGPUImage->texture);
+		b->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL_FIXED, SafeDivideI32(b->uiTextureView.dim.x, b->uiTextureView.dim.y)};
+		b->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL_FIXED, SafeDivideI32(b->uiTextureView.dim.y, b->uiTextureView.dim.x)};
+		UI_PARENT_SCOPE(uiState, b)
+		{
+			UiBlock *canvasBlock = UiCreateBlock(uiState);
+			canvasBlock->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
+			canvasBlock->hash = hash;
+			canvasBlock->uiTextureView = UiRaylibTextureToUiTextureView(&textureGPUDrawable->texture);
+			canvasBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+			canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+			//TODO: (Ahmayk) This check needs to be more sophisticated regarding drawing just outside the canvas
+			if (canvasBlock->hash == frameState->uiInteractionHashes.hashMouseHover)
+			{
+				ProcessActiveInputInDrawableArea(uiState, appState, frameState, canvasBlock, uiPanel->uiPanelType);
+			}
+		}
+	}
+}
+
 void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState, UiPanel *uiPanel)
 {
 	if (uiPanel)
@@ -327,81 +354,25 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 					{
 						panelBlock->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
 						panelBlock->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
-						if (canvas->textureGPURoot.texture.id)
-						{
-							UiBlock *b = UiCreateBlock(uiState);
-							b->flags = UI_FLAG_DRAW_TEXTURE;
-							b->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->textureGPURoot.texture);
-							b->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL_FIXED, SafeDivideI32(b->uiTextureView.dim.x, b->uiTextureView.dim.y)};
-							b->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL_FIXED, SafeDivideI32(b->uiTextureView.dim.y, b->uiTextureView.dim.x)};
-							UI_PARENT_SCOPE(uiState, b)
-							{
-								UiBlock *canvasBlock = UiCreateBlock(uiState);
-								canvasBlock->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
-								canvasBlock->hash = Murmur3String("root", uiPanel->hash);
-								canvasBlock->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->badpaintPixelsRootImage.textureGPU.texture);
-								canvasBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-								canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-								//TODO: (Ahmayk) This check needs to be more sophisticated regarding drawing just outside the canvas
-								if (canvasBlock->hash == frameState->uiInteractionHashes.hashMouseHover)
-								{
-									ProcessActiveInputInDrawableArea(uiState, appState, frameState, canvasBlock, uiPanel->uiPanelType);
-								}
-							}
-						}
+ 						u32 hash = Murmur3String("root", uiPanel->hash);
+						WidgetImageCanvas(uiState, appState, frameState, uiPanel, hash, &canvas->textureGPURoot, &canvas->badpaintPixelsRootImage.textureGPU);
 					} break;
 					case UI_PANEL_TYPE_FINAL_IMAGE:
 					{
-						UiBlock *b= UiCreateBlock(uiState);
-						b->flags = UI_FLAG_DRAW_BACKGROUND;
-						b->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
-						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-						b->uiBlockColors.backColor = ColorU32{100, 100, 100, 255};
-						b->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
-						b->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
-						UI_PARENT_SCOPE(uiState, b)
-						{
-							TextureGPU *textureGPUFinal = &appState->canvas.textureGPUFinal;
-							UiBlock *finalTexture = UiCreateBlock(uiState);
-							finalTexture->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
-							finalTexture->hash = Murmur3String("finalTexture", uiPanel->hash);
-							finalTexture->uiTextureView = UiRaylibTextureToUiTextureView(&textureGPUFinal->texture);
-							finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL_FIXED, SafeDivideI32(textureGPUFinal->dim.x, textureGPUFinal->dim.y)};
-							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL_FIXED, SafeDivideI32(textureGPUFinal->dim.y, textureGPUFinal->dim.x)};
-							if (finalTexture->hash == frameState->uiInteractionHashes.hashMouseHover)
-							{
-								ProcessActiveInputInDrawableArea(uiState, appState, frameState, finalTexture, uiPanel->uiPanelType);
-							}
-						}
+						panelBlock->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
+						panelBlock->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
+						u32 hash = Murmur3String("finalTexture", uiPanel->hash);
+						WidgetImageCanvas(uiState, appState, frameState, uiPanel, hash, &canvas->textureGPUFinal, &canvas->badpaintPixelsFinalImage.textureGPU);
 					} break;
 					case UI_PANEL_TYPE_PNG_FILTERED:
 					{
+
 						panelBlock->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
 						panelBlock->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
 						if (!appState->imageIsBroken)
 						{
-							if (canvas->textureVisualizedFilteredRootImage.id)
-							{
-								UiBlock *b = UiCreateBlock(uiState);
-								b->flags = UI_FLAG_DRAW_TEXTURE;
-								b->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->textureVisualizedFilteredRootImage);
-								b->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL_FIXED, SafeDivideI32(b->uiTextureView.dim.x, b->uiTextureView.dim.y)};
-								b->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL_FIXED, SafeDivideI32(b->uiTextureView.dim.y, b->uiTextureView.dim.x)};
-								UI_PARENT_SCOPE(uiState, b)
-								{
-									UiBlock *canvasBlock = UiCreateBlock(uiState);
-									canvasBlock->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
-									canvasBlock->hash = Murmur3String("canvas", uiPanel->hash);
-									canvasBlock->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->badpaintPixelsPNGFiltered.textureGPU.texture);
-									canvasBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-									canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-									//TODO: (Ahmayk) This check needs to be more sophisticated regarding drawing just outside the canvas
-									if (canvasBlock->hash == frameState->uiInteractionHashes.hashMouseHover)
-									{
-										ProcessActiveInputInDrawableArea(uiState, appState, frameState, canvasBlock, uiPanel->uiPanelType);
-									}
-								}
-							}
+							u32 hash = Murmur3String("canvas", uiPanel->hash);
+							WidgetImageCanvas(uiState, appState, frameState, uiPanel, hash, &canvas->textureGPUPNGFiltered, &canvas->badpaintPixelsPNGFiltered.textureGPU);
 						}
 						else
 						{

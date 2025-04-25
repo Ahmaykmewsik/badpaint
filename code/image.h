@@ -126,13 +126,13 @@ struct Canvas
 	Arena *areaFiltered;
 	Arena *areaVisualized;
 	Arena *areaFinal;
-	Texture textureVisualizedFilteredRootImage;
 
 	ImageBadpaintPixels badpaintPixelsRootImage;
 	ImageBadpaintPixels badpaintPixelsPNGFiltered;
 	ImageBadpaintPixels badpaintPixelsFinalImage;
 
 	TextureGPU textureGPURoot;
+	TextureGPU textureGPUPNGFiltered;
 	TextureGPU textureGPUFinal;
 	iv2 finalImageRectDim;
 	u32 finalImageRectCount;

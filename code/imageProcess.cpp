@@ -136,59 +136,39 @@ void HashImageRects(ImageRawRGBA32 *imageRaw, iv2 rectDim, u32 **outHashes)
 	}
 }
 
-void ApplyDataPaintFiltered(ImagePNGFiltered *imagePNGFiltered, ImageRawRGBA32 *drawnImageData)
+void ApplyBadpaintPixel(ColorU32 *imagePixel, BadpaintPixel *badpaintPixel, u32 index, u32 dataSize)
 {
-	for (u32 y = 0; y < (u32) imagePNGFiltered->dim.y; y++)
+	switch (badpaintPixel->badpaintPixelType)
 	{
-		u32 filterByteOffset = y + 1;
-		u32 startIndex = imagePNGFiltered->dim.x * y;
-		u32 endIndex = startIndex + imagePNGFiltered->dim.x;
-
-		for (u32 i = startIndex; i < endIndex; i++)
+		case BADPAINT_PIXEL_TYPE_NONE: break;
+		case BADPAINT_PIXEL_TYPE_REMOVE:
 		{
-			u8 *filteredPixel = imagePNGFiltered->dataU8 + (i * 4) + filterByteOffset;
-			u8 *canvasPixel = drawnImageData->dataU8 + (i * 4);
-
-			if (canvasPixel[0])
+			*imagePixel = {};
+		} break;
+		case BADPAINT_PIXEL_TYPE_MAX:
+		{
+			imagePixel->r = 255;
+			imagePixel->g = 255;
+			imagePixel->b = 255;
+			imagePixel->a = 255;
+		} break;
+		case BADPAINT_PIXEL_TYPE_SHIFT:
+		{
+			int shiftAmount = 36;
+			if (index < dataSize - shiftAmount)
 			{
-				switch (canvasPixel[0])
-				{
-					case BADPAINT_PIXEL_TYPE_REMOVE:
-					{
-						filteredPixel[0] = 0;
-						filteredPixel[1] = 0;
-						filteredPixel[2] = 0;
-						filteredPixel[3] = 0;
-					} break;
-					case BADPAINT_PIXEL_TYPE_MAX:
-					{
-						filteredPixel[0] = 255;
-						filteredPixel[1] = 255;
-						filteredPixel[2] = 255;
-						filteredPixel[3] = 255;
-					} break;
-					case BADPAINT_PIXEL_TYPE_SHIFT:
-					{
-						int shiftAmount = 36;
-						if (i < imagePNGFiltered->dataSize - shiftAmount)
-						{
-							filteredPixel[0] = filteredPixel[0 + shiftAmount];
-							filteredPixel[1] = filteredPixel[1 + shiftAmount];
-							filteredPixel[2] = filteredPixel[2 + shiftAmount];
-							filteredPixel[3] = filteredPixel[3 + shiftAmount];
-						}
-					} break;
-					case BADPAINT_PIXEL_TYPE_RANDOM:
-					{
-						filteredPixel[0] = canvasPixel[1];
-						filteredPixel[1] = canvasPixel[1];
-						filteredPixel[2] = canvasPixel[1];
-						filteredPixel[3] = canvasPixel[1];
-					} break;
-					InvalidDefaultCase
-				}
+				ColorU32 *shiftedPixel = imagePixel + shiftAmount;
+				*imagePixel = *shiftedPixel;
 			}
-		}
+		} break;
+		case BADPAINT_PIXEL_TYPE_RANDOM:
+		{
+			imagePixel->r = badpaintPixel->r1RandomValue;
+			imagePixel->g = badpaintPixel->r1RandomValue;
+			imagePixel->b = badpaintPixel->r1RandomValue;
+			imagePixel->a = badpaintPixel->r1RandomValue;
+		} break;
+		InvalidDefaultCase
 	}
 }
 
@@ -200,49 +180,29 @@ void ApplyDataPaintImageRaw(ImageRawRGBA32 *imageRaw, ImageBadpaintPixels *image
 		u32 endIndex = startIndex + imageRaw->dim.x;
 		for (u32 i = startIndex; i < endIndex; i++)
 		{
-			u8 *imagePixel = imageRaw->dataU8 + (i * 4);
+			ColorU32 *imagePixel = (ColorU32*) (imageRaw->dataU8 + (i * 4));
 			BadpaintPixel *badpaintPixel = imageBadpaintPixels->dataBadpaintPixel + i;
-
-			switch (badpaintPixel->badpaintPixelType)
-			{
-				case BADPAINT_PIXEL_TYPE_NONE: break;
-				case BADPAINT_PIXEL_TYPE_REMOVE:
-				{
-					imagePixel[0] = 0;
-					imagePixel[1] = 0;
-					imagePixel[2] = 0;
-					imagePixel[3] = 0;
-				} break;
-				case BADPAINT_PIXEL_TYPE_MAX:
-				{
-					imagePixel[0] = 255;
-					imagePixel[1] = 255;
-					imagePixel[2] = 255;
-					imagePixel[3] = 255;
-				} break;
-				case BADPAINT_PIXEL_TYPE_SHIFT:
-				{
-					int shiftAmount = 36;
-					if (i < imageRaw->dataSize - shiftAmount)
-					{
-						imagePixel[0] = imagePixel[0 + shiftAmount];
-						imagePixel[1] = imagePixel[1 + shiftAmount];
-						imagePixel[2] = imagePixel[2 + shiftAmount];
-						imagePixel[3] = imagePixel[3 + shiftAmount];
-					}
-				} break;
-				case BADPAINT_PIXEL_TYPE_RANDOM:
-				{
-					imagePixel[0] = badpaintPixel->r1RandomValue;
-					imagePixel[1] = badpaintPixel->r1RandomValue;
-					imagePixel[2] = badpaintPixel->r1RandomValue;
-					imagePixel[3] = badpaintPixel->r1RandomValue;
-				} break;
-				InvalidDefaultCase
-			}
+			ApplyBadpaintPixel(imagePixel, badpaintPixel, i, imageRaw->dataSize);
 		}
 	}
 }
+
+void ApplyDataPaintFiltered(ImagePNGFiltered *imagePNGFiltered, ImageBadpaintPixels *imageBadpaintPixels)
+{
+	for (u32 y = 0; y < (u32) imagePNGFiltered->dim.y; y++)
+	{
+		u32 filterByteOffset = y + 1;
+		u32 startIndex = imagePNGFiltered->dim.x * y;
+		u32 endIndex = startIndex + imagePNGFiltered->dim.x;
+		for (u32 i = startIndex; i < endIndex; i++)
+		{
+			ColorU32 *filteredPixel = (ColorU32*) (imagePNGFiltered->dataU8 + (i * 4) + filterByteOffset);
+			BadpaintPixel *badpaintPixel = imageBadpaintPixels->dataBadpaintPixel + i;
+			ApplyBadpaintPixel(filteredPixel, badpaintPixel, i, imagePNGFiltered->dataSize);
+		}
+	}
+}
+
 
 ImageRawRGBA32 VisualizePNGFiltered(ImagePNGFiltered *imagePNGFiltered, Arena *arena)
 {
@@ -277,19 +237,18 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 
 	Canvas *canvas = processedImage->canvas;
 
-	ImageRawRGBA32 imageRaw = *processedImage->rootImageRaw;
-	imageRaw.dataU8 = ArenaPushSize(processedImage->arenaFinal, imageRaw.dataSize, {});
-	memcpy(imageRaw.dataU8, processedImage->rootImageRaw->dataU8, imageRaw.dataSize);
+	processedImage->rootImageRawProcessed = *processedImage->rootImageRaw;
+	processedImage->rootImageRawProcessed.dataU8 = ArenaPushSize(processedImage->arenaRoot, processedImage->rootImageRawProcessed.dataSize, {});
+	memcpy(processedImage->rootImageRawProcessed.dataU8, processedImage->rootImageRaw->dataU8, processedImage->rootImageRaw->dataSize);
 
-	ApplyDataPaintImageRaw(&imageRaw, &canvas->badpaintPixelsRootImage);
+	ApplyDataPaintImageRaw(&processedImage->rootImageRawProcessed, &canvas->badpaintPixelsRootImage);
 
-	ImagePNGFiltered imagePNGFiltered = PiratedSTB_EncodePngFilters(&imageRaw, processedImage->arenaFiltered, canvas->currentPNGFilterType);
+	ImagePNGFiltered imagePNGFiltered = PiratedSTB_EncodePngFilters(&processedImage->rootImageRawProcessed, processedImage->arenaFiltered, canvas->currentPNGFilterType);
 
-	//ApplyDataPaintFiltered(&imagePNGFiltered, &canvas->drawnImageData);
+	ApplyDataPaintFiltered(&imagePNGFiltered, &canvas->badpaintPixelsPNGFiltered);
 
 	processedImage->imageFilteredVisualized = VisualizePNGFiltered(&imagePNGFiltered, processedImage->arenaVisualized);
 
-	ArenaReset(processedImage->arenaFinal);
 	processedImage->finalProcessedImageRaw = PiratedLoadPNG_Defilter(&imagePNGFiltered, processedImage->arenaFinal);
 
 	ApplyDataPaintImageRaw(&processedImage->finalProcessedImageRaw, &canvas->badpaintPixelsFinalImage);
@@ -305,9 +264,11 @@ void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas)
 	processedImage->frameStarted = 0;
 	processedImage->processingComplete = false;
 	processedImage->finalProcessedImageRaw = {};
+	ArenaResetAndMarkAsReadyForAssignment(processedImage->arenaRoot);
 	ArenaResetAndMarkAsReadyForAssignment(processedImage->arenaFiltered);
 	ArenaResetAndMarkAsReadyForAssignment(processedImage->arenaVisualized);
 	ArenaResetAndMarkAsReadyForAssignment(processedImage->arenaFinal);
+	processedImage->arenaRoot = {};
 	processedImage->arenaFiltered = {};
 	processedImage->arenaVisualized = {};
 	processedImage->arenaFinal = {};

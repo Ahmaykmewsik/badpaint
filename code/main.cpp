@@ -407,11 +407,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 						appState->rootUiPanel.hash = Murmur3String("mainPanels");
 						UiPanelPair panelPair1 = SplitPanel(&appState->rootUiPanel, &gameMemory->permanentArena, UI_AXIS_X, 0.85f);
 
-						UiPanelPair panelPairTopBottom = SplitPanel(panelPair1.uiPanel1, &gameMemory->permanentArena, UI_AXIS_Y, 0.5f);
-						panelPairTopBottom.uiPanel1->uiPanelType = UI_PANEL_TYPE_FINAL_IMAGE;
-						UiPanelPair panelPairDrawing = SplitPanel(panelPairTopBottom.uiPanel2, &gameMemory->permanentArena, UI_AXIS_X, 0.5f);
-						panelPairDrawing.uiPanel1->uiPanelType = UI_PANEL_TYPE_ROOT_IMAGE;
-						panelPairDrawing.uiPanel2->uiPanelType = UI_PANEL_TYPE_PNG_FILTERED;
+						UiPanelPair panelPairTopBottom = SplitPanel(panelPair1.uiPanel1, &gameMemory->permanentArena, UI_AXIS_X, 0.3333f);
+						panelPairTopBottom.uiPanel1->uiPanelType = UI_PANEL_TYPE_ROOT_IMAGE;
+						UiPanelPair panelPairDrawing = SplitPanel(panelPairTopBottom.uiPanel2, &gameMemory->permanentArena, UI_AXIS_X, 0.5);
+						panelPairDrawing.uiPanel1->uiPanelType = UI_PANEL_TYPE_PNG_FILTERED;
+						panelPairDrawing.uiPanel2->uiPanelType = UI_PANEL_TYPE_FINAL_IMAGE;
 
 						UiPanelPair panelPairRightSidebar = SplitPanel(panelPair1.uiPanel2, &gameMemory->permanentArena, UI_AXIS_Y, 0.2f);
 						panelPairRightSidebar.uiPanel1->uiPanelType = UI_PANEL_TYPE_NULL;
@@ -672,11 +672,13 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 			ProcessedImage *processedImage = GetFreeProcessedImage(appState->processedImages, threadCount);
 			if (processedImage)
 			{
+				Arena *arenaRoot = ArenaGroupPushArena(&gameMemory->conversionArenaGroup);
 				Arena *arenaFiltered = ArenaGroupPushArena(&gameMemory->conversionArenaGroup);
 				Arena *arenaVisualized = ArenaGroupPushArena(&gameMemory->conversionArenaGroup);
 				Arena *arenaFinal = ArenaGroupPushArena(&gameMemory->conversionArenaGroup);
 				if (arenaFiltered && arenaVisualized && arenaFinal)
 				{
+					processedImage->arenaRoot = arenaRoot;
 					processedImage->arenaFiltered = arenaFiltered;
 					processedImage->arenaVisualized = arenaVisualized;
 					processedImage->arenaFinal = arenaFinal;
@@ -696,6 +698,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 				}
 				else
 				{
+					ArenaResetAndMarkAsReadyForAssignment(arenaRoot);
 					ArenaResetAndMarkAsReadyForAssignment(arenaFiltered);
 					ArenaResetAndMarkAsReadyForAssignment(arenaVisualized);
 					ArenaResetAndMarkAsReadyForAssignment(arenaFinal);
@@ -824,17 +827,10 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 			if (latestCompletedProcessedImage->imageFilteredVisualized.dataU8)
 			{
 				ImageRawRGBA32 *visualizedImage = &latestCompletedProcessedImage->imageFilteredVisualized;
-				if (!canvas->textureVisualizedFilteredRootImage.id)
-				{
-					canvas->textureVisualizedFilteredRootImage.id = rlLoadTexture(visualizedImage->dataU8, visualizedImage->dim.x, visualizedImage->dim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
-					canvas->textureVisualizedFilteredRootImage.width = visualizedImage->dim.x;
-					canvas->textureVisualizedFilteredRootImage.height = visualizedImage->dim.y; 
-					canvas->textureVisualizedFilteredRootImage.mipmaps = 1;
-					canvas->textureVisualizedFilteredRootImage.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
-				}
 				RectIV2 rect = {};
 				rect.dim = visualizedImage->dim;
-				UpdateRectInTexture(&canvas->textureVisualizedFilteredRootImage, visualizedImage->dataU8, rect);
+				UpdateRectInTexture(&canvas->textureGPUPNGFiltered.texture, visualizedImage->dataU8, rect);
+				UpdateRectInTexture(&canvas->textureGPURoot.texture, latestCompletedProcessedImage->rootImageRawProcessed.dataU8, rect);
 			}
 
 			ResetProcessedImage(latestCompletedProcessedImage, canvas);

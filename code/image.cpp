@@ -82,9 +82,10 @@ void InitTextureGPU(TextureGPU *textureGPU, ImageRawRGBA32 *imageRaw)
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 }
 
-ImageBadpaintPixels InitBadpaintPixelImage(Arena *arena, iv2 dim)
+ImageBadpaintPixels InitBadpaintPixelImage(Arena *arena, ImageRawRGBA32 *imageRaw)
 {
 	ImageBadpaintPixels result = {};
+	iv2 dim = imageRaw->dim;
 	result.dataBadpaintPixel = ARENA_PUSH_ARRAY(arena, dim.x * dim.y, BadpaintPixel);
 	result.dim = dim;
 	result.dataSize = dim.x * dim.y * 4;
@@ -95,15 +96,7 @@ ImageBadpaintPixels InitBadpaintPixelImage(Arena *arena, iv2 dim)
 	result.drawingRectDirtyListProcess = ARENA_PUSH_ARRAY(arena, result.drawingRectCount, b32);
 	memset(result.drawingRectDirtyListFrame, 0, result.drawingRectCount * sizeof(b32));
 	memset(result.drawingRectDirtyListProcess, 0, result.drawingRectCount * sizeof(b32));
-
-	//NOTE: (Ahmayk) this is a bit of a hack, but all that matters is that we upload empty data here
-	//This should work as long as the size of a badpaintpixel is more or equal to the size of a color pixel (u32)
-	ImageRawRGBA32 tempImageRaw = {};
-	tempImageRaw.dataU8 = (u8*) result.dataBadpaintPixel;
-	tempImageRaw.dim = dim;
-	tempImageRaw.dataSize = result.dataSize; 
-	InitTextureGPU(&result.textureGPU, &tempImageRaw);
-
+	InitTextureGPU(&result.textureGPU, imageRaw);
 	return result;
 }
 
@@ -145,23 +138,31 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 		gameMemory->canvasArena.memory &&
 		gameMemory->canvasRollbackArena.memory &&
 		gameMemory->conversionArenaGroup.masterArena.memory)
+
 	{
-		canvas->badpaintPixelsRootImage = InitBadpaintPixelImage(&gameMemory->canvasArena, rootImageRaw->dim);
-		canvas->badpaintPixelsPNGFiltered = InitBadpaintPixelImage(&gameMemory->canvasArena, rootImageRaw->dim);
-		canvas->badpaintPixelsFinalImage = InitBadpaintPixelImage(&gameMemory->canvasArena, rootImageRaw->dim);
+		ArenaMarker blankMarker;
+		ImageRawRGBA32 tempImageRawBlank = {};
+		tempImageRawBlank.dataSize = rootImageRaw->dim.x * rootImageRaw->dim.y * 4;
+		tempImageRawBlank.dataU8 = ArenaPushSize(&gameMemory->temporaryArena, tempImageRawBlank.dataSize, &blankMarker);
+		tempImageRawBlank.dim = rootImageRaw->dim; 
+		memset(tempImageRawBlank.dataU8, 0, tempImageRawBlank.dataSize);
+
+		canvas->badpaintPixelsRootImage = InitBadpaintPixelImage(&gameMemory->canvasArena, &tempImageRawBlank);
+		canvas->badpaintPixelsPNGFiltered = InitBadpaintPixelImage(&gameMemory->canvasArena, &tempImageRawBlank);
+		canvas->badpaintPixelsFinalImage = InitBadpaintPixelImage(&gameMemory->canvasArena, &tempImageRawBlank);
+
+		InitTextureGPU(&canvas->textureGPURoot, &tempImageRawBlank);
+		InitTextureGPU(&canvas->textureGPUPNGFiltered, &tempImageRawBlank);
+		InitTextureGPU(&canvas->textureGPUFinal, &tempImageRawBlank);
+
+		ArenaPopMarker(blankMarker);
 
 		ArenaGroupResetAndFill(&gameMemory->conversionArenaGroup, conversionArenaSize);
-
-		if (canvas->textureVisualizedFilteredRootImage.id)
-		{
-			rlUnloadTexture(canvas->textureVisualizedFilteredRootImage.id);
-			canvas->textureVisualizedFilteredRootImage = {};
-		}
 
 		canvas->finalImageRectDim = iv2{512, 512};
 		canvas->finalImageRectCount = GetDrawingRectCount(rootImageRaw->dim, canvas->finalImageRectDim);
 		canvas->cachedFinalImageRectHashes = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->finalImageRectCount, u32);
-		HashImageRects(rootImageRaw, canvas->finalImageRectDim, &canvas->cachedFinalImageRectHashes);
+		//NOTE: (Ahmayk) leave garbage data in cache, will upload first image. then will be replaced
 
 		canvas->rollbackSizeCount = (u32) FloorF32((f32)gameMemory->canvasRollbackArena.size / visualizedCanvasDataSize) - 1;
 		canvas->rollbackImageData = ARENA_PUSH_ARRAY(&gameMemory->canvasRollbackArena, canvas->rollbackSizeCount * visualizedCanvasDataSize, u8);
@@ -172,8 +173,6 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 		canvas->saveRollbackOnNextPress = {};
 		canvas->dataOnCanvas = {};
 
-		InitTextureGPU(&canvas->textureGPUFinal, rootImageRaw);
-		InitTextureGPU(&canvas->textureGPURoot, rootImageRaw);
 
 		canvas->initialized = true;
 		canvas->proccessAsap = true;
