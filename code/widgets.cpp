@@ -43,10 +43,10 @@ INTERACTION_STATE GetInteractionState(u32 hash, UiInteractionHashes *uiInteracti
 	return result;
 }
 
-UiBlock *WidgetBrushEffectButton(UiState *uiState, AppState *appState, FrameState *frameState, BADPAINT_BRUSH_EFFECT brushEffect, String string, COMMAND command)
+UiBlock *WidgetBrushEffectButton(UiState *uiState, AppState *appState, FrameState *frameState, BADPAINT_PIXEL_TYPE brushEffect, String string, COMMAND command)
 {
 	u32 hash = Murmur3String("brushEffect", brushEffect);
-	b32 active = appState->currentBrushEffect == brushEffect;
+	b32 active = appState->currentBadpaintPixelType == brushEffect;
 	b32 isDisabled = false;
 	b32 downOverride = IsCommandKeyBindingDown(command);
 
@@ -62,7 +62,7 @@ UiBlock *WidgetBrushEffectButton(UiState *uiState, AppState *appState, FrameStat
 	result->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
 	result->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
 
-	ColorU32 baseColor = BRUSH_EFFECT_COLORS_PRIMARY[brushEffect];
+	ColorU32 baseColor = BADPAINT_PIXEL_TYPE_COLORS_PRIMARY[brushEffect];
 
 	ColorU32 colors[INTERACTION_STATE_COUNT];
 	colors[INTERACTION_STATE_NONACTIVE_NEUTRAL] = AddConstantToColor(baseColor, -50);
@@ -170,11 +170,11 @@ void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2
 			{
 				v2 posTopLeft = (posInDrawnCanvas - (appState->toolSize * 0.5f));
 				v2 normalizedPos;
-				normalizedPos.x = SafeDivideF32(posTopLeft.x, (f32) appState->canvas.drawnImageData.dim.x);
-				normalizedPos.y = SafeDivideF32(posTopLeft.y, (f32) appState->canvas.drawnImageData.dim.y);
+				normalizedPos.x = SafeDivideF32(posTopLeft.x, (f32) appState->canvas.rootBadpaintPixels.dim.x);
+				normalizedPos.y = SafeDivideF32(posTopLeft.y, (f32) appState->canvas.rootBadpaintPixels.dim.y);
 				v2 absolutePos = (normalizedPos * canvasBlockPrev->rect.dim) + canvasBlockPrev->rect.pos;
 
-				f32 sizeNormalized = SafeDivideF32((f32)appState->toolSize, (f32) appState->canvas.drawnImageData.dim.x);
+				f32 sizeNormalized = SafeDivideF32((f32)appState->toolSize, (f32) appState->canvas.rootBadpaintPixels.dim.x);
 				f32 sizeAbsolute = sizeNormalized * canvasBlockPrev->rect.dim.x;
 
 				UiBlock *t = UiCreateRootBlock(uiState);
@@ -183,7 +183,7 @@ void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2
 				t->uiPosition[UI_AXIS_Y] = {UI_POSITION_ABSOLUTE, absolutePos.y};
 				t->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) sizeAbsolute};
 				t->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) sizeAbsolute};
-				t->uiBlockColors.backColor = BRUSH_EFFECT_COLORS_PROCESSING[appState->currentBrushEffect];
+				t->uiBlockColors.backColor = BADPAINT_PIXEL_TYPE_COLORS_PROCESSING[appState->currentBadpaintPixelType];
 			}
 		}
 		if (uiPanel->uiPanelType == UI_PANEL_TYPE_FINAL_TEXTURE)
@@ -194,11 +194,11 @@ void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2
 			{
 				v2 posTopLeft = (posInDrawnCanvas - (appState->toolSize * 0.5f));
 				v2 normalizedPos;
-				normalizedPos.x = SafeDivideF32(posTopLeft.x, (f32) appState->canvas.drawnImageData.dim.x);
-				normalizedPos.y = SafeDivideF32(posTopLeft.y, (f32) appState->canvas.drawnImageData.dim.y);
+				normalizedPos.x = SafeDivideF32(posTopLeft.x, (f32) appState->canvas.rootBadpaintPixels.dim.x);
+				normalizedPos.y = SafeDivideF32(posTopLeft.y, (f32) appState->canvas.rootBadpaintPixels.dim.y);
 				v2 absolutePos = (normalizedPos * canvasBlockPrev->rect.dim) + canvasBlockPrev->rect.pos;
 
-				f32 sizeNormalized = SafeDivideF32((f32)appState->toolSize, (f32) appState->canvas.drawnImageData.dim.x);
+				f32 sizeNormalized = SafeDivideF32((f32)appState->toolSize, (f32) appState->canvas.rootBadpaintPixels.dim.x);
 				f32 sizeAbsolute = sizeNormalized * canvasBlockPrev->rect.dim.x;
 
 				UiBlock *t = UiCreateRootBlock(uiState);
@@ -237,11 +237,11 @@ void ProcessActiveInputInDrawableArea(UiState *uiState, AppState *appState, Fram
 	UiBlock *drawableBlockPrev = UiGetBlockOfHashLastFrame(uiState, drawableBlock->hash);
 	if (drawableBlockPrev->hash)
 	{
-		v2 posInCanvas = ScreenPosToCanvasPos(frameState->mousePixelPos, &drawableBlockPrev->rect, appState->canvas.drawnImageData.dim);
+		v2 posInCanvas = ScreenPosToCanvasPos(frameState->mousePixelPos, &drawableBlockPrev->rect, appState->canvas.rootBadpaintPixels.dim);
 		DrawToolInCanvasOnPanelAndChildren(uiState, appState, posInCanvas);
 		if (drawableBlock->hash == frameState->uiInteractionHashes.hashMouseDown)
 		{
-			v2 posInCanvasPrevious = ScreenPosToCanvasPos(frameState->mousePixelPosPrevious, &drawableBlockPrev->rect, appState->canvas.drawnImageData.dim);
+			v2 posInCanvasPrevious = ScreenPosToCanvasPos(frameState->mousePixelPosPrevious, &drawableBlockPrev->rect, appState->canvas.rootBadpaintPixels.dim);
 			AppCommand *appCommand = PushAppCommand(&frameState->appCommandBuffer);
 			appCommand->command = COMMAND_PAINT_ON_CANVAS_BETWEEN_POSITIONS;
 			appCommand->value1V2 = posInCanvasPrevious;

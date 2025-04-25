@@ -139,7 +139,7 @@ AppState *InitApp(GameMemory *gameMemory, u32 threadCount)
 	appState->defaultUiFont.id = appState->defaultFont.texture.id;
 	appState->defaultUiFont.data = &appState->defaultFont;
 
-	appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_REMOVE;
+	appState->currentBadpaintPixelType = BADPAINT_PIXEL_TYPE_REMOVE;
 	//appState->toolSize = 10;
 	appState->toolSize = 50;
 	appState->currentTool = BADPAINT_TOOL_PENCIL;
@@ -365,7 +365,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 50};
 					}
 
-					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_BRUSH_EFFECT_REMOVE, STRING("Rmv"), COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE);
+					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_REMOVE, STRING("Rmv"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_REMOVE);
 
 					{
 						UiBlock *seperator = UiCreateBlock(uiState);
@@ -428,21 +428,21 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 			AppCommand *appCommand = &appCommandBuffer->appCommands[commandIndex];
 			switch(appCommand->command)
 			{
-				case COMMAND_SWITCH_BRUSH_EFFECT_TO_REMOVE:
+				case COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_REMOVE:
 				{
-					appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_REMOVE;
+					appState->currentBadpaintPixelType = BADPAINT_PIXEL_TYPE_REMOVE;
 				} break;
-				case COMMAND_SWITCH_BRUSH_EFFECT_TO_MAX:
+				case COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_MAX:
 				{
-					appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_MAX;
+					appState->currentBadpaintPixelType = BADPAINT_PIXEL_TYPE_MAX;
 				} break;
-				case COMMAND_SWITCH_BRUSH_EFFECT_TO_SHIFT:
+				case COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_SHIFT:
 				{
-					appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_SHIFT;
+					appState->currentBadpaintPixelType = BADPAINT_PIXEL_TYPE_SHIFT;
 				} break;
-				case COMMAND_SWITCH_BRUSH_EFFECT_TO_RANDOM:
+				case COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_RANDOM:
 				{
-					appState->currentBrushEffect = BADPAINT_BRUSH_EFFECT_RANDOM;
+					appState->currentBadpaintPixelType = BADPAINT_PIXEL_TYPE_RANDOM;
 				} break;
 				case COMMAND_SWITCH_TOOL_TO_PENCIL:
 				{
@@ -503,17 +503,17 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 						{
 							case BADPAINT_TOOL_PENCIL:
 							{
-								Color colorToPaint = {};
-								colorToPaint.r = (u8) appState->currentBrushEffect;
-								colorToPaint.g = (u8) RandomInRangeI32(0, 255);
-								colorToPaint.a = (u8) canvas->processBatchIndex;
-								drewSomething = CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, appState->toolSize, colorToPaint);
+								BadpaintPixel badpaintPixel = {};
+								badpaintPixel.badpaintPixelType = appState->currentBadpaintPixelType;
+								badpaintPixel.r1RandomValue = (u8) RandomInRangeI32(0, 255);
+								badpaintPixel.processBatchIndex = canvas->processBatchIndex;
+								drewSomething = CanvasDrawCircleStroke(&canvas->rootBadpaintPixels, startPosIV2, endPosIV2, appState->toolSize, badpaintPixel);
 							} break;
 							case BADPAINT_TOOL_ERASER:
 							{
-								Color colorToPaint = {};
-								colorToPaint.a = (u8) canvas->processBatchIndex;
-								drewSomething = CanvasDrawCircleStroke(canvas, startPosIV2, endPosIV2, appState->toolSize, colorToPaint);
+								BadpaintPixel badpaintPixel = {};
+								badpaintPixel.processBatchIndex = canvas->processBatchIndex;
+								drewSomething = CanvasDrawCircleStroke(&canvas->rootBadpaintPixels, startPosIV2, endPosIV2, appState->toolSize, badpaintPixel);
 							} break;
 							case BADPAINT_TOOL_TEST:
 							{
@@ -552,6 +552,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 
 		ArenaPopMarker(appCommandBuffer->arenaMarker);
 
+		//TODO: (Ahmayk) Reenable undo when you have a plan to implement it properly
+#if 0
 		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && canvas->saveRollbackOnNextPress)
 		{
 			unsigned char *newRollbackImage = &canvas->rollbackImageData[(canvas->drawnImageData.dataSize * canvas->rollbackIndexNext)];
@@ -612,6 +614,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 				InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 			}
 		}
+#endif
 
 		//TODO: (Ahmayk) turn into app commands
 		if (IsKeyPressed(KEY_ZERO))
@@ -658,7 +661,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 					processedImage->arenaFiltered = arenaFiltered;
 					processedImage->arenaVisualized = arenaVisualized;
 					processedImage->arenaFinal = arenaFinal;
-					memcpy(processedImage->dirtyRectsInProcess, canvas->drawingRectDirtyListProcess, canvas->drawingRectCount * sizeof(b32));
+					memcpy(processedImage->dirtyRectsInProcess, canvas->rootBadpaintPixels.drawingRectDirtyListProcess, canvas->rootBadpaintPixels.drawingRectCount * sizeof(b32));
 					canvas->proccessAsap = false;
 					processedImage->active = true;
 					processedImage->processBatchIndex = canvas->processBatchIndex;
@@ -668,7 +671,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 					{
 						canvas->processBatchIndex++;
 					}
-					memset(canvas->drawingRectDirtyListProcess, 0, canvas->drawingRectCount * sizeof(b32));
+					memset(canvas->rootBadpaintPixels.drawingRectDirtyListProcess, 0, canvas->rootBadpaintPixels.drawingRectCount * sizeof(b32));
 					PlatformAddThreadWorkEntry(threadWorkQueue, ProcessImageOnThread, (void *)processedImage);
 					// Print("Queueing Work on thread " + IntToString(processedImage->index));
 				}
@@ -687,25 +690,25 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 			ProcessedImage *processedImageOfIndex = appState->processedImages + threadIndex;
 			if (processedImageOfIndex->active && processedImageOfIndex->processingComplete)
 			{
-				for (u32 rectIndex = 0; rectIndex < canvas->drawingRectCount; rectIndex++)
+				for (u32 rectIndex = 0; rectIndex < canvas->rootBadpaintPixels.drawingRectCount; rectIndex++)
 				{
 					if (processedImageOfIndex->dirtyRectsInProcess[rectIndex])
 					{
-						canvas->drawingRectDirtyListFrame[rectIndex] = true;
-						RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->drawnImageData.dim, canvas->drawingRectDim, rectIndex);
+						canvas->rootBadpaintPixels.drawingRectDirtyListFrame[rectIndex] = true;
+						RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->rootBadpaintPixels.dim, canvas->rootBadpaintPixels.drawingRectDim, rectIndex);
 						u32 pixelIndex = 0;
 						u32 startY = drawingRect.pos.y;
 						u32 endY = startY + drawingRect.dim.y;
 						for (u32 y = startY; y < endY; y++)
 						{
-							u32 startIndex = (canvas->drawnImageData.dim.x * y) + drawingRect.pos.x;
+							u32 startIndex = (canvas->rootBadpaintPixels.dim.x * y) + drawingRect.pos.x;
 							u32 endIndex = startIndex + drawingRect.dim.x;
 							for (u32 i = startIndex; i < endIndex; i++)
 							{
-								Color *canvasPixel = &((Color *)canvas->drawnImageData.dataU8)[i];
-								if (canvasPixel->a == processedImageOfIndex->processBatchIndex)
+								BadpaintPixel *badpaintPixel = &canvas->rootBadpaintPixels.dataBadpaintPixel[i];
+								if (badpaintPixel->processBatchIndex == processedImageOfIndex->processBatchIndex)
 								{
-									canvasPixel->a = 0;
+									badpaintPixel->processBatchIndex = 0;
 								}
 								pixelIndex++;
 							}
@@ -819,9 +822,9 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 		}
 
 		b32 somethingToDraw = false;
-		for (u32 rectIndex = 0; rectIndex < canvas->drawingRectCount; rectIndex++)
+		for (u32 rectIndex = 0; rectIndex < canvas->rootBadpaintPixels.drawingRectCount; rectIndex++)
 		{
-			if (canvas->drawingRectDirtyListFrame[rectIndex])
+			if (canvas->rootBadpaintPixels.drawingRectDirtyListFrame[rectIndex])
 			{
 				somethingToDraw = true;
 			}
@@ -833,30 +836,29 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 			ColorU32 *pixels = (ColorU32 *) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
 			if (ASSERT(pixels))
 			{
-				for (u32 rectIndex = 0; rectIndex < canvas->drawingRectCount; rectIndex++)
+				for (u32 rectIndex = 0; rectIndex < canvas->rootBadpaintPixels.drawingRectCount; rectIndex++)
 				{
-					if (canvas->drawingRectDirtyListFrame[rectIndex])
+					if (canvas->rootBadpaintPixels.drawingRectDirtyListFrame[rectIndex])
 					{
-						RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->drawnImageData.dim, canvas->drawingRectDim, rectIndex);
+						RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->rootBadpaintPixels.dim, canvas->rootBadpaintPixels.drawingRectDim, rectIndex);
 						u32 startY = drawingRect.pos.y;
 						u32 endY = startY + drawingRect.dim.y;
 						for (u32 y = startY; y < endY; y++)
 						{
-							u32 startIndex = (canvas->drawnImageData.dim.x * y) + drawingRect.pos.x;
+							u32 startIndex = (canvas->rootBadpaintPixels.dim.x * y) + drawingRect.pos.x;
 							u32 endIndex = startIndex + drawingRect.dim.x;
 							for (u32 i = startIndex; i < endIndex; i++)
 							{
-								ColorU32 canvasPixel = ((ColorU32 *)canvas->drawnImageDataRoot.dataU8)[i];
+								BadpaintPixel *badpaintPixel = &canvas->rootBadpaintPixels.dataBadpaintPixel[i];
 								ColorU32 *outPixel = (pixels + i);
-								//NOTE: (Ahmayk) alpha = 0 -> no processing
-								//alpha != 0 -> is being processed currently
-								if (canvasPixel.a != 0)
+								//processBatchIndex != 0 -> is being processed currently
+								if (badpaintPixel->processBatchIndex != 0)
 								{
-									*outPixel = BRUSH_EFFECT_COLORS_PROCESSING[canvasPixel.r];
+									*outPixel = BADPAINT_PIXEL_TYPE_COLORS_PROCESSING[badpaintPixel->badpaintPixelType];
 								}
 								else
 								{
-									*outPixel = BRUSH_EFFECT_COLORS_PRIMARY[canvasPixel.r];
+									*outPixel = BADPAINT_PIXEL_TYPE_COLORS_PRIMARY[badpaintPixel->badpaintPixelType];
 								}
 							}
 						}
@@ -868,14 +870,14 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 			glBindTexture(GL_TEXTURE_2D, canvas->textureDrawing.id);
 			glPixelStorei(GL_UNPACK_ROW_LENGTH, canvas->textureDrawing.width);
 
-			for (u32 rectIndex = 0; rectIndex < canvas->drawingRectCount; rectIndex++)
+			for (u32 rectIndex = 0; rectIndex < canvas->rootBadpaintPixels.drawingRectCount; rectIndex++)
 			{
-				if (canvas->drawingRectDirtyListFrame[rectIndex])
+				if (canvas->rootBadpaintPixels.drawingRectDirtyListFrame[rectIndex])
 				{
-					RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->drawnImageData.dim, canvas->drawingRectDim, rectIndex);
+					RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->rootBadpaintPixels.dim, canvas->rootBadpaintPixels.drawingRectDim, rectIndex);
 					GLintptr offset = (drawingRect.pos.y * canvas->textureDrawing.width + drawingRect.pos.x) * sizeof(ColorU32);
 					glTexSubImage2D(GL_TEXTURE_2D, 0, drawingRect.pos.x, drawingRect.pos.y, drawingRect.dim.x, drawingRect.dim.y, GL_RGBA, GL_UNSIGNED_BYTE, (void*)offset);
-					canvas->drawingRectDirtyListFrame[rectIndex] = false;
+					canvas->rootBadpaintPixels.drawingRectDirtyListFrame[rectIndex] = false;
 				}
 			}
 

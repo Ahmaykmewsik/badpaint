@@ -116,19 +116,12 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 		gameMemory->canvasRollbackArena.memory &&
 		gameMemory->conversionArenaGroup.masterArena.memory)
 	{
-		canvas->drawnImageData.dataU8 = ArenaPushSize(&gameMemory->canvasArena, visualizedCanvasDataSize, {});
-		canvas->drawnImageData.dim = canvasDim;
-		canvas->drawnImageData.dataSize = visualizedCanvasDataSize;
-		memset(canvas->drawnImageData.dataU8, 0, visualizedCanvasDataSize);
-
-		canvas->drawnImageDataRoot.dataU8 = ArenaPushSize(&gameMemory->canvasArena, visualizedCanvasDataSize, {});
-		canvas->drawnImageDataRoot.dim = canvasDim;
-		canvas->drawnImageDataRoot.dataSize = visualizedCanvasDataSize;
-		memset(canvas->drawnImageDataRoot.dataU8, 0, visualizedCanvasDataSize);
+		canvas->rootBadpaintPixels.dataBadpaintPixel = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, rootImageRaw->dim.x * rootImageRaw->dim.y, BadpaintPixel);
+		canvas->rootBadpaintPixels.dim = canvasDim;
+		canvas->rootBadpaintPixels.dataSize = visualizedCanvasDataSize;
+		memset(canvas->rootBadpaintPixels.dataBadpaintPixel, 0, visualizedCanvasDataSize);
 
 		ArenaGroupResetAndFill(&gameMemory->conversionArenaGroup, conversionArenaSize);
-
-		UploadAndReplaceTexture(&canvas->drawnImageData, &canvas->textureDrawing);
 
 		if (canvas->textureVisualizedFilteredRootImage.id)
 		{
@@ -174,12 +167,12 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 		canvas->saveRollbackOnNextPress = {};
 		canvas->dataOnCanvas = {};
 
-		canvas->drawingRectDim = iv2{32, 32};
-		canvas->drawingRectCount = GetDrawingRectCount(canvasDim, canvas->drawingRectDim);
-		canvas->drawingRectDirtyListFrame = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
-		canvas->drawingRectDirtyListProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
-		memset(canvas->drawingRectDirtyListFrame, 0, canvas->drawingRectCount * sizeof(b32));
-		memset(canvas->drawingRectDirtyListProcess, 0, canvas->drawingRectCount * sizeof(b32));
+		canvas->rootBadpaintPixels.drawingRectDim = iv2{32, 32};
+		canvas->rootBadpaintPixels.drawingRectCount = GetDrawingRectCount(canvasDim, canvas->rootBadpaintPixels.drawingRectDim);
+		canvas->rootBadpaintPixels.drawingRectDirtyListFrame = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->rootBadpaintPixels.drawingRectCount, b32);
+		canvas->rootBadpaintPixels.drawingRectDirtyListProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->rootBadpaintPixels.drawingRectCount, b32);
+		memset(canvas->rootBadpaintPixels.drawingRectDirtyListFrame, 0, canvas->rootBadpaintPixels.drawingRectCount * sizeof(b32));
+		memset(canvas->rootBadpaintPixels.drawingRectDirtyListProcess, 0, canvas->rootBadpaintPixels.drawingRectCount * sizeof(b32));
 
 		canvas->initialized = true;
 	}
@@ -203,7 +196,7 @@ b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Can
 			for (u32 i = 0; i < threadCount; i++)
 			{
 				ProcessedImage *processedImage = processedImages + i;
-				processedImage->dirtyRectsInProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->drawingRectCount, b32);
+				processedImage->dirtyRectsInProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->rootBadpaintPixels.drawingRectCount, b32);
 				processedImage->finalImageRectHashes = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->finalImageRectCount, u32);
 			}
 		}

@@ -16,11 +16,76 @@ enum PNG_FILTER_TYPE : i32
 
 static const char *PNG_FILTER_NAMES[] = {"None", "Sub", "Up", "Average", "Paeth", "Optimal"};
 
+enum BADPAINT_TOOL_TYPE
+{
+	BADPAINT_TOOL_PENCIL,
+	BADPAINT_TOOL_ERASER,
+	BADPAINT_TOOL_TEST,
+	BADPAINT_TOOL_COUNT,
+};
+
+enum BADPAINT_PIXEL_TYPE : u8
+{
+	BADPAINT_PIXEL_TYPE_NONE = 0,
+	BADPAINT_PIXEL_TYPE_REMOVE = 1,
+	BADPAINT_PIXEL_TYPE_MAX = 2,
+	BADPAINT_PIXEL_TYPE_SHIFT = 3,
+	BADPAINT_PIXEL_TYPE_RANDOM= 4,
+};
+
+static ColorU32 BADPAINT_PIXEL_TYPE_COLORS_PRIMARY[] =
+{
+	{},
+	{ 230, 41, 55, 187 }, // RED
+	{ 230, 41, 55, 187 }, // RED
+	{ 253, 249, 0, 187 }, // YELLOW
+	{ 0, 121, 241, 187 }, //BLUE
+	{ 200, 122, 255, 187 }, //PURPLE
+};
+static ColorU32 BADPAINT_PIXEL_TYPE_COLORS_PROCESSING[] =
+{
+	{},
+	{ 230, 41, 55, 127 }, // RED
+	{ 253, 249, 0, 127 }, // YELLOW
+	{ 0, 121, 241, 127 }, //BLUE
+	{ 200, 122, 255, 127 }, //PURPLE
+};
+
+struct BadpaintPixel
+{
+	BADPAINT_PIXEL_TYPE badpaintPixelType;
+	union 
+	{
+		u8 r1Null;
+		u8 r1RandomValue;
+	};
+	union 
+	{
+		u8 r2Null;
+	};
+	union 
+	{
+		u8 r3Null;
+	};
+	u8 processBatchIndex;
+};
+
 struct ImageRawRGBA32
 {
 	u8 *dataU8;
 	u32 dataSize;
 	iv2 dim;
+};
+
+struct ImageBadpaintPixels
+{
+	BadpaintPixel *dataBadpaintPixel;
+	u32 dataSize;
+	iv2 dim;
+	iv2 drawingRectDim;
+	b32 *drawingRectDirtyListFrame;
+	b32 *drawingRectDirtyListProcess;
+	u32 drawingRectCount;
 };
 
 struct ImagePNGFiltered
@@ -58,12 +123,7 @@ struct Canvas
 	//R - brush type
 	//G - random value
 	//A - processBatchIndex if processing, otherwise 0 (for displaying processes state per pixel)
-	ImageRawRGBA32 drawnImageData;
-	ImageRawRGBA32 drawnImageDataRoot;
-	iv2 drawingRectDim;
-	b32 *drawingRectDirtyListFrame;
-	b32 *drawingRectDirtyListProcess;
-	u32 drawingRectCount;
+	ImageBadpaintPixels rootBadpaintPixels;
 	Texture textureDrawing;
 	u8 processBatchIndex;
 	u32 drawingPboIDs[2]; 
@@ -94,40 +154,6 @@ b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Can
 RectIV2 GetDrawingRectFromIndex(iv2 imageDim, iv2 rectDim, u32 i);
 u32 GetDrawingRectCount(iv2 imageDim, iv2 rectDim);
 void UpdateRectInTexture(Texture *texture, void *data, RectIV2 rect);
-
-enum BADPAINT_BRUSH_EFFECT : u32
-{
-    BADPAINT_BRUSH_EFFECT_REMOVE = 1,
-    BADPAINT_BRUSH_EFFECT_MAX = 2,
-    BADPAINT_BRUSH_EFFECT_SHIFT = 3,
-    BADPAINT_BRUSH_EFFECT_RANDOM = 4,
-};
-
-static ColorU32 BRUSH_EFFECT_COLORS_PRIMARY[] =
-{
-	{},
-	{ 230, 41, 55, 187 }, // RED
-	{ 230, 41, 55, 187 }, // RED
-	{ 253, 249, 0, 187 }, // YELLOW
-	{ 0, 121, 241, 187 }, //BLUE
-	{ 200, 122, 255, 187 }, //PURPLE
-};
-static ColorU32 BRUSH_EFFECT_COLORS_PROCESSING[] =
-{
-	{},
-	{ 230, 41, 55, 127 }, // RED
-	{ 253, 249, 0, 127 }, // YELLOW
-	{ 0, 121, 241, 127 }, //BLUE
-	{ 200, 122, 255, 127 }, //PURPLE
-};
-
-enum BADPAINT_TOOL_TYPE
-{
-	BADPAINT_TOOL_PENCIL,
-	BADPAINT_TOOL_ERASER,
-	BADPAINT_TOOL_TEST,
-	BADPAINT_TOOL_COUNT,
-};
 
 struct Tool
 {
