@@ -846,7 +846,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 							u32 endIndex = startIndex + drawingRect.dim.x;
 							for (u32 i = startIndex; i < endIndex; i++)
 							{
-								ColorU32 canvasPixel = ((ColorU32 *)canvas->drawnImageData.dataU8)[i];
+								ColorU32 canvasPixel = ((ColorU32 *)canvas->drawnImageDataRoot.dataU8)[i];
 								ColorU32 *outPixel = (pixels + i);
 								//NOTE: (Ahmayk) alpha = 0 -> no processing
 								//alpha != 0 -> is being processed currently

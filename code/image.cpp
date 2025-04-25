@@ -121,6 +121,11 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 		canvas->drawnImageData.dataSize = visualizedCanvasDataSize;
 		memset(canvas->drawnImageData.dataU8, 0, visualizedCanvasDataSize);
 
+		canvas->drawnImageDataRoot.dataU8 = ArenaPushSize(&gameMemory->canvasArena, visualizedCanvasDataSize, {});
+		canvas->drawnImageDataRoot.dim = canvasDim;
+		canvas->drawnImageDataRoot.dataSize = visualizedCanvasDataSize;
+		memset(canvas->drawnImageDataRoot.dataU8, 0, visualizedCanvasDataSize);
+
 		ArenaGroupResetAndFill(&gameMemory->conversionArenaGroup, conversionArenaSize);
 
 		UploadAndReplaceTexture(&canvas->drawnImageData, &canvas->textureDrawing);

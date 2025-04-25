@@ -136,7 +136,7 @@ void HashImageRects(ImageRawRGBA32 *imageRaw, iv2 rectDim, u32 **outHashes)
 	}
 }
 
-void ApplyDataPaint(ImagePNGFiltered *imagePNGFiltered, ImageRawRGBA32 *drawnImageData)
+void ApplyDataPaintFiltered(ImagePNGFiltered *imagePNGFiltered, ImageRawRGBA32 *drawnImageData)
 {
 	for (u32 y = 0; y < (u32) imagePNGFiltered->dim.y; y++)
 	{
@@ -192,6 +192,60 @@ void ApplyDataPaint(ImagePNGFiltered *imagePNGFiltered, ImageRawRGBA32 *drawnIma
 	}
 }
 
+void ApplyDataPaintImageRaw(ImageRawRGBA32 *imageRaw, ImageRawRGBA32 *drawnImageData)
+{
+	for (u32 y = 0; y < (u32) imageRaw->dim.y; y++)
+	{
+		u32 startIndex = imageRaw->dim.x * y;
+		u32 endIndex = startIndex + imageRaw->dim.x;
+		for (u32 i = startIndex; i < endIndex; i++)
+		{
+			u8 *filteredPixel = imageRaw->dataU8 + (i * 4);
+			u8 *canvasPixel = drawnImageData->dataU8 + (i * 4);
+
+			if (canvasPixel[0])
+			{
+				switch (canvasPixel[0])
+				{
+					case BADPAINT_BRUSH_EFFECT_REMOVE:
+					{
+						filteredPixel[0] = 0;
+						filteredPixel[1] = 0;
+						filteredPixel[2] = 0;
+						filteredPixel[3] = 0;
+					} break;
+					case BADPAINT_BRUSH_EFFECT_MAX:
+					{
+						filteredPixel[0] = 255;
+						filteredPixel[1] = 255;
+						filteredPixel[2] = 255;
+						filteredPixel[3] = 255;
+					} break;
+					case BADPAINT_BRUSH_EFFECT_SHIFT:
+					{
+						int shiftAmount = 36;
+						if (i < imageRaw->dataSize - shiftAmount)
+						{
+							filteredPixel[0] = filteredPixel[0 + shiftAmount];
+							filteredPixel[1] = filteredPixel[1 + shiftAmount];
+							filteredPixel[2] = filteredPixel[2 + shiftAmount];
+							filteredPixel[3] = filteredPixel[3 + shiftAmount];
+						}
+					} break;
+					case BADPAINT_BRUSH_EFFECT_RANDOM:
+					{
+						filteredPixel[0] = canvasPixel[1];
+						filteredPixel[1] = canvasPixel[1];
+						filteredPixel[2] = canvasPixel[1];
+						filteredPixel[3] = canvasPixel[1];
+					} break;
+					InvalidDefaultCase
+				}
+			}
+		}
+	}
+}
+
 ImageRawRGBA32 VisualizePNGFiltered(ImagePNGFiltered *imagePNGFiltered, Arena *arena)
 {
 	ImageRawRGBA32 result = {};
@@ -225,11 +279,19 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 
 	Canvas *canvas = processedImage->canvas;
 
-	ImagePNGFiltered imagePNGFiltered = PiratedSTB_EncodePngFilters(processedImage->rootImageRaw, processedImage->arenaFiltered, canvas->currentPNGFilterType);
+	ImageRawRGBA32 imageRaw = *processedImage->rootImageRaw;
+	imageRaw.dataU8 = ArenaPushSize(processedImage->arenaFinal, imageRaw.dataSize, {});
+	memcpy(imageRaw.dataU8, processedImage->rootImageRaw->dataU8, imageRaw.dataSize);
 
-	ApplyDataPaint(&imagePNGFiltered, &canvas->drawnImageData);
+	ApplyDataPaintImageRaw(&imageRaw, &canvas->drawnImageDataRoot);
+
+	ImagePNGFiltered imagePNGFiltered = PiratedSTB_EncodePngFilters(&imageRaw, processedImage->arenaFiltered, canvas->currentPNGFilterType);
+
+	ApplyDataPaintFiltered(&imagePNGFiltered, &canvas->drawnImageData);
 
 	processedImage->imageFilteredVisualized = VisualizePNGFiltered(&imagePNGFiltered, processedImage->arenaVisualized);
+
+	ArenaReset(processedImage->arenaFinal);
 	processedImage->finalProcessedImageRaw = PiratedLoadPNG_Defilter(&imagePNGFiltered, processedImage->arenaFinal);
 
 	HashImageRects(&processedImage->finalProcessedImageRaw, canvas->finalImageRectDim, &processedImage->finalImageRectHashes);

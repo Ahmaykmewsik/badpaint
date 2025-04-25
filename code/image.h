@@ -59,6 +59,7 @@ struct Canvas
 	//G - random value
 	//A - processBatchIndex if processing, otherwise 0 (for displaying processes state per pixel)
 	ImageRawRGBA32 drawnImageData;
+	ImageRawRGBA32 drawnImageDataRoot;
 	iv2 drawingRectDim;
 	b32 *drawingRectDirtyListFrame;
 	b32 *drawingRectDirtyListProcess;

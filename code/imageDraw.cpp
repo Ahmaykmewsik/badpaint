@@ -114,10 +114,10 @@ b32 CanvasFillConvexQuad(Canvas *canvas, iv2 p0, iv2 p1, iv2 p2, iv2 p3, Color c
 		}
     }
 
-	minIV2.y = ClampI32(0, minIV2.y, canvas->drawnImageData.dim.y - 1);
-	maxIV2.y = ClampI32(0, maxIV2.y, canvas->drawnImageData.dim.y - 1);
+	minIV2.y = ClampI32(0, minIV2.y, canvas->drawnImageDataRoot.dim.y - 1);
+	maxIV2.y = ClampI32(0, maxIV2.y, canvas->drawnImageDataRoot.dim.y - 1);
 
-	Image tempImage = ImageRawToRayImage(&canvas->drawnImageData);
+	Image tempImage = ImageRawToRayImage(&canvas->drawnImageDataRoot);
     for (i32 y = minIV2.y; y <= maxIV2.y; y++)
 	{
         i32 xmin = canvas->drawnImageData.dim.x - 1;
@@ -189,7 +189,7 @@ b32 CanvasDrawCircle(Canvas *canvas, iv2 pos, u32 radius, Color color)
 {
 	b32 result = false;
 
-	Image dst = ImageRawToRayImage(&canvas->drawnImageData);
+	Image dst = ImageRawToRayImage(&canvas->drawnImageDataRoot);
 	u32 centerX = pos.x;
 	u32 centerY = pos.y;
     int x = 0;
