@@ -13,25 +13,6 @@
 
 #include "../includes/raylib/src/external/glad.h" // GLAD extensions loading library, includes OpenGL headers
 
-void UploadAndReplaceTexture(ImageRawRGBA32 *imageRaw, Texture *texture)
-{
-	if (ASSERT(imageRaw->dataU8))
-	{
-		if (texture->id)
-		{
-			rlUnloadTexture(texture->id);
-		}
-		*texture = {};
-
-		texture->id = rlLoadTexture(imageRaw->dataU8, imageRaw->dim.x, imageRaw->dim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
-		texture->width = imageRaw->dim.x;
-		texture->height = imageRaw->dim.y;
-		texture->mipmaps = 1;
-		texture->format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
-	}
-	// GenTextureMipmaps(texture);
-}
-
 void UpdateRectInTexture(Texture *texture, void *data, RectIV2 rect)
 {
 	if (data)
@@ -159,19 +140,6 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 			canvas->textureVisualizedFilteredRootImage = {};
 		}
 
-
-		if (canvas->initialized)
-		{
-			glDeleteBuffers(ARRAY_COUNT(canvas->finalImagePboIDs), canvas->finalImagePboIDs);
-		}
-		glGenBuffers(ARRAY_COUNT(canvas->finalImagePboIDs), canvas->finalImagePboIDs);
-		for(u32 i = 0; i < ARRAY_COUNT(canvas->finalImagePboIDs); i++) 
-		{
-			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->finalImagePboIDs[i]);
-			glBufferData(GL_PIXEL_UNPACK_BUFFER, rootImageRaw->dim.x * rootImageRaw->dim.y * 4, NULL, GL_STREAM_DRAW);
-		}
-		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-
 		canvas->finalImageRectDim = iv2{512, 512};
 		canvas->finalImageRectCount = GetDrawingRectCount(rootImageRaw->dim, canvas->finalImageRectDim);
 		canvas->cachedFinalImageRectHashes = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->finalImageRectCount, u32);
@@ -193,6 +161,8 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 		memset(canvas->rootBadpaintPixels.drawingRectDirtyListFrame, 0, canvas->rootBadpaintPixels.drawingRectCount * sizeof(b32));
 		memset(canvas->rootBadpaintPixels.drawingRectDirtyListProcess, 0, canvas->rootBadpaintPixels.drawingRectCount * sizeof(b32));
 
+		InitTextureGPU(&canvas->textureGPUFinal, rootImageRaw);
+
 		canvas->initialized = true;
 	}
 	else
@@ -203,27 +173,26 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 	}
 }
 
-b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, ProcessedImage *processedImages, u32 threadCount)
+b32 InitializeNewImage(GameMemory *gameMemory, AppState *appState)
 {
 	b32 result = false;
-	if (rootImageRaw->dataU8)
+	if (appState->rootImageRaw.dataU8)
 	{
-		InitializeCanvas(canvas, rootImageRaw, gameMemory);
-		if (canvas->initialized)
+		InitializeCanvas(&appState->canvas, &appState->rootImageRaw, gameMemory);
+		if (appState->canvas.initialized)
 		{
-			UploadAndReplaceTexture(rootImageRaw, loadedTexture);
-			for (u32 i = 0; i < threadCount; i++)
+			for (u32 i = 0; i < appState->processedImageCount; i++)
 			{
-				ProcessedImage *processedImage = processedImages + i;
-				processedImage->dirtyRectsInProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->rootBadpaintPixels.drawingRectCount, b32);
-				processedImage->finalImageRectHashes = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->finalImageRectCount, u32);
+				ProcessedImage *processedImage = appState->processedImages + i;
+				processedImage->dirtyRectsInProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, appState->canvas.rootBadpaintPixels.drawingRectCount, b32);
+				processedImage->finalImageRectHashes = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, appState->canvas.finalImageRectCount, u32);
 			}
 		}
 		else
 		{
 			//NOTE: (Ahmayk) The only way canvas init can fail is for this reason.
 			//Not sure how error handling should work yet...will need to change this once there's more than 1 way for this to fail
-			if (rootImageRaw->dataSize > MegaByte * 500)
+			if (appState->rootImageRaw.dataSize > MegaByte * 500)
 			{
 				String notification = STRING("Yikes, this thing is huge! Sorry, but I failed to allocate the memory I needed to handle that. I'll need to be more memory efficent to handle that monster!");
 				//TODO: (Ahmayk) Handle error reporting outside this function!
@@ -235,7 +204,7 @@ b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Can
 				//TODO: (Ahmayk) Handle error reporting outside this function!
 				//InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
 			}
-			*rootImageRaw = {};
+			appState->rootImageRaw = {};
 		}
 	}
 	return result;

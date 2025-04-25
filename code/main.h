@@ -15,12 +15,12 @@ struct AppState
 
 	ImageRawRGBA32 rootImageRaw;
 	ProcessedImage *processedImages;
+	u32 processedImageCount;
 
 	Tool tools[BADPAINT_TOOL_COUNT];
     BADPAINT_PIXEL_TYPE currentBadpaintPixelType;
 	BADPAINT_TOOL_TYPE currentTool;
 	u32 toolSize;
-	Texture loadedTexture;
 	Canvas canvas;
 	UiPanel rootUiPanel;
 

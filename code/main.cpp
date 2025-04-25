@@ -104,6 +104,7 @@ AppState *InitApp(GameMemory *gameMemory, u32 threadCount)
 
 	bool imageIsBroken = {};
 
+	appState->processedImageCount = threadCount; 
 	appState->processedImages = ARENA_PUSH_ARRAY(&gameMemory->permanentArena, threadCount, ProcessedImage);
 	for (u32 i = 0; i < threadCount; i++)
 	{
@@ -165,7 +166,7 @@ AppState *InitApp(GameMemory *gameMemory, u32 threadCount)
 	appState->rootImageRaw = LoadDataIntoRawImage(&DEFAULT_IMAGE_DATA[0], ARRAY_COUNT(DEFAULT_IMAGE_DATA), gameMemory);
 	if (appState->rootImageRaw.dataSize)
 	{
-		InitializeNewImage(gameMemory, &appState->rootImageRaw, canvas, &appState->loadedTexture, appState->processedImages, threadCount);
+		InitializeNewImage(gameMemory, appState);
 	}
 
 	return appState;
@@ -232,7 +233,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 
 			if (appState->rootImageRaw.dataSize)
 			{
-				InitializeNewImage(gameMemory, &appState->rootImageRaw, &appState->canvas, &appState->loadedTexture, appState->processedImages, threadCount);
+				InitializeNewImage(gameMemory, appState);
 				if (appState->rootImageRaw.dataSize > MegaByte * 500)
 				{
 					String notification = STRING("You like to play dangerously, don't you?");
@@ -461,7 +462,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 				} break;
 				case COMMAND_EXPORT_IMAGE:
 				{
-					if (appState->loadedTexture.height && appState->loadedTexture.width)
+					if (canvas->textureGPUFinal.texture.id)
 					{
 						ArenaMarker arenaMarker = ArenaPushMarker(&gameMemory->temporaryArena);
 						String filePath = AllocateString(256, &gameMemory->temporaryArena);
@@ -470,7 +471,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 						filePath.length = filepathLength;
 						if (success && filePath.length)
 						{
-							Image exportImgae = LoadImageFromTexture(appState->loadedTexture);
+							Image exportImgae = LoadImageFromTexture(canvas->textureGPUFinal.texture);
 							ExportImage(exportImgae, filePath);
 
 							String notification = STRING("You have given new life to: ") + filePath;
@@ -748,13 +749,13 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 					{
 						finalImageDirtyRects[rectIndex] = true;
 						atLeastOneDirtyRect = true;
-						break;
 					}
 				}
 
 				if (atLeastOneDirtyRect)
 				{
-					glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->finalImagePboIDs[canvas->currentFinalImagePboID]);
+					TextureGPU *textureGPU = &canvas->textureGPUFinal;
+					glBindBuffer(GL_PIXEL_UNPACK_BUFFER, textureGPU->pboIDs[textureGPU->currentPboID]);
 					u8 *pixels = (u8 *) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
 					if (ASSERT(pixels))
 					{
@@ -777,8 +778,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 						glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
 					}
 
-					glBindTexture(GL_TEXTURE_2D, appState->loadedTexture.id);
-					glPixelStorei(GL_UNPACK_ROW_LENGTH, appState->loadedTexture.width);
+					glBindTexture(GL_TEXTURE_2D, canvas->textureGPUFinal.texture.id);
+					glPixelStorei(GL_UNPACK_ROW_LENGTH, canvas->textureGPUFinal.dim.x);
 					for (u32 rectIndex = 0; rectIndex < canvas->finalImageRectCount; rectIndex++)
 					{
 						if (finalImageDirtyRects[rectIndex])
@@ -793,7 +794,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 
 					glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 					glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-					canvas->currentFinalImagePboID = ModNextU32(canvas->currentFinalImagePboID, ARRAY_COUNT(canvas->finalImagePboIDs));
+					textureGPU->currentPboID = ModNextU32(textureGPU->currentPboID, ARRAY_COUNT(textureGPU->pboIDs));
 
 					uploaded = true;
 

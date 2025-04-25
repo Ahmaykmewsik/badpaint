@@ -120,6 +120,7 @@ struct TextureGPU
 struct Canvas
 {
 	b32 initialized;
+	u8 processBatchIndex;
 
 	Arena *areaFiltered;
 	Arena *areaVisualized;
@@ -128,16 +129,14 @@ struct Canvas
 
 	ImageBadpaintPixels rootBadpaintPixels;
 	TextureGPU textureGPUDrawing;
-	u8 processBatchIndex;
 
-	bool proccessAsap;
-	PNG_FILTER_TYPE currentPNGFilterType;
-
-	u32 finalImagePboIDs[2]; 
-	u32 currentFinalImagePboID;
+	TextureGPU textureGPUFinal;
 	iv2 finalImageRectDim;
 	u32 finalImageRectCount;
 	u32 *cachedFinalImageRectHashes;
+
+	bool proccessAsap;
+	PNG_FILTER_TYPE currentPNGFilterType;
 
 	u8 *rollbackImageData;
 	u32 rollbackSizeCount;
@@ -150,8 +149,9 @@ struct Canvas
 };
 
 struct ProcessedImage;
+struct AppState;
 
-b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Canvas *canvas, Texture *loadedTexture, ProcessedImage *processedImages, u32 threadCount);
+b32 InitializeNewImage(GameMemory *gameMemory, AppState *appState);
 RectIV2 GetDrawingRectFromIndex(iv2 imageDim, iv2 rectDim, u32 i);
 u32 GetDrawingRectCount(iv2 imageDim, iv2 rectDim);
 void UpdateRectInTexture(Texture *texture, void *data, RectIV2 rect);

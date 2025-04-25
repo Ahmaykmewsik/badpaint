@@ -308,12 +308,13 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 						b->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
 						UI_PARENT_SCOPE(uiState, b)
 						{
+							TextureGPU *textureGPUFinal = &appState->canvas.textureGPUFinal;
 							UiBlock *finalTexture = UiCreateBlock(uiState);
 							finalTexture->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
 							finalTexture->hash = Murmur3String("finalTexture", uiPanel->hash);
-							finalTexture->uiTextureView = UiRaylibTextureToUiTextureView(&appState->loadedTexture);
+							finalTexture->uiTextureView = UiRaylibTextureToUiTextureView(&textureGPUFinal->texture);
 							finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(appState->loadedTexture.height, appState->loadedTexture.width)};
+							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(textureGPUFinal->dim.y, textureGPUFinal->dim.x)};
 							if (finalTexture->hash == frameState->uiInteractionHashes.hashMouseHover)
 							{
 								ProcessActiveInputInDrawableArea(uiState, appState, frameState, finalTexture);
