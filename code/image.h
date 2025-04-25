@@ -109,6 +109,14 @@ struct ImagePNGChecksumed
 	iv2 dim;
 };
 
+struct TextureGPU
+{
+	Texture texture;
+	iv2 dim;
+	u32 pboIDs[2]; 
+	u32 currentPboID;
+};
+
 struct Canvas
 {
 	b32 initialized;
@@ -118,15 +126,9 @@ struct Canvas
 	Arena *areaFinal;
 	Texture textureVisualizedFilteredRootImage;
 
-	//Data in drawnImageData:
-	//R - brush type
-	//G - random value
-	//A - processBatchIndex if processing, otherwise 0 (for displaying processes state per pixel)
 	ImageBadpaintPixels rootBadpaintPixels;
-	Texture textureDrawing;
+	TextureGPU textureGPUDrawing;
 	u8 processBatchIndex;
-	u32 drawingPboIDs[2]; 
-	u32 currentDrawingPboID;
 
 	bool proccessAsap;
 	PNG_FILTER_TYPE currentPNGFilterType;

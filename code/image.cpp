@@ -77,6 +77,30 @@ u32 GetDrawingRectCount(iv2 imageDim, iv2 rectDim)
 	return result;
 }
 
+void InitTextureGPU(TextureGPU *textureGPU, ImageRawRGBA32 *imageRaw)
+{
+	if (textureGPU->texture.id)
+	{
+		rlUnloadTexture(textureGPU->texture.id);
+		glDeleteBuffers(ARRAY_COUNT(textureGPU->pboIDs), textureGPU->pboIDs);
+	}
+	*textureGPU = {};
+
+	textureGPU->dim = imageRaw->dim;
+	textureGPU->texture.id = rlLoadTexture(imageRaw->dataU8, textureGPU->dim.x, textureGPU->dim.y, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
+	textureGPU->texture.width = textureGPU->dim.x;
+	textureGPU->texture.height = textureGPU->dim.y;
+	textureGPU->texture.mipmaps = 1; 
+	textureGPU->texture.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8; 
+	glGenBuffers(ARRAY_COUNT(textureGPU->pboIDs), textureGPU->pboIDs);
+	for(u32 i = 0; i < ARRAY_COUNT(textureGPU->pboIDs); i++) 
+	{
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, textureGPU->pboIDs[i]);
+		glBufferData(GL_PIXEL_UNPACK_BUFFER, imageRaw->dataSize, NULL, GL_STREAM_DRAW);
+	}
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+}
+
 //TODO: (Ahmayk) This takes a good deal of time now, the exspensive stuff should be offloaded to another thread
 //And we have a fun little loading animation or something
 void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *gameMemory)
@@ -121,17 +145,11 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 		canvas->rootBadpaintPixels.dataSize = visualizedCanvasDataSize;
 		memset(canvas->rootBadpaintPixels.dataBadpaintPixel, 0, visualizedCanvasDataSize);
 
-		if (canvas->textureDrawing.id)
-		{
-			rlUnloadTexture(canvas->textureDrawing.id);
-		}
-		canvas->textureDrawing = {};
-
-		canvas->textureDrawing.width = canvas->rootBadpaintPixels.dim.x;
-		canvas->textureDrawing.height = canvas->rootBadpaintPixels.dim.y;
-		canvas->textureDrawing.id = rlLoadTexture(canvas->rootBadpaintPixels.dataBadpaintPixel, canvas->textureDrawing.width, canvas->textureDrawing.height, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
-		canvas->textureDrawing.mipmaps = 1;
-		canvas->textureDrawing.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+		ImageRawRGBA32 tempImageRaw = {};
+		tempImageRaw.dataU8 = (u8*) canvas->rootBadpaintPixels.dataBadpaintPixel;
+		tempImageRaw.dim = rootImageRaw->dim;
+		tempImageRaw.dataSize = rootImageRaw->dataSize; 
+		InitTextureGPU(&canvas->textureGPUDrawing, &tempImageRaw);
 
 		ArenaGroupResetAndFill(&gameMemory->conversionArenaGroup, conversionArenaSize);
 
@@ -141,17 +159,6 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 			canvas->textureVisualizedFilteredRootImage = {};
 		}
 
-		if (canvas->initialized)
-		{
-			glDeleteBuffers(ARRAY_COUNT(canvas->drawingPboIDs), canvas->drawingPboIDs);
-		}
-		glGenBuffers(ARRAY_COUNT(canvas->drawingPboIDs), canvas->drawingPboIDs);
-		for(u32 i = 0; i < ARRAY_COUNT(canvas->drawingPboIDs); i++) 
-		{
-			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->drawingPboIDs[i]);
-			glBufferData(GL_PIXEL_UNPACK_BUFFER, visualizedCanvasDataSize, NULL, GL_STREAM_DRAW);
-		}
-		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
 		if (canvas->initialized)
 		{
@@ -233,5 +240,3 @@ b32 InitializeNewImage(GameMemory *gameMemory, ImageRawRGBA32 *rootImageRaw, Can
 	}
 	return result;
 }
-
-

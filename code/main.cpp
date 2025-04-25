@@ -835,7 +835,9 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 
 		if (somethingToDraw)
 		{
-			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, canvas->drawingPboIDs[canvas->currentDrawingPboID]);
+			TextureGPU *textureGPU = &canvas->textureGPUDrawing;
+
+			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, textureGPU->pboIDs[textureGPU->currentPboID]);
 			ColorU32 *pixels = (ColorU32 *) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
 			if (ASSERT(pixels))
 			{
@@ -870,15 +872,15 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 				glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
 			}
 
-			glBindTexture(GL_TEXTURE_2D, canvas->textureDrawing.id);
-			glPixelStorei(GL_UNPACK_ROW_LENGTH, canvas->textureDrawing.width);
+			glBindTexture(GL_TEXTURE_2D, textureGPU->texture.id);
+			glPixelStorei(GL_UNPACK_ROW_LENGTH, textureGPU->dim.x);
 
 			for (u32 rectIndex = 0; rectIndex < canvas->rootBadpaintPixels.drawingRectCount; rectIndex++)
 			{
 				if (canvas->rootBadpaintPixels.drawingRectDirtyListFrame[rectIndex])
 				{
 					RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->rootBadpaintPixels.dim, canvas->rootBadpaintPixels.drawingRectDim, rectIndex);
-					GLintptr offset = (drawingRect.pos.y * canvas->textureDrawing.width + drawingRect.pos.x) * sizeof(ColorU32);
+					GLintptr offset = (drawingRect.pos.y * textureGPU->dim.x + drawingRect.pos.x) * sizeof(ColorU32);
 					glTexSubImage2D(GL_TEXTURE_2D, 0, drawingRect.pos.x, drawingRect.pos.y, drawingRect.dim.x, drawingRect.dim.y, GL_RGBA, GL_UNSIGNED_BYTE, (void*)offset);
 					canvas->rootBadpaintPixels.drawingRectDirtyListFrame[rectIndex] = false;
 				}
@@ -886,9 +888,9 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 
 			glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-			canvas->currentDrawingPboID = ModNextU32(canvas->currentDrawingPboID, ARRAY_COUNT(canvas->drawingPboIDs));
+			textureGPU->currentPboID = ModNextU32(textureGPU->currentPboID, ARRAY_COUNT(textureGPU->pboIDs));
 
-			GenTextureMipmaps(&canvas->textureDrawing);
+			GenTextureMipmaps(&textureGPU->texture);
 		}
 
 

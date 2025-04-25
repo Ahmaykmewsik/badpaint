@@ -336,12 +336,12 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 								b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(b->uiTextureView.dim.y, b->uiTextureView.dim.x)};
 								UI_PARENT_SCOPE(uiState, b)
 								{
-									if (canvas->textureDrawing.id)
+									if (canvas->textureGPUDrawing.texture.id)
 									{
 										UiBlock *canvasBlock = UiCreateBlock(uiState);
 										canvasBlock->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
 										canvasBlock->hash = Murmur3String("canvas", uiPanel->hash);
-										canvasBlock->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->textureDrawing);
+										canvasBlock->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->textureGPUDrawing.texture);
 										canvasBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 										canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(canvasBlock->uiTextureView.dim.y, canvasBlock->uiTextureView.dim.x)};
 										//TODO: (Ahmayk) This check needs to be more sophisticated regarding drawing just outside the canvas
