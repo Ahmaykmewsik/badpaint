@@ -407,9 +407,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 						appState->rootUiPanel.hash = Murmur3String("mainPanels");
 						UiPanelPair panelPair1 = SplitPanel(&appState->rootUiPanel, &gameMemory->permanentArena, UI_AXIS_X, 0.85f);
 
-						UiPanelPair panelPairImages = SplitPanel(panelPair1.uiPanel1, &gameMemory->permanentArena, UI_AXIS_X, 0.5f);
-						panelPairImages.uiPanel1->uiPanelType = UI_PANEL_TYPE_FINAL_TEXTURE;
-						panelPairImages.uiPanel2->uiPanelType = UI_PANEL_TYPE_CANVAS;
+						UiPanelPair panelPairTopBottom = SplitPanel(panelPair1.uiPanel1, &gameMemory->permanentArena, UI_AXIS_Y, 0.5f);
+						panelPairTopBottom.uiPanel1->uiPanelType = UI_PANEL_TYPE_FINAL_IMAGE;
+						UiPanelPair panelPairDrawing = SplitPanel(panelPairTopBottom.uiPanel2, &gameMemory->permanentArena, UI_AXIS_X, 0.5f);
+						panelPairDrawing.uiPanel1->uiPanelType = UI_PANEL_TYPE_ROOT_IMAGE;
+						panelPairDrawing.uiPanel2->uiPanelType = UI_PANEL_TYPE_PNG_FILTERED;
 
 						UiPanelPair panelPairRightSidebar = SplitPanel(panelPair1.uiPanel2, &gameMemory->permanentArena, UI_AXIS_Y, 0.2f);
 						panelPairRightSidebar.uiPanel1->uiPanelType = UI_PANEL_TYPE_NULL;

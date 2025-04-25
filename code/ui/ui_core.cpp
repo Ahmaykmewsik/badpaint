@@ -160,6 +160,7 @@ void CalculateFixedSizes(UiSolveState *uiSolveState, UiBlock *uiBlock)
 				case UI_SIZE_SUM_OF_CHILDREN:
 				case UI_SIZE_PERCENT_OF_OTHER_AXIS:
 				case UI_SIZE_FILL:
+				case UI_SIZE_FILL_FIXED:
 					break;
 					InvalidDefaultCase
 			}
@@ -186,6 +187,26 @@ void CalculateUiUpwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiBlo
 				{
 					uiBlock->rect.dim.elements[i] = (uiBlock->parent->rect.dim.elements[i] * uiBlock->uiSizes[i].value);
 					MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
+				}
+			} break;
+			case UI_SIZE_FILL_FIXED:
+			{
+				if (!IsBlockSizeAxisSolved(uiSolveState, uiBlock, (UI_AXIS) i) &&
+					ASSERT(uiBlock->parent))
+				{
+					if (IsBlockSizeAxisSolved(uiSolveState, uiBlock->parent, (UI_AXIS) i) && 
+						IsBlockSizeAxisSolved(uiSolveState, uiBlock->parent, (UI_AXIS) (1 - i)))
+					{
+						if (uiBlock->parent->rect.dim.elements[i] > uiBlock->parent->rect.dim.elements[1 - i])
+						{
+							uiBlock->rect.dim.elements[i] = (uiBlock->parent->rect.dim.elements[1 - i] * uiBlock->uiSizes[i].value);
+						}
+						else
+						{
+							uiBlock->rect.dim.elements[i] = uiBlock->parent->rect.dim.elements[i];
+						}
+						MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
+					}
 				}
 			} break;
 			case UI_SIZE_PERCENT_OF_OTHER_AXIS:
@@ -384,6 +405,7 @@ void CalculateUiDownwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiB
 				case UI_SIZE_PERCENT_OF_PARENT:
 				case UI_SIZE_PERCENT_OF_OTHER_AXIS:
 				case UI_SIZE_TEXT:
+				case UI_SIZE_FILL_FIXED:
 				break;
 				InvalidDefaultCase
 			}

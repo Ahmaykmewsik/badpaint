@@ -162,7 +162,7 @@ void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2
 	{
 		UiPanel *uiPanel = stack[stackIndex--];
 
-		if (uiPanel->uiPanelType == UI_PANEL_TYPE_CANVAS)
+		if (uiPanel->uiPanelType == UI_PANEL_TYPE_PNG_FILTERED)
 		{
 			u32 hash = Murmur3String("canvas", uiPanel->hash);
 			UiBlock *canvasBlockPrev = UiGetBlockOfHashLastFrame(uiState, hash);
@@ -186,7 +186,7 @@ void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2
 				t->uiBlockColors.backColor = BADPAINT_PIXEL_TYPE_COLORS_PROCESSING[appState->currentBadpaintPixelType];
 			}
 		}
-		if (uiPanel->uiPanelType == UI_PANEL_TYPE_FINAL_TEXTURE)
+		if (uiPanel->uiPanelType == UI_PANEL_TYPE_FINAL_IMAGE)
 		{
 			u32 hash = Murmur3String("finalTexture", uiPanel->hash);
 			UiBlock *canvasBlockPrev = UiGetBlockOfHashLastFrame(uiState, hash);
@@ -297,7 +297,17 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 						panelBlock->string = STRING("EMPTY PANEL");
 						panelBlock->uiFont = appState->defaultUiFont;
 					} break;
-					case UI_PANEL_TYPE_FINAL_TEXTURE:
+					case UI_PANEL_TYPE_ROOT_IMAGE:
+					{
+						panelBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT;
+						panelBlock->uiBlockColors.backColor = ColorU32{100, 100, 100, 255};
+						panelBlock->uiBlockColors.frontColor = ColorU32{0, 0, 0, 255};
+						panelBlock->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
+						panelBlock->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
+						panelBlock->string = STRING("ROOT");
+						panelBlock->uiFont = appState->defaultUiFont;
+					} break;
+					case UI_PANEL_TYPE_FINAL_IMAGE:
 					{
 						UiBlock *b= UiCreateBlock(uiState);
 						b->flags = UI_FLAG_DRAW_BACKGROUND;
@@ -313,15 +323,15 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 							finalTexture->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
 							finalTexture->hash = Murmur3String("finalTexture", uiPanel->hash);
 							finalTexture->uiTextureView = UiRaylibTextureToUiTextureView(&textureGPUFinal->texture);
-							finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(textureGPUFinal->dim.y, textureGPUFinal->dim.x)};
+							finalTexture->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL_FIXED, SafeDivideI32(textureGPUFinal->dim.x, textureGPUFinal->dim.y)};
+							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL_FIXED, SafeDivideI32(textureGPUFinal->dim.y, textureGPUFinal->dim.x)};
 							if (finalTexture->hash == frameState->uiInteractionHashes.hashMouseHover)
 							{
 								ProcessActiveInputInDrawableArea(uiState, appState, frameState, finalTexture);
 							}
 						}
 					} break;
-					case UI_PANEL_TYPE_CANVAS:
+					case UI_PANEL_TYPE_PNG_FILTERED:
 					{
 						panelBlock->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
 						panelBlock->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
@@ -333,8 +343,8 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 								UiBlock *b = UiCreateBlock(uiState);
 								b->flags = UI_FLAG_DRAW_TEXTURE;
 								b->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->textureVisualizedFilteredRootImage);
-								b->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-								b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(b->uiTextureView.dim.y, b->uiTextureView.dim.x)};
+								b->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL_FIXED, SafeDivideI32(b->uiTextureView.dim.x, b->uiTextureView.dim.y)};
+								b->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL_FIXED, SafeDivideI32(b->uiTextureView.dim.y, b->uiTextureView.dim.x)};
 								UI_PARENT_SCOPE(uiState, b)
 								{
 									if (canvas->textureGPUDrawing.texture.id)
@@ -344,7 +354,7 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 										canvasBlock->hash = Murmur3String("canvas", uiPanel->hash);
 										canvasBlock->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->textureGPUDrawing.texture);
 										canvasBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-										canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_OTHER_AXIS, SafeDivideI32(canvasBlock->uiTextureView.dim.y, canvasBlock->uiTextureView.dim.x)};
+										canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 										//TODO: (Ahmayk) This check needs to be more sophisticated regarding drawing just outside the canvas
 										if (canvasBlock->hash == frameState->uiInteractionHashes.hashMouseHover)
 										{
