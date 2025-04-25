@@ -121,6 +121,18 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 		canvas->rootBadpaintPixels.dataSize = visualizedCanvasDataSize;
 		memset(canvas->rootBadpaintPixels.dataBadpaintPixel, 0, visualizedCanvasDataSize);
 
+		if (canvas->textureDrawing.id)
+		{
+			rlUnloadTexture(canvas->textureDrawing.id);
+		}
+		canvas->textureDrawing = {};
+
+		canvas->textureDrawing.width = canvas->rootBadpaintPixels.dim.x;
+		canvas->textureDrawing.height = canvas->rootBadpaintPixels.dim.y;
+		canvas->textureDrawing.id = rlLoadTexture(canvas->rootBadpaintPixels.dataBadpaintPixel, canvas->textureDrawing.width, canvas->textureDrawing.height, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
+		canvas->textureDrawing.mipmaps = 1;
+		canvas->textureDrawing.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+
 		ArenaGroupResetAndFill(&gameMemory->conversionArenaGroup, conversionArenaSize);
 
 		if (canvas->textureVisualizedFilteredRootImage.id)

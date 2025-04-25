@@ -112,7 +112,7 @@ b32 CanvasFillConvexQuad(ImageBadpaintPixels *imageBadpaintPixels, iv2 p0, iv2 p
 		{
             for (i32 x = xmin; x <= xmax; x++)
 			{
-				u32 index = (y * imageBadpaintPixels->dim.x - 1) + x;
+				u32 index = (y * imageBadpaintPixels->dim.x) + x;
 				BadpaintPixel *badpaintPixelDest = &imageBadpaintPixels->dataBadpaintPixel[index];
 				if (badpaintPixelDest->badpaintPixelType != badpaintPixel.badpaintPixelType) 
 				{

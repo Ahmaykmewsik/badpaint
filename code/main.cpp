@@ -365,7 +365,10 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 50};
 					}
 
-					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_REMOVE, STRING("Rmv"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_REMOVE);
+					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_REMOVE, STRING("Remv"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_REMOVE);
+					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_MAX, STRING("Max"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_MAX);
+					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_SHIFT, STRING("Sft"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_SHIFT);
+					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_RANDOM, STRING("Rand"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_RANDOM);
 
 					{
 						UiBlock *seperator = UiCreateBlock(uiState);
