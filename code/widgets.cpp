@@ -162,6 +162,30 @@ void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2
 	{
 		UiPanel *uiPanel = stack[stackIndex--];
 
+		if (uiPanel->uiPanelType == UI_PANEL_TYPE_ROOT_IMAGE)
+		{
+			u32 hash = Murmur3String("root", uiPanel->hash);
+			UiBlock *canvasBlockPrev = UiGetBlockOfHashLastFrame(uiState, hash);
+			if (canvasBlockPrev->hash)
+			{
+				v2 posTopLeft = (posInDrawnCanvas - (appState->toolSize * 0.5f));
+				v2 normalizedPos;
+				normalizedPos.x = SafeDivideF32(posTopLeft.x, (f32) appState->canvas.badpaintPixelsRootImage.dim.x);
+				normalizedPos.y = SafeDivideF32(posTopLeft.y, (f32) appState->canvas.badpaintPixelsRootImage.dim.y);
+				v2 absolutePos = (normalizedPos * canvasBlockPrev->rect.dim) + canvasBlockPrev->rect.pos;
+
+				f32 sizeNormalized = SafeDivideF32((f32)appState->toolSize, (f32) appState->canvas.badpaintPixelsRootImage.dim.x);
+				f32 sizeAbsolute = sizeNormalized * canvasBlockPrev->rect.dim.x;
+
+				UiBlock *t = UiCreateRootBlock(uiState);
+				t->flags = UI_FLAG_DRAW_BACKGROUND;
+				t->uiPosition[UI_AXIS_X] = {UI_POSITION_ABSOLUTE, absolutePos.x};
+				t->uiPosition[UI_AXIS_Y] = {UI_POSITION_ABSOLUTE, absolutePos.y};
+				t->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) sizeAbsolute};
+				t->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) sizeAbsolute};
+				t->uiBlockColors.backColor = BADPAINT_PIXEL_TYPE_COLORS_PROCESSING[appState->currentBadpaintPixelType];
+			}
+		}
 		if (uiPanel->uiPanelType == UI_PANEL_TYPE_PNG_FILTERED)
 		{
 			u32 hash = Murmur3String("canvas", uiPanel->hash);
@@ -170,11 +194,11 @@ void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2
 			{
 				v2 posTopLeft = (posInDrawnCanvas - (appState->toolSize * 0.5f));
 				v2 normalizedPos;
-				normalizedPos.x = SafeDivideF32(posTopLeft.x, (f32) appState->canvas.rootBadpaintPixels.dim.x);
-				normalizedPos.y = SafeDivideF32(posTopLeft.y, (f32) appState->canvas.rootBadpaintPixels.dim.y);
+				normalizedPos.x = SafeDivideF32(posTopLeft.x, (f32) appState->canvas.badpaintPixelsRootImage.dim.x);
+				normalizedPos.y = SafeDivideF32(posTopLeft.y, (f32) appState->canvas.badpaintPixelsRootImage.dim.y);
 				v2 absolutePos = (normalizedPos * canvasBlockPrev->rect.dim) + canvasBlockPrev->rect.pos;
 
-				f32 sizeNormalized = SafeDivideF32((f32)appState->toolSize, (f32) appState->canvas.rootBadpaintPixels.dim.x);
+				f32 sizeNormalized = SafeDivideF32((f32)appState->toolSize, (f32) appState->canvas.badpaintPixelsRootImage.dim.x);
 				f32 sizeAbsolute = sizeNormalized * canvasBlockPrev->rect.dim.x;
 
 				UiBlock *t = UiCreateRootBlock(uiState);
@@ -194,11 +218,11 @@ void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2
 			{
 				v2 posTopLeft = (posInDrawnCanvas - (appState->toolSize * 0.5f));
 				v2 normalizedPos;
-				normalizedPos.x = SafeDivideF32(posTopLeft.x, (f32) appState->canvas.rootBadpaintPixels.dim.x);
-				normalizedPos.y = SafeDivideF32(posTopLeft.y, (f32) appState->canvas.rootBadpaintPixels.dim.y);
+				normalizedPos.x = SafeDivideF32(posTopLeft.x, (f32) appState->canvas.badpaintPixelsRootImage.dim.x);
+				normalizedPos.y = SafeDivideF32(posTopLeft.y, (f32) appState->canvas.badpaintPixelsRootImage.dim.y);
 				v2 absolutePos = (normalizedPos * canvasBlockPrev->rect.dim) + canvasBlockPrev->rect.pos;
 
-				f32 sizeNormalized = SafeDivideF32((f32)appState->toolSize, (f32) appState->canvas.rootBadpaintPixels.dim.x);
+				f32 sizeNormalized = SafeDivideF32((f32)appState->toolSize, (f32) appState->canvas.badpaintPixelsRootImage.dim.x);
 				f32 sizeAbsolute = sizeNormalized * canvasBlockPrev->rect.dim.x;
 
 				UiBlock *t = UiCreateRootBlock(uiState);
@@ -232,20 +256,21 @@ v2 ScreenPosToCanvasPos(iv2 mousePos, RectV2 *blockRect, iv2 canvasDim)
 	return result;
 }
 
-void ProcessActiveInputInDrawableArea(UiState *uiState, AppState *appState, FrameState *frameState, UiBlock *drawableBlock)
+void ProcessActiveInputInDrawableArea(UiState *uiState, AppState *appState, FrameState *frameState, UiBlock *drawableBlock, UI_PANEL_TYPE uiPanelType)
 {
 	UiBlock *drawableBlockPrev = UiGetBlockOfHashLastFrame(uiState, drawableBlock->hash);
 	if (drawableBlockPrev->hash)
 	{
-		v2 posInCanvas = ScreenPosToCanvasPos(frameState->mousePixelPos, &drawableBlockPrev->rect, appState->canvas.rootBadpaintPixels.dim);
+		v2 posInCanvas = ScreenPosToCanvasPos(frameState->mousePixelPos, &drawableBlockPrev->rect, appState->canvas.badpaintPixelsRootImage.dim);
 		DrawToolInCanvasOnPanelAndChildren(uiState, appState, posInCanvas);
 		if (drawableBlock->hash == frameState->uiInteractionHashes.hashMouseDown)
 		{
-			v2 posInCanvasPrevious = ScreenPosToCanvasPos(frameState->mousePixelPosPrevious, &drawableBlockPrev->rect, appState->canvas.rootBadpaintPixels.dim);
+			v2 posInCanvasPrevious = ScreenPosToCanvasPos(frameState->mousePixelPosPrevious, &drawableBlockPrev->rect, appState->canvas.badpaintPixelsRootImage.dim);
 			AppCommand *appCommand = PushAppCommand(&frameState->appCommandBuffer);
 			appCommand->command = COMMAND_PAINT_ON_CANVAS_BETWEEN_POSITIONS;
 			appCommand->value1V2 = posInCanvasPrevious;
 			appCommand->value2V2 = posInCanvas;
+			appCommand->value3U32 = uiPanelType;
 		}
 	}
 
@@ -285,6 +310,7 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 			}
 			UI_PARENT_SCOPE(uiState, panelBlock)
 			{
+				Canvas *canvas = &appState->canvas;
 				switch(uiPanel->uiPanelType)
 				{
 					case UI_PANEL_TYPE_NULL:
@@ -299,13 +325,30 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 					} break;
 					case UI_PANEL_TYPE_ROOT_IMAGE:
 					{
-						panelBlock->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_TEXT;
-						panelBlock->uiBlockColors.backColor = ColorU32{100, 100, 100, 255};
-						panelBlock->uiBlockColors.frontColor = ColorU32{0, 0, 0, 255};
-						panelBlock->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
-						panelBlock->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
-						panelBlock->string = STRING("ROOT");
-						panelBlock->uiFont = appState->defaultUiFont;
+						panelBlock->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
+						panelBlock->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
+						if (canvas->textureGPURoot.texture.id)
+						{
+							UiBlock *b = UiCreateBlock(uiState);
+							b->flags = UI_FLAG_DRAW_TEXTURE;
+							b->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->textureGPURoot.texture);
+							b->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL_FIXED, SafeDivideI32(b->uiTextureView.dim.x, b->uiTextureView.dim.y)};
+							b->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL_FIXED, SafeDivideI32(b->uiTextureView.dim.y, b->uiTextureView.dim.x)};
+							UI_PARENT_SCOPE(uiState, b)
+							{
+								UiBlock *canvasBlock = UiCreateBlock(uiState);
+								canvasBlock->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
+								canvasBlock->hash = Murmur3String("root", uiPanel->hash);
+								canvasBlock->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->badpaintPixelsRootImage.textureGPU.texture);
+								canvasBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+								canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+								//TODO: (Ahmayk) This check needs to be more sophisticated regarding drawing just outside the canvas
+								if (canvasBlock->hash == frameState->uiInteractionHashes.hashMouseHover)
+								{
+									ProcessActiveInputInDrawableArea(uiState, appState, frameState, canvasBlock, uiPanel->uiPanelType);
+								}
+							}
+						}
 					} break;
 					case UI_PANEL_TYPE_FINAL_IMAGE:
 					{
@@ -327,7 +370,7 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 							finalTexture->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL_FIXED, SafeDivideI32(textureGPUFinal->dim.y, textureGPUFinal->dim.x)};
 							if (finalTexture->hash == frameState->uiInteractionHashes.hashMouseHover)
 							{
-								ProcessActiveInputInDrawableArea(uiState, appState, frameState, finalTexture);
+								ProcessActiveInputInDrawableArea(uiState, appState, frameState, finalTexture, uiPanel->uiPanelType);
 							}
 						}
 					} break;
@@ -337,7 +380,6 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 						panelBlock->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
 						if (!appState->imageIsBroken)
 						{
-							Canvas *canvas = &appState->canvas;
 							if (canvas->textureVisualizedFilteredRootImage.id)
 							{
 								UiBlock *b = UiCreateBlock(uiState);
@@ -347,19 +389,16 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 								b->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL_FIXED, SafeDivideI32(b->uiTextureView.dim.y, b->uiTextureView.dim.x)};
 								UI_PARENT_SCOPE(uiState, b)
 								{
-									if (canvas->textureGPUDrawing.texture.id)
+									UiBlock *canvasBlock = UiCreateBlock(uiState);
+									canvasBlock->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
+									canvasBlock->hash = Murmur3String("canvas", uiPanel->hash);
+									canvasBlock->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->badpaintPixelsPNGFiltered.textureGPU.texture);
+									canvasBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+									canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+									//TODO: (Ahmayk) This check needs to be more sophisticated regarding drawing just outside the canvas
+									if (canvasBlock->hash == frameState->uiInteractionHashes.hashMouseHover)
 									{
-										UiBlock *canvasBlock = UiCreateBlock(uiState);
-										canvasBlock->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
-										canvasBlock->hash = Murmur3String("canvas", uiPanel->hash);
-										canvasBlock->uiTextureView = UiRaylibTextureToUiTextureView(&canvas->textureGPUDrawing.texture);
-										canvasBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-										canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-										//TODO: (Ahmayk) This check needs to be more sophisticated regarding drawing just outside the canvas
-										if (canvasBlock->hash == frameState->uiInteractionHashes.hashMouseHover)
-										{
-											ProcessActiveInputInDrawableArea(uiState, appState, frameState, canvasBlock);
-										}
+										ProcessActiveInputInDrawableArea(uiState, appState, frameState, canvasBlock, uiPanel->uiPanelType);
 									}
 								}
 							}

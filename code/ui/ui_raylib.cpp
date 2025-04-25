@@ -159,5 +159,7 @@ UiTextureView UiRaylibTextureToUiTextureView(Texture *texture)
 	result.dim.y = (i32) texture->height;
 	result.viewRect.dim = result.dim;
 	result.data = texture;
+	ASSERT(result.dim.x);
+	ASSERT(result.dim.y);
 	return result;
 }

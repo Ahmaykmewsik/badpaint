@@ -53,7 +53,7 @@ struct UiPanel
 	UiPanel *prev;
 	UiPanel *parent;
 
-	u32 uiPanelType;
+	UI_PANEL_TYPE uiPanelType;
 };
 
 struct UiPanelPair

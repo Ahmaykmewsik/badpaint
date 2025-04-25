@@ -281,7 +281,7 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 	imageRaw.dataU8 = ArenaPushSize(processedImage->arenaFinal, imageRaw.dataSize, {});
 	memcpy(imageRaw.dataU8, processedImage->rootImageRaw->dataU8, imageRaw.dataSize);
 
-	ApplyDataPaintImageRaw(&imageRaw, &canvas->rootBadpaintPixels);
+	ApplyDataPaintImageRaw(&imageRaw, &canvas->badpaintPixelsRootImage);
 
 	ImagePNGFiltered imagePNGFiltered = PiratedSTB_EncodePngFilters(&imageRaw, processedImage->arenaFiltered, canvas->currentPNGFilterType);
 
@@ -291,6 +291,8 @@ void UpdateBpImageOnThread(ProcessedImage *processedImage)
 
 	ArenaReset(processedImage->arenaFinal);
 	processedImage->finalProcessedImageRaw = PiratedLoadPNG_Defilter(&imagePNGFiltered, processedImage->arenaFinal);
+
+	ApplyDataPaintImageRaw(&processedImage->finalProcessedImageRaw, &canvas->badpaintPixelsFinalImage);
 
 	HashImageRects(&processedImage->finalProcessedImageRaw, canvas->finalImageRectDim, &processedImage->finalImageRectHashes);
 	// Print("Converted to final PNG on thead " + IntToString(processedImage->index));

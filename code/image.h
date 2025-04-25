@@ -69,11 +69,12 @@ struct BadpaintPixel
 	u8 processBatchIndex;
 };
 
-struct ImageRawRGBA32
+struct TextureGPU
 {
-	u8 *dataU8;
-	u32 dataSize;
+	Texture texture;
 	iv2 dim;
+	u32 pboIDs[2]; 
+	u32 currentPboID;
 };
 
 struct ImageBadpaintPixels
@@ -85,6 +86,14 @@ struct ImageBadpaintPixels
 	b32 *drawingRectDirtyListFrame;
 	b32 *drawingRectDirtyListProcess;
 	u32 drawingRectCount;
+	TextureGPU textureGPU;
+};
+
+struct ImageRawRGBA32
+{
+	u8 *dataU8;
+	u32 dataSize;
+	iv2 dim;
 };
 
 struct ImagePNGFiltered
@@ -109,14 +118,6 @@ struct ImagePNGChecksumed
 	iv2 dim;
 };
 
-struct TextureGPU
-{
-	Texture texture;
-	iv2 dim;
-	u32 pboIDs[2]; 
-	u32 currentPboID;
-};
-
 struct Canvas
 {
 	b32 initialized;
@@ -127,9 +128,11 @@ struct Canvas
 	Arena *areaFinal;
 	Texture textureVisualizedFilteredRootImage;
 
-	ImageBadpaintPixels rootBadpaintPixels;
-	TextureGPU textureGPUDrawing;
+	ImageBadpaintPixels badpaintPixelsRootImage;
+	ImageBadpaintPixels badpaintPixelsPNGFiltered;
+	ImageBadpaintPixels badpaintPixelsFinalImage;
 
+	TextureGPU textureGPURoot;
 	TextureGPU textureGPUFinal;
 	iv2 finalImageRectDim;
 	u32 finalImageRectCount;
@@ -155,6 +158,7 @@ b32 InitializeNewImage(GameMemory *gameMemory, AppState *appState);
 RectIV2 GetDrawingRectFromIndex(iv2 imageDim, iv2 rectDim, u32 i);
 u32 GetDrawingRectCount(iv2 imageDim, iv2 rectDim);
 void UpdateRectInTexture(Texture *texture, void *data, RectIV2 rect);
+void RenderAndUploadBadpaintPixelImage(ImageBadpaintPixels *imageBadpaintPixels);
 
 struct Tool
 {

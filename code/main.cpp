@@ -505,42 +505,55 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 						endPosIV2.x = (u32) RoundF32(appCommand->value2V2.x);
 						endPosIV2.y = (u32) RoundF32(appCommand->value2V2.y);
 
-						switch(appState->currentTool)
+						UI_PANEL_TYPE uiPanelType = (UI_PANEL_TYPE) appCommand->value3U32;
+						ImageBadpaintPixels *imageBadpaintPixels = {};
+						switch(uiPanelType)
 						{
-							case BADPAINT_TOOL_PENCIL:
+							case UI_PANEL_TYPE_ROOT_IMAGE: imageBadpaintPixels = &canvas->badpaintPixelsRootImage; break;
+							case UI_PANEL_TYPE_PNG_FILTERED: imageBadpaintPixels = &canvas->badpaintPixelsPNGFiltered; break;
+							case UI_PANEL_TYPE_FINAL_IMAGE: imageBadpaintPixels = &canvas->badpaintPixelsFinalImage; break;
+							InvalidDefaultCase;
+						};
+
+						if (imageBadpaintPixels)
+						{
+							switch(appState->currentTool)
 							{
-								BadpaintPixel badpaintPixel = {};
-								badpaintPixel.badpaintPixelType = appState->currentBadpaintPixelType;
-								badpaintPixel.r1RandomValue = (u8) RandomInRangeI32(0, 255);
-								badpaintPixel.processBatchIndex = canvas->processBatchIndex;
-								drewSomething = CanvasDrawCircleStroke(&canvas->rootBadpaintPixels, startPosIV2, endPosIV2, appState->toolSize, badpaintPixel);
-							} break;
-							case BADPAINT_TOOL_ERASER:
-							{
-								BadpaintPixel badpaintPixel = {};
-								badpaintPixel.processBatchIndex = canvas->processBatchIndex;
-								drewSomething = CanvasDrawCircleStroke(&canvas->rootBadpaintPixels, startPosIV2, endPosIV2, appState->toolSize, badpaintPixel);
-							} break;
-							case BADPAINT_TOOL_TEST:
-							{
-								i32 halfBrushSize = (i32) RoundF32(appState->toolSize * 0.5f);
-								i32 minX = MinI32(startPosIV2.x, endPosIV2.x) - halfBrushSize; 
-								i32 minY = MinI32(startPosIV2.y, endPosIV2.y) - halfBrushSize; 
-								i32 maxX = MaxI32(startPosIV2.x, endPosIV2.x) + halfBrushSize;
-								i32 maxY = MaxI32(startPosIV2.y, endPosIV2.y) + halfBrushSize;
-								for (u32 i = 0; i < 100; i++)
+								case BADPAINT_TOOL_PENCIL:
 								{
-									iv2 randomPoint2;
-									randomPoint2.x = RandomInRangeI32(minX, maxX);
-									randomPoint2.y = RandomInRangeI32(minY, maxY);
-									iv2 randomPoint1;
-									randomPoint1.x = RandomInRangeI32(minX, maxX);
-									randomPoint1.y = RandomInRangeI32(minY, maxY);
-									ImageSwapPoints(&appState->rootImageRaw, randomPoint1, randomPoint2);
-									drewSomething = true;
-								}
-							} break;
-							InvalidDefaultCase
+									BadpaintPixel badpaintPixel = {};
+									badpaintPixel.badpaintPixelType = appState->currentBadpaintPixelType;
+									badpaintPixel.r1RandomValue = (u8) RandomInRangeI32(0, 255);
+									badpaintPixel.processBatchIndex = canvas->processBatchIndex;
+									drewSomething = CanvasDrawCircleStroke(imageBadpaintPixels, startPosIV2, endPosIV2, appState->toolSize, badpaintPixel);
+								} break;
+								case BADPAINT_TOOL_ERASER:
+								{
+									BadpaintPixel badpaintPixel = {};
+									badpaintPixel.processBatchIndex = canvas->processBatchIndex;
+									drewSomething = CanvasDrawCircleStroke(imageBadpaintPixels, startPosIV2, endPosIV2, appState->toolSize, badpaintPixel);
+								} break;
+								case BADPAINT_TOOL_TEST:
+								{
+									i32 halfBrushSize = (i32) RoundF32(appState->toolSize * 0.5f);
+									i32 minX = MinI32(startPosIV2.x, endPosIV2.x) - halfBrushSize; 
+									i32 minY = MinI32(startPosIV2.y, endPosIV2.y) - halfBrushSize; 
+									i32 maxX = MaxI32(startPosIV2.x, endPosIV2.x) + halfBrushSize;
+									i32 maxY = MaxI32(startPosIV2.y, endPosIV2.y) + halfBrushSize;
+									for (u32 i = 0; i < 100; i++)
+									{
+										iv2 randomPoint2;
+										randomPoint2.x = RandomInRangeI32(minX, maxX);
+										randomPoint2.y = RandomInRangeI32(minY, maxY);
+										iv2 randomPoint1;
+										randomPoint1.x = RandomInRangeI32(minX, maxX);
+										randomPoint1.y = RandomInRangeI32(minY, maxY);
+										ImageSwapPoints(&appState->rootImageRaw, randomPoint1, randomPoint2);
+										drewSomething = true;
+									}
+								} break;
+								InvalidDefaultCase
+							}
 						}
 
 						if (drewSomething)
@@ -667,7 +680,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 					processedImage->arenaFiltered = arenaFiltered;
 					processedImage->arenaVisualized = arenaVisualized;
 					processedImage->arenaFinal = arenaFinal;
-					memcpy(processedImage->dirtyRectsInProcess, canvas->rootBadpaintPixels.drawingRectDirtyListProcess, canvas->rootBadpaintPixels.drawingRectCount * sizeof(b32));
+					memcpy(processedImage->dirtyRectsInProcess, canvas->badpaintPixelsRootImage.drawingRectDirtyListProcess, canvas->badpaintPixelsRootImage.drawingRectCount * sizeof(b32));
 					canvas->proccessAsap = false;
 					processedImage->active = true;
 					processedImage->processBatchIndex = canvas->processBatchIndex;
@@ -677,7 +690,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 					{
 						canvas->processBatchIndex++;
 					}
-					memset(canvas->rootBadpaintPixels.drawingRectDirtyListProcess, 0, canvas->rootBadpaintPixels.drawingRectCount * sizeof(b32));
+					memset(canvas->badpaintPixelsRootImage.drawingRectDirtyListProcess, 0, canvas->badpaintPixelsRootImage.drawingRectCount * sizeof(b32));
 					PlatformAddThreadWorkEntry(threadWorkQueue, ProcessImageOnThread, (void *)processedImage);
 					// Print("Queueing Work on thread " + IntToString(processedImage->index));
 				}
@@ -696,22 +709,22 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 			ProcessedImage *processedImageOfIndex = appState->processedImages + threadIndex;
 			if (processedImageOfIndex->active && processedImageOfIndex->processingComplete)
 			{
-				for (u32 rectIndex = 0; rectIndex < canvas->rootBadpaintPixels.drawingRectCount; rectIndex++)
+				for (u32 rectIndex = 0; rectIndex < canvas->badpaintPixelsRootImage.drawingRectCount; rectIndex++)
 				{
 					if (processedImageOfIndex->dirtyRectsInProcess[rectIndex])
 					{
-						canvas->rootBadpaintPixels.drawingRectDirtyListFrame[rectIndex] = true;
-						RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->rootBadpaintPixels.dim, canvas->rootBadpaintPixels.drawingRectDim, rectIndex);
+						canvas->badpaintPixelsRootImage.drawingRectDirtyListFrame[rectIndex] = true;
+						RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->badpaintPixelsRootImage.dim, canvas->badpaintPixelsRootImage.drawingRectDim, rectIndex);
 						u32 pixelIndex = 0;
 						u32 startY = drawingRect.pos.y;
 						u32 endY = startY + drawingRect.dim.y;
 						for (u32 y = startY; y < endY; y++)
 						{
-							u32 startIndex = (canvas->rootBadpaintPixels.dim.x * y) + drawingRect.pos.x;
+							u32 startIndex = (canvas->badpaintPixelsRootImage.dim.x * y) + drawingRect.pos.x;
 							u32 endIndex = startIndex + drawingRect.dim.x;
 							for (u32 i = startIndex; i < endIndex; i++)
 							{
-								BadpaintPixel *badpaintPixel = &canvas->rootBadpaintPixels.dataBadpaintPixel[i];
+								BadpaintPixel *badpaintPixel = &canvas->badpaintPixelsRootImage.dataBadpaintPixel[i];
 								if (badpaintPixel->processBatchIndex == processedImageOfIndex->processBatchIndex)
 								{
 									badpaintPixel->processBatchIndex = 0;
@@ -827,74 +840,9 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 			ResetProcessedImage(latestCompletedProcessedImage, canvas);
 		}
 
-		b32 somethingToDraw = false;
-		for (u32 rectIndex = 0; rectIndex < canvas->rootBadpaintPixels.drawingRectCount; rectIndex++)
-		{
-			if (canvas->rootBadpaintPixels.drawingRectDirtyListFrame[rectIndex])
-			{
-				somethingToDraw = true;
-			}
-		}
-
-		if (somethingToDraw)
-		{
-			TextureGPU *textureGPU = &canvas->textureGPUDrawing;
-
-			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, textureGPU->pboIDs[textureGPU->currentPboID]);
-			ColorU32 *pixels = (ColorU32 *) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-			if (ASSERT(pixels))
-			{
-				for (u32 rectIndex = 0; rectIndex < canvas->rootBadpaintPixels.drawingRectCount; rectIndex++)
-				{
-					if (canvas->rootBadpaintPixels.drawingRectDirtyListFrame[rectIndex])
-					{
-						RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->rootBadpaintPixels.dim, canvas->rootBadpaintPixels.drawingRectDim, rectIndex);
-						u32 startY = drawingRect.pos.y;
-						u32 endY = startY + drawingRect.dim.y;
-						for (u32 y = startY; y < endY; y++)
-						{
-							u32 startIndex = (canvas->rootBadpaintPixels.dim.x * y) + drawingRect.pos.x;
-							u32 endIndex = startIndex + drawingRect.dim.x;
-							for (u32 i = startIndex; i < endIndex; i++)
-							{
-								BadpaintPixel *badpaintPixel = &canvas->rootBadpaintPixels.dataBadpaintPixel[i];
-								ColorU32 *outPixel = (pixels + i);
-								//processBatchIndex != 0 -> is being processed currently
-								if (badpaintPixel->processBatchIndex != 0)
-								{
-									*outPixel = BADPAINT_PIXEL_TYPE_COLORS_PROCESSING[badpaintPixel->badpaintPixelType];
-								}
-								else
-								{
-									*outPixel = BADPAINT_PIXEL_TYPE_COLORS_PRIMARY[badpaintPixel->badpaintPixelType];
-								}
-							}
-						}
-					}
-				}
-				glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-			}
-
-			glBindTexture(GL_TEXTURE_2D, textureGPU->texture.id);
-			glPixelStorei(GL_UNPACK_ROW_LENGTH, textureGPU->dim.x);
-
-			for (u32 rectIndex = 0; rectIndex < canvas->rootBadpaintPixels.drawingRectCount; rectIndex++)
-			{
-				if (canvas->rootBadpaintPixels.drawingRectDirtyListFrame[rectIndex])
-				{
-					RectIV2 drawingRect = GetDrawingRectFromIndex(canvas->rootBadpaintPixels.dim, canvas->rootBadpaintPixels.drawingRectDim, rectIndex);
-					GLintptr offset = (drawingRect.pos.y * textureGPU->dim.x + drawingRect.pos.x) * sizeof(ColorU32);
-					glTexSubImage2D(GL_TEXTURE_2D, 0, drawingRect.pos.x, drawingRect.pos.y, drawingRect.dim.x, drawingRect.dim.y, GL_RGBA, GL_UNSIGNED_BYTE, (void*)offset);
-					canvas->rootBadpaintPixels.drawingRectDirtyListFrame[rectIndex] = false;
-				}
-			}
-
-			glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-			textureGPU->currentPboID = ModNextU32(textureGPU->currentPboID, ARRAY_COUNT(textureGPU->pboIDs));
-
-			GenTextureMipmaps(&textureGPU->texture);
-		}
+		RenderAndUploadBadpaintPixelImage(&canvas->badpaintPixelsRootImage);
+		RenderAndUploadBadpaintPixelImage(&canvas->badpaintPixelsPNGFiltered);
+		RenderAndUploadBadpaintPixelImage(&canvas->badpaintPixelsFinalImage);
 
 
 		//----------------------------------------------------

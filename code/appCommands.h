@@ -22,6 +22,7 @@ struct AppCommand
 	COMMAND command;
 	v2 value1V2;
 	v2 value2V2;
+	u32 value3U32;
 };
 
 struct AppCommandBuffer

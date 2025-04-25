@@ -82,6 +82,31 @@ void InitTextureGPU(TextureGPU *textureGPU, ImageRawRGBA32 *imageRaw)
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 }
 
+ImageBadpaintPixels InitBadpaintPixelImage(Arena *arena, iv2 dim)
+{
+	ImageBadpaintPixels result = {};
+	result.dataBadpaintPixel = ARENA_PUSH_ARRAY(arena, dim.x * dim.y, BadpaintPixel);
+	result.dim = dim;
+	result.dataSize = dim.x * dim.y * 4;
+	memset(result.dataBadpaintPixel, 0, result.dataSize);
+	result.drawingRectDim = iv2{32, 32};
+	result.drawingRectCount = GetDrawingRectCount(dim, result.drawingRectDim);
+	result.drawingRectDirtyListFrame = ARENA_PUSH_ARRAY(arena, result.drawingRectCount, b32);
+	result.drawingRectDirtyListProcess = ARENA_PUSH_ARRAY(arena, result.drawingRectCount, b32);
+	memset(result.drawingRectDirtyListFrame, 0, result.drawingRectCount * sizeof(b32));
+	memset(result.drawingRectDirtyListProcess, 0, result.drawingRectCount * sizeof(b32));
+
+	//NOTE: (Ahmayk) this is a bit of a hack, but all that matters is that we upload empty data here
+	//This should work as long as the size of a badpaintpixel is more or equal to the size of a color pixel (u32)
+	ImageRawRGBA32 tempImageRaw = {};
+	tempImageRaw.dataU8 = (u8*) result.dataBadpaintPixel;
+	tempImageRaw.dim = dim;
+	tempImageRaw.dataSize = result.dataSize; 
+	InitTextureGPU(&result.textureGPU, &tempImageRaw);
+
+	return result;
+}
+
 //TODO: (Ahmayk) This takes a good deal of time now, the exspensive stuff should be offloaded to another thread
 //And we have a fun little loading animation or something
 void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *gameMemory)
@@ -104,8 +129,8 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 	conversionArenaSize = (u32) (conversionArenaSize * 1.2f);
 	AlignPow2U32(&conversionArenaSize, 256);
 
-	//NOTE: (Ahmayk) drawn image, drawingRects, dirtyRectsForEachProcesssImage, finalImageRectHashes
-	u32 canvasArneaSize = (u32) MaxU32(MegaByte * 1, (u32) (conversionArenaSize * 2.1f));
+	//TODO: (Ahmayk) figure out what the upper bound of this actually should be 
+	u32 canvasArneaSize = (u32) MaxU32(MegaByte * 1, (u32) (conversionArenaSize * 5));
 	gameMemory->canvasArena = ArenaInit(canvasArneaSize);
 	//TODO: (Ahmayk) have a better undo plan!
 	ArenaFree(&gameMemory->canvasRollbackArena);
@@ -121,16 +146,9 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 		gameMemory->canvasRollbackArena.memory &&
 		gameMemory->conversionArenaGroup.masterArena.memory)
 	{
-		canvas->rootBadpaintPixels.dataBadpaintPixel = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, rootImageRaw->dim.x * rootImageRaw->dim.y, BadpaintPixel);
-		canvas->rootBadpaintPixels.dim = canvasDim;
-		canvas->rootBadpaintPixels.dataSize = visualizedCanvasDataSize;
-		memset(canvas->rootBadpaintPixels.dataBadpaintPixel, 0, visualizedCanvasDataSize);
-
-		ImageRawRGBA32 tempImageRaw = {};
-		tempImageRaw.dataU8 = (u8*) canvas->rootBadpaintPixels.dataBadpaintPixel;
-		tempImageRaw.dim = rootImageRaw->dim;
-		tempImageRaw.dataSize = rootImageRaw->dataSize; 
-		InitTextureGPU(&canvas->textureGPUDrawing, &tempImageRaw);
+		canvas->badpaintPixelsRootImage = InitBadpaintPixelImage(&gameMemory->canvasArena, rootImageRaw->dim);
+		canvas->badpaintPixelsPNGFiltered = InitBadpaintPixelImage(&gameMemory->canvasArena, rootImageRaw->dim);
+		canvas->badpaintPixelsFinalImage = InitBadpaintPixelImage(&gameMemory->canvasArena, rootImageRaw->dim);
 
 		ArenaGroupResetAndFill(&gameMemory->conversionArenaGroup, conversionArenaSize);
 
@@ -154,16 +172,11 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 		canvas->saveRollbackOnNextPress = {};
 		canvas->dataOnCanvas = {};
 
-		canvas->rootBadpaintPixels.drawingRectDim = iv2{32, 32};
-		canvas->rootBadpaintPixels.drawingRectCount = GetDrawingRectCount(canvasDim, canvas->rootBadpaintPixels.drawingRectDim);
-		canvas->rootBadpaintPixels.drawingRectDirtyListFrame = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->rootBadpaintPixels.drawingRectCount, b32);
-		canvas->rootBadpaintPixels.drawingRectDirtyListProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, canvas->rootBadpaintPixels.drawingRectCount, b32);
-		memset(canvas->rootBadpaintPixels.drawingRectDirtyListFrame, 0, canvas->rootBadpaintPixels.drawingRectCount * sizeof(b32));
-		memset(canvas->rootBadpaintPixels.drawingRectDirtyListProcess, 0, canvas->rootBadpaintPixels.drawingRectCount * sizeof(b32));
-
 		InitTextureGPU(&canvas->textureGPUFinal, rootImageRaw);
+		InitTextureGPU(&canvas->textureGPURoot, rootImageRaw);
 
 		canvas->initialized = true;
+		canvas->proccessAsap = true;
 	}
 	else
 	{
@@ -184,7 +197,7 @@ b32 InitializeNewImage(GameMemory *gameMemory, AppState *appState)
 			for (u32 i = 0; i < appState->processedImageCount; i++)
 			{
 				ProcessedImage *processedImage = appState->processedImages + i;
-				processedImage->dirtyRectsInProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, appState->canvas.rootBadpaintPixels.drawingRectCount, b32);
+				processedImage->dirtyRectsInProcess = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, appState->canvas.badpaintPixelsRootImage.drawingRectCount, b32);
 				processedImage->finalImageRectHashes = ARENA_PUSH_ARRAY(&gameMemory->canvasArena, appState->canvas.finalImageRectCount, u32);
 			}
 		}
@@ -208,4 +221,78 @@ b32 InitializeNewImage(GameMemory *gameMemory, AppState *appState)
 		}
 	}
 	return result;
+}
+
+void RenderAndUploadBadpaintPixelImage(ImageBadpaintPixels *imageBadpaintPixels)
+{
+	b32 somethingToDraw = false;
+	for (u32 rectIndex = 0; rectIndex < imageBadpaintPixels->drawingRectCount; rectIndex++)
+	{
+		if (imageBadpaintPixels->drawingRectDirtyListFrame[rectIndex])
+		{
+			somethingToDraw = true;
+			break;
+		}
+	}
+
+	if (somethingToDraw)
+	{
+		TextureGPU *textureGPU = &imageBadpaintPixels->textureGPU;
+
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, textureGPU->pboIDs[textureGPU->currentPboID]);
+		ColorU32 *pixels = (ColorU32 *) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+		if (ASSERT(pixels))
+		{
+			for (u32 rectIndex = 0; rectIndex < imageBadpaintPixels->drawingRectCount; rectIndex++)
+			{
+				if (imageBadpaintPixels->drawingRectDirtyListFrame[rectIndex])
+				{
+					RectIV2 drawingRect = GetDrawingRectFromIndex(imageBadpaintPixels->dim, imageBadpaintPixels->drawingRectDim, rectIndex);
+					u32 startY = drawingRect.pos.y;
+					u32 endY = startY + drawingRect.dim.y;
+					for (u32 y = startY; y < endY; y++)
+					{
+						u32 startIndex = (imageBadpaintPixels->dim.x * y) + drawingRect.pos.x;
+						u32 endIndex = startIndex + drawingRect.dim.x;
+						for (u32 i = startIndex; i < endIndex; i++)
+						{
+							BadpaintPixel *badpaintPixel = &imageBadpaintPixels->dataBadpaintPixel[i];
+							ColorU32 *outPixel = (pixels + i);
+							//processBatchIndex != 0 -> is being processed currently
+							if (badpaintPixel->processBatchIndex != 0)
+							{
+								*outPixel = BADPAINT_PIXEL_TYPE_COLORS_PROCESSING[badpaintPixel->badpaintPixelType];
+							}
+							else
+							{
+								*outPixel = BADPAINT_PIXEL_TYPE_COLORS_PRIMARY[badpaintPixel->badpaintPixelType];
+							}
+						}
+					}
+				}
+			}
+			glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+		}
+
+		glBindTexture(GL_TEXTURE_2D, textureGPU->texture.id);
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, textureGPU->dim.x);
+
+		for (u32 rectIndex = 0; rectIndex < imageBadpaintPixels->drawingRectCount; rectIndex++)
+		{
+			if (imageBadpaintPixels->drawingRectDirtyListFrame[rectIndex])
+			{
+				RectIV2 drawingRect = GetDrawingRectFromIndex(imageBadpaintPixels->dim, imageBadpaintPixels->drawingRectDim, rectIndex);
+				GLintptr offset = (drawingRect.pos.y * textureGPU->dim.x + drawingRect.pos.x) * sizeof(ColorU32);
+				glTexSubImage2D(GL_TEXTURE_2D, 0, drawingRect.pos.x, drawingRect.pos.y, drawingRect.dim.x, drawingRect.dim.y, GL_RGBA, GL_UNSIGNED_BYTE, (void*)offset);
+				imageBadpaintPixels->drawingRectDirtyListFrame[rectIndex] = false;
+			}
+		}
+
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+		textureGPU->currentPboID = ModNextU32(textureGPU->currentPboID, ARRAY_COUNT(textureGPU->pboIDs));
+
+		GenTextureMipmaps(&textureGPU->texture);
+	}
+
 }
