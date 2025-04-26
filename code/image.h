@@ -36,10 +36,10 @@ enum BADPAINT_PIXEL_TYPE : u8
 static ColorU32 BADPAINT_PIXEL_TYPE_COLORS_PRIMARY[] =
 {
 	{},
-	{ 230, 41, 55, 187 }, // RED
-	{ 253, 249, 0, 187 }, // YELLOW
-	{ 0, 121, 241, 187 }, //BLUE
-	{ 200, 122, 255, 187 }, //PURPLE
+	{ 230, 41, 55, 227 }, // RED
+	{ 253, 249, 0, 227 }, // YELLOW
+	{ 0, 121, 241, 227 }, //BLUE
+	{ 200, 122, 255, 227 }, //PURPLE
 };
 static ColorU32 BADPAINT_PIXEL_TYPE_COLORS_PROCESSING[] =
 {

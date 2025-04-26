@@ -248,6 +248,7 @@ Arena *ArenaGroupPushArena(ArenaGroup *arenaGroup)
 			break;
 		}
 	}
+	ASSERT(result->used == 0);
 
 	return result;
 }

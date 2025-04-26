@@ -47,6 +47,7 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 			if (index == nextInQueueIndex)
 			{
 				WorkQueueEntry entry = queue->entries[index];
+				ASSERT(entry.callback);
 				entry.callback(queue, entry.data);
 				// InterlockedIncrement((LONG volatile *)&queue->entryCompletionCount);
 			}
@@ -67,6 +68,8 @@ void PlatformAddThreadWorkEntry(PlatformWorkQueue *queue, PlatformWorkQueueCallb
 	WorkQueueEntry *entry = &queue->entries[queue->nextInQueueIndex];
 	entry->data = data;
 	entry->callback = callback;
+	ASSERT(callback);
+	ASSERT(data);
 
 	queue->completionGoalIndex = ModNextU32(queue->completionGoalIndex, ARRAY_COUNT(queue->entries));
 

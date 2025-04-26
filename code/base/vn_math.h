@@ -161,6 +161,7 @@ union ColorU32
 	};
 };
 
+#define COLORU32_WHITE     ColorU32{255, 255, 255, 255}
 #define COLORU32_BLACK     ColorU32{0, 0, 0, 255}
 #define COLORU32_GRAY      ColorU32{130, 130, 130, 255}
 #define COLORU32_DARKGRAY  ColorU32{80, 80, 80, 255}

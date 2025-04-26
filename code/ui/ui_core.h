@@ -71,6 +71,7 @@ enum UI_FLAGS
 	UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT = (1 << 7),
 
 	UI_FLAG_INTERACTABLE = (1 << 10),
+	UI_FLAG_TINT_TEXTURE = (1 << 11),
 };
 
 struct UiBlockColors

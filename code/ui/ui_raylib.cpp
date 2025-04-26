@@ -76,7 +76,13 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 				RectIV2 *viewRect = &uiBlock->uiTextureView.viewRect;
 				Rectangle source = {(f32)viewRect->pos.x, (f32)viewRect->pos.y, (f32)viewRect->dim.x, (f32)viewRect->dim.y};
 				Rectangle dest = RectToRayRectangle(uiBlock->rect);
-				DrawTexturePro(*texture, source, dest, Vector2{0, 0}, 0, WHITE);
+
+				Color color = WHITE;
+				if (uiBlock->flags & UI_FLAG_TINT_TEXTURE)
+				{
+					color = ColorU32ToRayColor(uiBlock->uiBlockColors.frontColor);
+				}
+				DrawTexturePro(*texture, source, dest, Vector2{0, 0}, 0, color);
 			}
 		}
 
