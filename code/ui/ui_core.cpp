@@ -492,7 +492,7 @@ void CalculateUiPositionData(UiSolveState *uiSolveState, UiBlock *uiBlock)
 
 					if (prevAutoBlock && inParentLayoutType)
 					{
-						UiSolveData *uiSolveDataPrev = GetUiSolveData(uiSolveState, uiBlock->prev);
+						UiSolveData *uiSolveDataPrev = GetUiSolveData(uiSolveState, prevAutoBlock);
 						calculatedPosition->elements[i] = uiSolveDataPrev->calculatedPosition.elements[i] + prevAutoBlock->rect.dim.elements[i];
 					}
 					else
