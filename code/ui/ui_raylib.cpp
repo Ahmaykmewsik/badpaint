@@ -163,3 +163,13 @@ UiTextureView UiRaylibTextureToUiTextureView(Texture *texture)
 	ASSERT(result.dim.y);
 	return result;
 }
+
+void UiRaylibSetCursor(UI_CURSOR_TYPE uiCursorType)
+{
+	switch(uiCursorType)
+	{
+		case UI_CURSOR_TYPE_DEFAULT: SetMouseCursor(MOUSE_CURSOR_DEFAULT); break;
+		case UI_CURSOR_TYPE_RESIZE_LEFT_RIGHT: SetMouseCursor(MOUSE_CURSOR_RESIZE_EW); break;
+		case UI_CURSOR_TYPE_RESIZE_UP_DOWN: SetMouseCursor(MOUSE_CURSOR_RESIZE_NS); break;
+	}
+}

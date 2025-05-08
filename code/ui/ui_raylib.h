@@ -1,9 +1,9 @@
 #pragma once
 
-//TODO: (Ahmayk) only define raylib here, not in ui.h
 #include <ui/ui_core.h>
-#include "../includes/raylib/src/raylib.h"
+struct Texture;
 
 UiTextureView UiRaylibTextureToUiTextureView(Texture *texture);
 void UiRaylibProcessStrings(UiBuffer *uiBuffer);
 void UiRaylibRenderBlocks(UiBuffer *uiBuffer);
+void UiRaylibSetCursor(UI_CURSOR_TYPE uiCursorType);

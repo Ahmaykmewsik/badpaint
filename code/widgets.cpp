@@ -485,9 +485,16 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 					if (frameState->uiInteractionHashes.hashMouseHover == resizeHitbox->hash)
 					{
 						resizeBorder->uiBlockColors.backColor = COLORU32_RED;
+						if (uiPanel->parent->childSplitAxis == UI_AXIS_X)
+						{
+							uiState->currentUiCursorType = UI_CURSOR_TYPE_RESIZE_LEFT_RIGHT;
+						}
+						if (uiPanel->parent->childSplitAxis == UI_AXIS_Y)
+						{
+							uiState->currentUiCursorType = UI_CURSOR_TYPE_RESIZE_UP_DOWN;
+						}
 					}
 				}
-				u32 foo = 3;
 			}
 		}
 

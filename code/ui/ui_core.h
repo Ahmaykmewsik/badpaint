@@ -148,6 +148,13 @@ struct UiBuffer
 	Arena arena;
 };
 
+enum UI_CURSOR_TYPE
+{
+	UI_CURSOR_TYPE_DEFAULT,
+	UI_CURSOR_TYPE_RESIZE_UP_DOWN,
+	UI_CURSOR_TYPE_RESIZE_LEFT_RIGHT,
+};
+
 struct UiState
 {
 	b32 initialized;
@@ -156,6 +163,8 @@ struct UiState
 
 	UiBlock *parentStack[64];
 	int parentStackCount;
+
+	UI_CURSOR_TYPE currentUiCursorType;
 };
 
 UiState *UiInit(Arena *arena);

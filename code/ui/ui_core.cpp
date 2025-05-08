@@ -704,4 +704,5 @@ void UiEndFrame(UiState *uiState)
 	UiBuffer *uiBufferLastFrame = &uiState->uiBuffers[1 - uiState->uiBufferIndex];
 	ArenaReset(&uiBufferLastFrame->arena);
 	uiState->uiBufferIndex = 1 - uiState->uiBufferIndex;
+	uiState->currentUiCursorType = UI_CURSOR_TYPE_DEFAULT;
 }

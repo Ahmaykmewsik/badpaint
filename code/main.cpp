@@ -853,6 +853,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 		//----------------------RENDER------------------------
 		//----------------------------------------------------
 
+		UiRaylibSetCursor(uiState->currentUiCursorType);
 		UiRaylibProcessStrings(uiBufferCurrent);
 		UiLayoutBlocks(uiBufferCurrent, frameState->windowDim, &gameMemory->temporaryArena);
 

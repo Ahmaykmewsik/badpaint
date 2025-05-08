@@ -4,6 +4,7 @@
 #include "platform_main.h"
 
 #include <intrin.h>
+//#define WIN32_LEAN_AND_MEAN //TODO: (Ahmayk) do this
 #include "Windows.h"
 #include <minwinbase.h>
 #include <minwindef.h>
