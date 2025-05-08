@@ -69,6 +69,11 @@ UiBlock *UiCreateRootBlock(UiState *uiState)
 	{
 		result = &uiBuffer->uiBlocks[uiBuffer->uiBlockCount++];
 		*result = {};
+		u32 index = (u32) (result - &uiBuffer->uiBlocks[0]); 
+		if (ASSERT(index < ARRAY_COUNT(uiBuffer->sortIndexArray)))
+		{
+			uiBuffer->sortIndexArray[index] = index;
+		}
 	}
 	if (!result)
 	{
@@ -620,9 +625,9 @@ void UiBufferRadixSort(UiBuffer *uiBuffer, Arena *temporaryArena)
 	u32 *source = &uiBuffer->sortIndexArray[0];
 	u32 *dest = ARENA_PUSH_ARRAY_MARKER(temporaryArena, uiBuffer->uiBlockCount, u32, &marker);
 
-    for (u32 byteIndex = 0; byteIndex < 64; byteIndex += 8)
+    for (u32 byteIndex = 0; byteIndex < 32; byteIndex += 8)
     {
-        u32 sortKeyOffsets[MAX_UI_BLOCKS] = {};
+        u32 sortKeyOffsets[256] = {};
 
         for (u32 i = 0; i < uiBuffer->uiBlockCount; ++i)
         {

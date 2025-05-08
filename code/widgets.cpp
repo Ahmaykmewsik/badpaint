@@ -186,6 +186,7 @@ void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2
 				t->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) sizeAbsolute};
 				t->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) sizeAbsolute};
 				t->uiBlockColors.backColor = ColorU32{0, 0, 0, 100};
+				t->depthLayer = UI_APP_DEPTH_LAYER_CURSOR_GUI; 
 				if (isHovered)
 				{
 					t->uiBlockColors.backColor = BADPAINT_PIXEL_TYPE_COLORS_PROCESSING[appState->currentBadpaintPixelType];
@@ -214,6 +215,7 @@ void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2
 				t->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) sizeAbsolute};
 				t->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) sizeAbsolute};
 				t->uiBlockColors.backColor = ColorU32{0, 0, 0, 100};
+				t->depthLayer = UI_APP_DEPTH_LAYER_CURSOR_GUI; 
 				if (isHovered)
 				{
 					t->uiBlockColors.backColor = BADPAINT_PIXEL_TYPE_COLORS_PROCESSING[appState->currentBadpaintPixelType];
@@ -242,6 +244,7 @@ void DrawToolInCanvasOnPanelAndChildren(UiState *uiState, AppState *appState, v2
 				t->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) sizeAbsolute};
 				t->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) sizeAbsolute};
 				t->uiBlockColors.backColor = ColorU32{0, 0, 0, 100};
+				t->depthLayer = UI_APP_DEPTH_LAYER_CURSOR_GUI; 
 				if (isHovered)
 				{
 					t->uiBlockColors.backColor = BADPAINT_PIXEL_TYPE_COLORS_PROCESSING[appState->currentBadpaintPixelType];
