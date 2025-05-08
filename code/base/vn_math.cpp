@@ -1477,7 +1477,6 @@ ColorU32 HexToColorU32(u32 hexValue)
 	result.r = (hexValue >> 16) & 0xFF;
 	result.g = (hexValue >> 8) & 0xFF;
 	result.b = (hexValue) & 0xFF;
-	result.a = 1;
+	result.a = 255;
 	return result;
 }
-

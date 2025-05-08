@@ -403,6 +403,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 					if (!first)
 					{
 						first = true;
+#if 1
 						appState->rootUiPanel.childSplitAxis = UI_AXIS_X;
 						appState->rootUiPanel.hash = Murmur3String("mainPanels");
 						UiPanelPair panelPair1 = SplitPanel(&appState->rootUiPanel, &gameMemory->permanentArena, UI_AXIS_X, 0.85f);
@@ -416,6 +417,13 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 						UiPanelPair panelPairRightSidebar = SplitPanel(panelPair1.uiPanel2, &gameMemory->permanentArena, UI_AXIS_Y, 0.2f);
 						panelPairRightSidebar.uiPanel1->uiPanelType = UI_PANEL_TYPE_NULL;
 						panelPairRightSidebar.uiPanel2->uiPanelType = UI_PANEL_TYPE_LAYERS;
+#else
+						appState->rootUiPanel.childSplitAxis = UI_AXIS_X;
+						appState->rootUiPanel.hash = Murmur3String("mainPanels");
+						UiPanelPair panelPair1 = SplitPanel(&appState->rootUiPanel, &gameMemory->permanentArena, UI_AXIS_X, 0.85f);
+						panelPair1.uiPanel1->uiPanelType = UI_PANEL_TYPE_NULL;
+						panelPair1.uiPanel2->uiPanelType = UI_PANEL_TYPE_LAYERS;
+#endif
 					}
 
 					BuildPanelTree(uiState, appState, frameState, &appState->rootUiPanel);

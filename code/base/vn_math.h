@@ -244,6 +244,7 @@ f32 DistanceV2(v2 v1, v2 v2);
 f32 SafeDivideF32(f32 a, f32 b);
 f64 SafeDivideF64(f64 a, f64 b);
 f32 SafeDivideI32(i32 a, i32 b);
+f32 MostlyEqualsF32(f32 f1, f32 f2, f32 epsilon);
 u32 ModNextU32(u32 i, u32 size);
 u32 ModBackU32(u32 i, u32 size);
 f32 SquareF32(f32 a);
