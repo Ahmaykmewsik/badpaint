@@ -43,6 +43,12 @@ UiBlock *UiCreateBlock(UiState *uiState)
 				result->parent->lastChild = result;
 			}
 		}
+
+		u32 index = (u32) (result - &uiBuffer->uiBlocks[0]); 
+		if (ASSERT(index < ARRAY_COUNT(uiBuffer->sortIndexArray)))
+		{
+			uiBuffer->sortIndexArray[index] = index;
+		}
 	}
 
 	if (!result)
@@ -592,6 +598,47 @@ u32 GetNumBlocksInTree(UiBlock *uiBlock, u32 count = 0)
 	return result;
 }
 
+//TODO: (Ahmayk) This is overkill for smaller ui block counts
+//use simpler sort function for lower block counts for better performance
+void UiBufferRadixSort(UiBuffer *uiBuffer, Arena *temporaryArena)
+{
+	ArenaMarker marker;
+	u32 *source = &uiBuffer->sortIndexArray[0];
+	u32 *dest = ARENA_PUSH_ARRAY_MARKER(temporaryArena, uiBuffer->uiBlockCount, u32, &marker);
+
+    for (u32 byteIndex = 0; byteIndex < 64; byteIndex += 8)
+    {
+        u32 sortKeyOffsets[MAX_UI_BLOCKS] = {};
+
+        for (u32 i = 0; i < uiBuffer->uiBlockCount; ++i)
+        {
+            u32 radixValue = uiBuffer->uiBlocks[source[i]].depthLayer;
+            u32 radixPiece = (radixValue >> byteIndex) & 0xFF;
+            ++sortKeyOffsets[radixPiece];
+        }
+
+        u32 total = 0;
+        for (u32 i = 0; i < ARRAY_COUNT(sortKeyOffsets); ++i)
+        {
+            u32 count = sortKeyOffsets[i];
+            sortKeyOffsets[i] = total;
+            total += count;
+        }
+
+        for (u32 i = 0; i < uiBuffer->uiBlockCount; ++i)
+        {
+            u32 radixValue = uiBuffer->uiBlocks[source[i]].depthLayer;
+            u32 radixPiece = (radixValue >> byteIndex) & 0xFF;
+            dest[sortKeyOffsets[radixPiece]++] = source[i];
+        }
+
+        u32 *swapTemp = dest;
+        dest = source;
+        source = swapTemp;
+    }
+	ArenaPopMarker(marker);
+}
+
 void UiLayoutBlocks(UiBuffer *uiBuffer, iv2 windowDim, Arena *temporaryArena)
 {
 	UiSolveState uiSolveState = {};
@@ -634,6 +681,8 @@ void UiLayoutBlocks(UiBuffer *uiBuffer, iv2 windowDim, Arena *temporaryArena)
 	}
 
 	ArenaPopMarker(positionDataMarker);
+
+	UiBufferRadixSort(uiBuffer, temporaryArena);
 }
 
 void UiEndFrame(UiState *uiState)

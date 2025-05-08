@@ -118,6 +118,7 @@ struct UiBlock
 	UiFont uiFont;
 	UiTextureView uiTextureView;
 	UiBlockColors uiBlockColors;
+	u32 depthLayer;
 
 	RectV2 rect;
 
@@ -131,6 +132,7 @@ struct UiBuffer
 {
 	UiBlock uiBlocks[MAX_UI_BLOCKS];
 	u32 uiBlockCount;
+	u32 sortIndexArray[MAX_UI_BLOCKS];
 	Arena arena;
 };
 

@@ -14,7 +14,7 @@ v2 GetCeneteredPosInRectV2(RectV2 rect, v2 dim)
 	return result;
 }
 
-void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
+void UiRenderBlockRaylib(UiBlock *uiBlock)
 {
 	if (uiBlock)
 	{
@@ -120,9 +120,6 @@ void UiRenderBlockRaylib(UiBlock *uiBlock, int uiDepth)
 			Color color = ColorU32ToRayColor(uiBlock->uiBlockColors.frontColor);
 			DrawLine(start.x, start.y, end.x, end.y, color);
 		}
-
-		UiRenderBlockRaylib(uiBlock->firstChild, uiDepth + 2);
-		UiRenderBlockRaylib(uiBlock->next, uiDepth);
 	}
 }
 
@@ -130,11 +127,8 @@ void UiRaylibRenderBlocks(UiBuffer *uiBuffer)
 {
 	for (u32 i = 1; i < uiBuffer->uiBlockCount; i++)
 	{
-		UiBlock *uiBlock = &uiBuffer->uiBlocks[i];
-		if (!uiBlock->parent)
-		{
-			UiRenderBlockRaylib(uiBlock, 0);
-		}
+		UiBlock *uiBlock = &uiBuffer->uiBlocks[uiBuffer->sortIndexArray[i]];
+		UiRenderBlockRaylib(uiBlock);
 	}
 }
 
