@@ -467,16 +467,18 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 				resizeHitbox->hash = Murmur3String("resizePanelHitbox", uiPanel->hash);
 				resizeHitbox->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 				resizeHitbox->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-				resizeHitbox->uiSizes[uiPanel->parent->childSplitAxis] = {UI_SIZE_PIXELS, 5};
+				resizeHitbox->uiSizes[uiPanel->parent->childSplitAxis] = {UI_SIZE_PIXELS, 8};
 				resizeHitbox->uiPosition[UI_AXIS_X] = {UI_POSITION_PERCENT_OF_PARENT, 0};
 				resizeHitbox->uiPosition[UI_AXIS_Y] = {UI_POSITION_PERCENT_OF_PARENT, 0};
 				resizeHitbox->uiPosition[uiPanel->parent->childSplitAxis] = {UI_POSITION_PERCENT_OF_PARENT, percentPositionSum};
+				resizeHitbox->uiPositionOffset[uiPanel->parent->childSplitAxis] = {UI_POSITION_OFFSET_PERCENT_OF_SELF, -0.5f};
 				UI_PARENT_SCOPE(uiState, resizeHitbox)
 				{
 					UiBlock *resizeBorder = UiCreateBlock(uiState);
 					resizeBorder->flags = UI_FLAG_DRAW_BACKGROUND;
 					resizeBorder->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 					resizeBorder->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+					resizeBorder->uiPosition[uiPanel->parent->childSplitAxis] = {UI_POSITION_PERCENT_OF_PARENT, 0.5f};
 					resizeBorder->uiSizes[uiPanel->parent->childSplitAxis] = {UI_SIZE_PIXELS, 1};
 					resizeBorder->uiBlockColors.backColor = COLORU32_BLACK;
 					resizeBorder->depthLayer = UI_APP_DEPTH_LAYER_ABOVE;

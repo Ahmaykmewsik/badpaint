@@ -15,6 +15,17 @@ struct UiPosition
 	f32 value;
 };
 
+enum UI_POSITION_OFFSET_TYPE
+{
+	UI_POSITION_OFFSET_PIXELS,
+	UI_POSITION_OFFSET_PERCENT_OF_SELF,
+};
+struct UiPositionOffset
+{
+	UI_POSITION_OFFSET_TYPE type;
+	f32 value;
+};
+
 enum UI_SIZE_TYPE
 {
 	UI_SIZE_NULL,
@@ -103,6 +114,7 @@ struct UiBlock
 
 	UiSize uiSizes[UI_AXIS_COUNT];
 	UiPosition uiPosition[UI_AXIS_COUNT];
+	UiPositionOffset uiPositionOffset[UI_AXIS_COUNT];
 	UI_CHILD_ALIGN_TYPE uiChildAlignTypes[UI_AXIS_COUNT];
 	UI_CHILD_LAYOUT_TYPE uiChildLayoutType;
 	UI_TEXT_ALIGN_TYPE uiTextAlignTypes[UI_AXIS_COUNT];

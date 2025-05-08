@@ -519,6 +519,20 @@ void CalculateUiPositionData(UiSolveState *uiSolveState, UiBlock *uiBlock)
 				} break;
 				InvalidDefaultCase;
 			}
+
+			//TODO: (Ahmayk) what's the best way for offsets to interact with auto positioning?
+			switch(uiBlock->uiPositionOffset[i].type)
+			{
+				case UI_POSITION_OFFSET_PIXELS:
+				{
+					calculatedPosition->elements[i] += uiBlock->uiPositionOffset[i].value;
+				} break;
+				case UI_POSITION_OFFSET_PERCENT_OF_SELF:
+				{
+					calculatedPosition->elements[i] += uiBlock->rect.dim.elements[i] * uiBlock->uiPositionOffset[i].value;
+				} break;
+				InvalidDefaultCase;
+			}
 		}
 
 		CalculateUiPositionData(uiSolveState, uiBlock->firstChild);
