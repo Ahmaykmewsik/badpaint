@@ -280,7 +280,7 @@ void ProcessActiveInputInDrawableArea(UiState *uiState, AppState *appState, Fram
 	{
 		v2 posInCanvas = ScreenPosToCanvasPos(frameState->mousePixelPos, &drawableBlockPrev->rect, appState->canvas.badpaintPixelsRootImage.dim);
 		DrawToolInCanvasOnPanelAndChildren(uiState, appState, posInCanvas, uiPanelType);
-		if (drawableBlock->hash == frameState->uiInteractionHashes.hashMouseDown)
+		if (appState->lastPressedUiHash == drawableBlockPrev->hash)
 		{
 			v2 posInCanvasPrevious = ScreenPosToCanvasPos(frameState->mousePixelPosPrevious, &drawableBlockPrev->rect, appState->canvas.badpaintPixelsRootImage.dim);
 			AppCommand *appCommand = PushAppCommand(&frameState->appCommandBuffer);
@@ -320,7 +320,10 @@ void WidgetImageCanvas(UiState *uiState, AppState *appState, FrameState *frameSt
 				canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 				//TODO: (Ahmayk) This check needs to be more sophisticated regarding drawing just outside the canvas
 
-				if (canvasBlock->hash == frameState->uiInteractionHashes.hashMouseHover)
+				b32 isHoveringCanvas = (canvasBlock->hash == frameState->uiInteractionHashes.hashMouseHover &&
+					(appState->lastPressedUiHash == 0 || appState->lastPressedUiHash == canvasBlock->hash));
+
+				if (isHoveringCanvas)
 				{
 					*badpaintImageAlpha = ClampF32(0, *badpaintImageAlpha + (GetFrameTime() * (1000 / 80)) ,1);
 				}
@@ -341,7 +344,7 @@ void WidgetImageCanvas(UiState *uiState, AppState *appState, FrameState *frameSt
 					b->uiBlockColors.frontColor = ColorU32{value, value, value, valueAlpha};
 				}
 
-				if (canvasBlock->hash == frameState->uiInteractionHashes.hashMouseHover)
+				if (isHoveringCanvas)
 				{
 					ProcessActiveInputInDrawableArea(uiState, appState, frameState, canvasBlock, uiPanel->uiPanelType);
 				}
@@ -354,11 +357,12 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 {
 	if (uiPanel)
 	{
+		UiBlock *panelBlock = UiCreateBlock(uiState);
 		if (uiPanel->firstChild)
 		{
-			UiBlock *panelBlock = UiCreateBlock(uiState);
 			panelBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 			panelBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+			panelBlock->hash = Murmur3String("parentPanel", uiPanel->hash);
 			if (uiPanel->parent)
 			{
 				panelBlock->uiSizes[uiPanel->parent->childSplitAxis] = {UI_SIZE_PERCENT_OF_PARENT, uiPanel->percentOfParent};
@@ -375,11 +379,9 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 			{
 				BuildPanelTree(uiState, appState, frameState, uiPanel->firstChild);
 			}
-
 		}
 		else
 		{
-			UiBlock *panelBlock = UiCreateBlock(uiState);
 			panelBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
 			panelBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL};
 			panelBlock->hash = Murmur3String("mainPanel", uiPanel->hash);
@@ -455,50 +457,64 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 			}
 		}
 
-		if (uiPanel->parent)
+		if (uiPanel->parent && uiPanel->next)
 		{
+			UiBlock *resizeHitbox = UiCreateBlock(uiState);
+			resizeHitbox->flags = UI_FLAG_INTERACTABLE;
+			resizeHitbox->hash = Murmur3String("resizePanelHitbox", uiPanel->hash);
+			resizeHitbox->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+			resizeHitbox->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+			resizeHitbox->uiSizes[uiPanel->parent->childSplitAxis] = {UI_SIZE_PIXELS, 8};
+			resizeHitbox->uiPosition[UI_AXIS_X] = {UI_POSITION_PERCENT_OF_PARENT, 0};
+			resizeHitbox->uiPosition[UI_AXIS_Y] = {UI_POSITION_PERCENT_OF_PARENT, 0};
+			resizeHitbox->uiPositionOffset[uiPanel->parent->childSplitAxis] = {UI_POSITION_OFFSET_PERCENT_OF_SELF, -0.5f};
+			UI_PARENT_SCOPE(uiState, resizeHitbox)
+			{
+				UiBlock *resizeBorder = UiCreateBlock(uiState);
+				resizeBorder->flags = UI_FLAG_DRAW_BACKGROUND;
+				resizeBorder->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+				resizeBorder->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+				resizeBorder->uiPosition[uiPanel->parent->childSplitAxis] = {UI_POSITION_PERCENT_OF_PARENT, 0.5f};
+				resizeBorder->uiSizes[uiPanel->parent->childSplitAxis] = {UI_SIZE_PIXELS, 1};
+				resizeBorder->uiBlockColors.backColor = COLORU32_GRAY;
+				resizeBorder->depthLayer = UI_APP_DEPTH_LAYER_ABOVE;
+				if (frameState->uiInteractionHashes.hashMouseHover == resizeHitbox->hash || appState->lastPressedUiHash == resizeHitbox->hash)
+				{
+					resizeBorder->uiBlockColors.backColor = HexToColorU32(0xf2fa00);
+					if (uiPanel->parent->childSplitAxis == UI_AXIS_X)
+					{
+						uiState->currentUiCursorType = UI_CURSOR_TYPE_RESIZE_LEFT_RIGHT;
+					}
+					if (uiPanel->parent->childSplitAxis == UI_AXIS_Y)
+					{
+						uiState->currentUiCursorType = UI_CURSOR_TYPE_RESIZE_UP_DOWN;
+					}
+				}
+				if (appState->lastPressedUiHash == resizeHitbox->hash)
+				{
+					resizeBorder->uiSizes[uiPanel->parent->childSplitAxis] = {UI_SIZE_PIXELS, 2};
+					UiBlock *prevParentPanelBlock = UiGetBlockOfHashLastFrame(uiState, panelBlock->parent->hash);
+					if (ASSERT(prevParentPanelBlock->hash))
+					{
+						f32 relativePosInBox = frameState->mousePixelPos.elements[uiPanel->parent->childSplitAxis] - prevParentPanelBlock->rect.pos.elements[uiPanel->parent->childSplitAxis];
+						f32 percentOfBoxSize = SafeDivideF32(relativePosInBox, prevParentPanelBlock->rect.dim.elements[uiPanel->parent->childSplitAxis]);
+						u32 minSizePixels = 32;
+						f32 minSizePercent = SafeDivideF32((f32)minSizePixels, prevParentPanelBlock->rect.dim.elements[uiPanel->parent->childSplitAxis]);
+						percentOfBoxSize = ClampF32(0 + minSizePercent, percentOfBoxSize, 1 - minSizePercent);
+						f32 oldPercentOfParent = uiPanel->percentOfParent;
+						uiPanel->percentOfParent = percentOfBoxSize;
+						uiPanel->next->percentOfParent -= (percentOfBoxSize - oldPercentOfParent);
+						panelBlock->uiSizes[uiPanel->parent->childSplitAxis].value = uiPanel->percentOfParent;
+					}
+				}
+			}
+
 			f32 percentPositionSum = uiPanel->percentOfParent;
 			for (UiPanel *siblingPanel = uiPanel->prev; siblingPanel; siblingPanel= siblingPanel->prev)
 			{
 				percentPositionSum += siblingPanel->percentOfParent;
 			}
-			f32 epsilon = 0.001f;
-			if (percentPositionSum != 0 && !MostlyEqualsF32(percentPositionSum, 1, epsilon))
-			{
-				UiBlock *resizeHitbox = UiCreateBlock(uiState);
-				resizeHitbox->flags = UI_FLAG_INTERACTABLE;
-				resizeHitbox->hash = Murmur3String("resizePanelHitbox", uiPanel->hash);
-				resizeHitbox->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-				resizeHitbox->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-				resizeHitbox->uiSizes[uiPanel->parent->childSplitAxis] = {UI_SIZE_PIXELS, 8};
-				resizeHitbox->uiPosition[UI_AXIS_X] = {UI_POSITION_PERCENT_OF_PARENT, 0};
-				resizeHitbox->uiPosition[UI_AXIS_Y] = {UI_POSITION_PERCENT_OF_PARENT, 0};
-				resizeHitbox->uiPosition[uiPanel->parent->childSplitAxis] = {UI_POSITION_PERCENT_OF_PARENT, percentPositionSum};
-				resizeHitbox->uiPositionOffset[uiPanel->parent->childSplitAxis] = {UI_POSITION_OFFSET_PERCENT_OF_SELF, -0.5f};
-				UI_PARENT_SCOPE(uiState, resizeHitbox)
-				{
-					UiBlock *resizeBorder = UiCreateBlock(uiState);
-					resizeBorder->flags = UI_FLAG_DRAW_BACKGROUND;
-					resizeBorder->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-					resizeBorder->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-					resizeBorder->uiPosition[uiPanel->parent->childSplitAxis] = {UI_POSITION_PERCENT_OF_PARENT, 0.5f};
-					resizeBorder->uiSizes[uiPanel->parent->childSplitAxis] = {UI_SIZE_PIXELS, 1};
-					resizeBorder->uiBlockColors.backColor = COLORU32_BLACK;
-					resizeBorder->depthLayer = UI_APP_DEPTH_LAYER_ABOVE;
-					if (frameState->uiInteractionHashes.hashMouseHover == resizeHitbox->hash)
-					{
-						resizeBorder->uiBlockColors.backColor = COLORU32_RED;
-						if (uiPanel->parent->childSplitAxis == UI_AXIS_X)
-						{
-							uiState->currentUiCursorType = UI_CURSOR_TYPE_RESIZE_LEFT_RIGHT;
-						}
-						if (uiPanel->parent->childSplitAxis == UI_AXIS_Y)
-						{
-							uiState->currentUiCursorType = UI_CURSOR_TYPE_RESIZE_UP_DOWN;
-						}
-					}
-				}
-			}
+			resizeHitbox->uiPosition[uiPanel->parent->childSplitAxis] = {UI_POSITION_PERCENT_OF_PARENT, percentPositionSum};
 		}
 
 		BuildPanelTree(uiState, appState, frameState, uiPanel->next);

@@ -209,6 +209,10 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 		{
 			appState->lastPressedUiHash = {};
 		}
+		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+		{
+			appState->lastPressedPos = frameState->mousePixelPos;
+		}
 
 		if (IsFileDropped())
 		{

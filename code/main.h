@@ -26,6 +26,7 @@ struct AppState
 
 	b32 imageIsBroken;
 	u32 lastPressedUiHash;
+	iv2 lastPressedPos;
 };
 
 struct FrameState
