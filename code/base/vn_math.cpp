@@ -1252,6 +1252,18 @@ f64 SquareF64(f64 a)
 	return (Result);
 }
 
+f32 CosF32(f32 f)
+{
+	f32 result = (f32) cos(f);
+	return result;
+}
+
+f32 SinF32(f32 f)
+{
+	f32 result = (f32) sin(f);
+	return result;
+}
+
 v4 SRGB255ToLinear1(v4 C)
 {
 	v4 Result;

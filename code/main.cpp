@@ -53,6 +53,7 @@ static KeyboardKey COMMAND_KEY_BINDINGS[] = {
 	KEY_C,
 	KEY_B,
 	KEY_E,
+	KEY_Y,
 	KEY_T,
 	KEY_NULL,
 	KEY_NULL,
@@ -148,8 +149,6 @@ AppState *InitApp(GameMemory *gameMemory, u32 threadCount)
 
 	BADPAINT_TOOL_TYPE badpaintSpriteSheetOrder[] = {
 		BADPAINT_TOOL_TEST,
-		BADPAINT_TOOL_PENCIL,
-		BADPAINT_TOOL_ERASER,
 	};
 	appState->toolbrushSpriteSheet = LoadTexture("buttonSprites.png");
 	i32 spriteSheetBoxSize = 30;
@@ -361,9 +360,9 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 5};
 					}
 
-					WidgetToolButton(uiState, appState, frameState, BADPAINT_TOOL_PENCIL, COMMAND_SWITCH_TOOL_TO_PENCIL);
-					WidgetToolButton(uiState, appState, frameState, BADPAINT_TOOL_ERASER, COMMAND_SWITCH_TOOL_TO_ERASER);
-					WidgetToolButton(uiState, appState, frameState, BADPAINT_TOOL_TEST, COMMAND_SWITCH_TOOL_TO_TEST);
+					WidgetToolButton(uiState, appState, frameState, STRING("P"), BADPAINT_TOOL_PENCIL, COMMAND_SWITCH_TOOL_TO_PENCIL);
+					WidgetToolButton(uiState, appState, frameState, STRING("E"), BADPAINT_TOOL_ERASER, COMMAND_SWITCH_TOOL_TO_ERASER);
+					WidgetToolButton(uiState, appState, frameState, STRING("Y"), BADPAINT_TOOL_SPRAYCAN, COMMAND_SWITCH_TOOL_TO_SPAYCAN);
 
 					{
 						UiBlock *b = UiCreateBlock(uiState);
@@ -476,6 +475,10 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 				{
 					appState->currentTool = BADPAINT_TOOL_ERASER;
 				} break;
+				case COMMAND_SWITCH_TOOL_TO_SPAYCAN:
+				{
+					appState->currentTool = BADPAINT_TOOL_SPRAYCAN;
+				} break;
 				case COMMAND_SWITCH_TOOL_TO_TEST:
 				{
 					appState->currentTool = BADPAINT_TOOL_TEST;
@@ -539,58 +542,21 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 							{
 								case BADPAINT_TOOL_PENCIL:
 								{
-									BadpaintPixel badpaintPixel = {};
-									badpaintPixel.badpaintPixelType = appState->currentBadpaintPixelType;
-
-									switch(badpaintPixel.badpaintPixelType)
-									{
-										case BADPAINT_PIXEL_TYPE_RANDOM:
-										{
-											badpaintPixel.r1RandomValue = (u8) RandomInRangeI32(0, 255);
-										} break;
-										case BADPAINT_PIXEL_TYPE_COPY_OTHER_PIXEL:
-										{
-											i32 posX = RandomInRangeI32(endPosIV2.x - appState->toolSize, endPosIV2.x + appState->toolSize);
-											i32 posY = RandomInRangeI32(endPosIV2.y - appState->toolSize, endPosIV2.y + appState->toolSize);
-											badpaintPixel.r2PosX = (u16) ClampI32(0, posX, imageBadpaintPixels->dim.x);
-											badpaintPixel.r3PosY = (u16) ClampI32(0, posY, imageBadpaintPixels->dim.y);
-										} break;
-									}
-
-									badpaintPixel.processBatchIndex = canvas->processBatchIndex;
-									drewSomething = CanvasDrawCircleStroke(imageBadpaintPixels, startPosIV2, endPosIV2, appState->toolSize, badpaintPixel);
+									BadpaintPixel badpaintPixel = CreateBadpaintPixel(appState->currentBadpaintPixelType, imageBadpaintPixels, endPosIV2, appState->toolSize, canvas->processBatchIndex);
+									drewSomething = CanvasDrawCircleStroke(imageBadpaintPixels, startPosIV2, endPosIV2, appState->toolSize, &badpaintPixel);
 								} break;
 								case BADPAINT_TOOL_ERASER:
 								{
-									BadpaintPixel badpaintPixel = {};
-									badpaintPixel.processBatchIndex = canvas->processBatchIndex;
-									drewSomething = CanvasDrawCircleStroke(imageBadpaintPixels, startPosIV2, endPosIV2, appState->toolSize, badpaintPixel);
+									BadpaintPixel badpaintPixel = CreateBadpaintPixel(BADPAINT_PIXEL_TYPE_NONE, imageBadpaintPixels, endPosIV2, appState->toolSize, canvas->processBatchIndex);
+									drewSomething = CanvasDrawCircleStroke(imageBadpaintPixels, startPosIV2, endPosIV2, appState->toolSize, &badpaintPixel);
 								} break;
+								case BADPAINT_TOOL_SPRAYCAN:
+								{
+									BadpaintPixel badpaintPixel = CreateBadpaintPixel(appState->currentBadpaintPixelType, imageBadpaintPixels, endPosIV2, appState->toolSize, canvas->processBatchIndex);
+									drewSomething = CanvasDrawSpray(imageBadpaintPixels, endPosIV2, appState->toolSize, &badpaintPixel);
+								}
 								case BADPAINT_TOOL_TEST:
 								{
-#if 0
-									i32 halfBrushSize = (i32) RoundF32(appState->toolSize * 0.5f);
-									i32 minX = MinI32(startPosIV2.x, endPosIV2.x) - halfBrushSize; 
-									i32 minY = MinI32(startPosIV2.y, endPosIV2.y) - halfBrushSize; 
-									i32 maxX = MaxI32(startPosIV2.x, endPosIV2.x) + halfBrushSize;
-									i32 maxY = MaxI32(startPosIV2.y, endPosIV2.y) + halfBrushSize;
-									for (u32 i = 0; i < 100; i++)
-									{
-										iv2 randomPoint2;
-										randomPoint2.x = RandomInRangeI32(minX, maxX);
-										randomPoint2.y = RandomInRangeI32(minY, maxY);
-										iv2 randomPoint1;
-										randomPoint1.x = RandomInRangeI32(minX, maxX);
-										randomPoint1.y = RandomInRangeI32(minY, maxY);
-										ImageSwapPoints(&appState->rootImageRaw, randomPoint1, randomPoint2);
-										drewSomething = true;
-									}
-
-									BadpaintPixel badpaintPixel = {};
-									badpaintPixel.badpaintPixelType = appState->currentBadpaintPixelType;
-									badpaintPixel.processBatchIndex = canvas->processBatchIndex;
-									drewSomething = CanvasDrawCircleStroke(imageBadpaintPixels, startPosIV2, endPosIV2, appState->toolSize, badpaintPixel);
-#endif
 								} break;
 								InvalidDefaultCase
 							}

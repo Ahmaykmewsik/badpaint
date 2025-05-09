@@ -29,6 +29,27 @@ void UiRenderBlockRaylib(UiBlock *uiBlock)
 			DrawRectangleRec(rect, color);
 		}
 
+		if (uiBlock->flags & UI_FLAG_DRAW_TEXTURE)
+		{
+			Texture *texture = (Texture *) uiBlock->uiTextureView.data;
+			if (ASSERT(texture) &&
+				ASSERT(uiBlock->uiTextureView.id == texture->id) &&
+				ASSERT(uiBlock->uiTextureView.dim.x == texture->width) &&
+				ASSERT(uiBlock->uiTextureView.dim.y == texture->height))
+			{
+				RectIV2 *viewRect = &uiBlock->uiTextureView.viewRect;
+				Rectangle source = {(f32)viewRect->pos.x, (f32)viewRect->pos.y, (f32)viewRect->dim.x, (f32)viewRect->dim.y};
+				Rectangle dest = RectToRayRectangle(uiBlock->rect);
+
+				Color color = WHITE;
+				if (uiBlock->flags & UI_FLAG_TINT_TEXTURE)
+				{
+					color = ColorU32ToRayColor(uiBlock->uiBlockColors.frontColor);
+				}
+				DrawTexturePro(*texture, source, dest, Vector2{0, 0}, 0, color);
+			}
+		}
+
 		if (uiBlock->flags & UI_FLAG_DRAW_TEXT)
 		{
 			v2 pos = {};
@@ -62,27 +83,6 @@ void UiRenderBlockRaylib(UiBlock *uiBlock)
 			{
 				Color color = ColorU32ToRayColor(uiBlock->uiBlockColors.frontColor);
 				DrawTextPro(*font, C_STRING_NULL_TERMINATED(uiBlock->string), V2ToRayVector(pos), {}, 0, (f32) font->baseSize, 1, color);
-			}
-		}
-
-		if (uiBlock->flags & UI_FLAG_DRAW_TEXTURE)
-		{
-			Texture *texture = (Texture *) uiBlock->uiTextureView.data;
-			if (ASSERT(texture) &&
-				ASSERT(uiBlock->uiTextureView.id == texture->id) &&
-				ASSERT(uiBlock->uiTextureView.dim.x == texture->width) &&
-				ASSERT(uiBlock->uiTextureView.dim.y == texture->height))
-			{
-				RectIV2 *viewRect = &uiBlock->uiTextureView.viewRect;
-				Rectangle source = {(f32)viewRect->pos.x, (f32)viewRect->pos.y, (f32)viewRect->dim.x, (f32)viewRect->dim.y};
-				Rectangle dest = RectToRayRectangle(uiBlock->rect);
-
-				Color color = WHITE;
-				if (uiBlock->flags & UI_FLAG_TINT_TEXTURE)
-				{
-					color = ColorU32ToRayColor(uiBlock->uiBlockColors.frontColor);
-				}
-				DrawTexturePro(*texture, source, dest, Vector2{0, 0}, 0, color);
 			}
 		}
 

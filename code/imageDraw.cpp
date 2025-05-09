@@ -3,6 +3,32 @@
 
 #include <cstring>  //memcpy
 
+BadpaintPixel CreateBadpaintPixel(BADPAINT_PIXEL_TYPE badpaintPixelType, ImageBadpaintPixels *imageBadpaintPixels, iv2 endPosIV2, u32 toolSize, u8 processBatchIndex)
+{
+	BadpaintPixel result = {};
+	result.badpaintPixelType = badpaintPixelType;
+	switch(result.badpaintPixelType)
+	{
+		case BADPAINT_PIXEL_TYPE_RANDOM:
+		{
+			result.r1RandomValue = (u8) RandomInRangeI32(0, 255);
+		} break;
+		case BADPAINT_PIXEL_TYPE_COPY_OTHER_PIXEL:
+		{
+			i32 minX = endPosIV2.x - toolSize;
+			i32 minY = endPosIV2.y - toolSize;
+			i32 maxX = endPosIV2.x + toolSize;
+			i32 maxY = endPosIV2.y + toolSize;
+			i32 posX = RandomInRangeI32(minX, maxX);
+			i32 posY = RandomInRangeI32(minY, maxY);
+			result.r2PosX = (u16) ClampI32(0, posX, imageBadpaintPixels->dim.x);
+			result.r3PosY = (u16) ClampI32(0, posY, imageBadpaintPixels->dim.y);
+		} break;
+	}
+	result.processBatchIndex = processBatchIndex;
+	return result;
+}
+
 void CanvasSetDirtyRect(ImageBadpaintPixels *imageBadpaintPixels, RectIV2 updateArea)
 {
 	u32 numX = (u32) CeilF32(imageBadpaintPixels->dim.x / (f32) imageBadpaintPixels->drawingRectDim.x);
@@ -62,13 +88,20 @@ void ProcessEdge(iv2 a, iv2 b, i32 y, i32 *xmin, i32 *xmax)
 	}
 }
 
-b32 CanvasImageDrawPixel(Image *dst, int x, int y, Color color)
+b32 CanvasImageBadpaintDrawPixel(ImageBadpaintPixels *dst, i32 index, BadpaintPixel *badpaintPixel)
 {
 	b32 result = false;
+	BadpaintPixel *badpaintPixelDest = &dst->dataBadpaintPixel[index];
+	//TODO: (Ahmayk) more complex equality check
+	if (badpaintPixelDest->badpaintPixelType != badpaintPixel->badpaintPixelType) 
+	{
+		*badpaintPixelDest = *badpaintPixel;
+		result = true;
+	}
 	return result;
 }
 
-b32 CanvasFillConvexQuad(ImageBadpaintPixels *imageBadpaintPixels, iv2 p0, iv2 p1, iv2 p2, iv2 p3, BadpaintPixel badpaintPixel)
+b32 CanvasFillConvexQuad(ImageBadpaintPixels *imageBadpaintPixels, iv2 p0, iv2 p1, iv2 p2, iv2 p3, BadpaintPixel *badpaintPixel)
 {
 	b32 result = false;
 	iv2 minIV2 = p0;
@@ -110,15 +143,11 @@ b32 CanvasFillConvexQuad(ImageBadpaintPixels *imageBadpaintPixels, iv2 p0, iv2 p
 
         if (xmin <= xmax)
 		{
-            for (i32 x = xmin; x <= xmax; x++)
+			u32 startIndex = (y * imageBadpaintPixels->dim.x) + xmin;
+			u32 endIndex = (y * imageBadpaintPixels->dim.x) + xmax;
+            for (u32 i = startIndex; i <= endIndex; i++)
 			{
-				u32 index = (y * imageBadpaintPixels->dim.x) + x;
-				BadpaintPixel *badpaintPixelDest = &imageBadpaintPixels->dataBadpaintPixel[index];
-				if (badpaintPixelDest->badpaintPixelType != badpaintPixel.badpaintPixelType) 
-				{
-					*badpaintPixelDest = badpaintPixel;
-					result |= true;
-				}
+				result |= CanvasImageBadpaintDrawPixel(imageBadpaintPixels, i, badpaintPixel);
             }
         }
     }
@@ -133,7 +162,7 @@ b32 CanvasFillConvexQuad(ImageBadpaintPixels *imageBadpaintPixels, iv2 p0, iv2 p
 	return result;
 }
 
-b32 CanvasImageDrawRectangle(ImageBadpaintPixels *imageBadpaintPixels, int posX, int posY, int width, int height, BadpaintPixel badpaintPixel)
+b32 CanvasImageDrawRectangle(ImageBadpaintPixels *imageBadpaintPixels, int posX, int posY, int width, int height, BadpaintPixel *badpaintPixel)
 {
 	b32 result = false;
     // Security check to avoid drawing out of bounds in case of bad user data
@@ -158,19 +187,14 @@ b32 CanvasImageDrawRectangle(ImageBadpaintPixels *imageBadpaintPixels, int posX,
 		u32 endIndex = startIndex + width;
 		for (u32 i = startIndex; i < endIndex; i++)
 		{
-			BadpaintPixel *badpaintPixelDest = &imageBadpaintPixels->dataBadpaintPixel[i];
-			if (badpaintPixelDest->badpaintPixelType != badpaintPixel.badpaintPixelType) 
-			{
-				*badpaintPixelDest = badpaintPixel;
-				result |= true;
-			}
+			result |= CanvasImageBadpaintDrawPixel(imageBadpaintPixels, i, badpaintPixel);
 		}
 	}
 
    return result;
 }
 
-b32 CanvasDrawCircle(ImageBadpaintPixels *imageBadpaintPixels, iv2 pos, u32 radius, BadpaintPixel badpaintPixel)
+b32 CanvasDrawCircle(ImageBadpaintPixels *imageBadpaintPixels, iv2 pos, u32 radius, BadpaintPixel *badpaintPixel)
 {
 	b32 result = false;
 
@@ -208,7 +232,7 @@ b32 CanvasDrawCircle(ImageBadpaintPixels *imageBadpaintPixels, iv2 pos, u32 radi
 	return result;
 }
 
-b32 CanvasDrawCircleStroke(ImageBadpaintPixels *imageBadpaintPixels, iv2 startPos, iv2 endPos, u32 radius, BadpaintPixel badpaintPixel)
+b32 CanvasDrawCircleStroke(ImageBadpaintPixels *imageBadpaintPixels, iv2 startPos, iv2 endPos, u32 radius, BadpaintPixel *badpaintPixel)
 {
 	b32 result = false;
 
@@ -234,6 +258,35 @@ b32 CanvasDrawCircleStroke(ImageBadpaintPixels *imageBadpaintPixels, iv2 startPo
 			};
 			result |= CanvasFillConvexQuad(imageBadpaintPixels, points[0], points[1], points[2], points[3], badpaintPixel);
 		}
+	}
+	return result;
+}
+
+b32 CanvasDrawSpray(ImageBadpaintPixels *imageBadpaintPixels, iv2 posIV2, u32 toolSize, BadpaintPixel *badpaintPixel)
+{
+	b32 result = false;
+	for (u32 i = 0; i < 55; i++)
+	{
+		f32 randomRadius = RandomF32ZeroToOne() * (toolSize * 0.5f);
+		f32 randomAngleDegree = RandomF32ZeroToOne() * 360;
+		iv2 sprayPixel = posIV2;
+		sprayPixel.x += (i32) RoundF32(randomRadius * CosF32(randomAngleDegree)); 
+		sprayPixel.y += (i32) RoundF32(randomRadius * SinF32(randomAngleDegree)); 
+		if (sprayPixel.x >= 0 && sprayPixel.x < imageBadpaintPixels->dim.x &&
+			sprayPixel.y >= 0 && sprayPixel.y < imageBadpaintPixels->dim.y)
+		{
+			u32 index = (sprayPixel.y * imageBadpaintPixels->dim.x) + sprayPixel.x;
+			result |= CanvasImageBadpaintDrawPixel(imageBadpaintPixels, index, badpaintPixel);
+		}
+	}
+	if (result)
+	{
+		RectIV2 updateArea;
+		updateArea.dim.x = toolSize + 1;
+		updateArea.dim.y = toolSize + 1;
+		updateArea.pos.x = posIV2.x - (u32) CeilF32(toolSize * 0.5f);
+		updateArea.pos.y = posIV2.y - (u32) CeilF32(toolSize * 0.5f);
+		CanvasSetDirtyRect(imageBadpaintPixels, updateArea);
 	}
 	return result;
 }

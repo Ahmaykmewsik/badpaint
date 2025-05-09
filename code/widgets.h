@@ -33,7 +33,7 @@ struct AppState;
 struct FrameState;
 
 UiBlock *WidgetBrushEffectButton(UiState *uiState, AppState *appState, FrameState *frameState, BADPAINT_PIXEL_TYPE badpaintPixelType, String string, COMMAND command);
-UiBlock *WidgetToolButton(UiState *uiState, AppState *appState, FrameState *frameState, BADPAINT_TOOL_TYPE badpaintToolType, COMMAND command);
+UiBlock *WidgetToolButton(UiState *uiState, AppState *appState, FrameState *frameState, String label, BADPAINT_TOOL_TYPE badpaintToolType, COMMAND command);
 
 enum UI_PANEL_TYPE : u32
 {

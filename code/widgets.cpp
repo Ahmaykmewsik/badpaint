@@ -81,18 +81,24 @@ UiBlock *WidgetBrushEffectButton(UiState *uiState, AppState *appState, FrameStat
 	return result;
 }
 
-UiBlock *WidgetToolButton(UiState *uiState, AppState *appState, FrameState *frameState, BADPAINT_TOOL_TYPE badpaintToolType, COMMAND command)
+UiBlock *WidgetToolButton(UiState *uiState, AppState *appState, FrameState *frameState, String label, BADPAINT_TOOL_TYPE badpaintToolType, COMMAND command)
 {
 	UiBlock *result = UiCreateBlock(uiState);
 	result->hash = Murmur3String("badpainttool", badpaintToolType);
-	result->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_INTERACTABLE;
+	result->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_DRAW_TEXT | UI_FLAG_INTERACTABLE;
 	result->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXTURE};
 	result->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXTURE};
 	b32 active = appState->currentTool == badpaintToolType;
 	b32 isDisabled = false;
 	b32 downOverride = IsCommandKeyBindingDown(command);
 	INTERACTION_STATE interactionState = GetInteractionState(result->hash, &frameState->uiInteractionHashes, active, isDisabled, downOverride);
-	result->uiTextureView = appState->tools[badpaintToolType].uiTextureViews[interactionState];
+	result->uiTextureView = appState->tools[BADPAINT_TOOL_TEST].uiTextureViews[interactionState];
+	result->string = label;
+	result->uiFont = appState->defaultUiFont;
+	result->uiBlockColors.frontColor = COLORU32_BLACK;
+	result->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
+	result->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
+
 	if (result->hash == frameState->uiInteractionHashes.hashMousePressed)
 	{
 		AppCommand *appCommand = PushAppCommand(&frameState->appCommandBuffer);

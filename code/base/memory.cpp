@@ -245,11 +245,10 @@ Arena *ArenaGroupPushArena(ArenaGroup *arenaGroup)
 		{
 			result = &arenaGroup->arenas[i];
 			result->flags &= ~ARENA_FLAG_READY_FOR_ASSIGNMENT;
+			ASSERT(result->used == 0);
 			break;
 		}
 	}
-	ASSERT(result->used == 0);
-
 	return result;
 }
 
