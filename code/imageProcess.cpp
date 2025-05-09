@@ -136,11 +136,12 @@ void HashImageRects(ImageRawRGBA32 *imageRaw, iv2 rectDim, u32 **outHashes)
 	}
 }
 
-void ApplyBadpaintPixel(ColorU32 *imagePixel, BadpaintPixel *badpaintPixel, u32 index, u32 dataSize)
+void ApplyBadpaintPixelPass1(ColorU32 *imagePixel, BadpaintPixel *badpaintPixel, u32 index, u32 dataSize)
 {
 	switch (badpaintPixel->badpaintPixelType)
 	{
 		case BADPAINT_PIXEL_TYPE_NONE: break;
+		case BADPAINT_PIXEL_TYPE_COPY_OTHER_PIXEL: break; //NOTE: (Ahmayk) pass 2
 		case BADPAINT_PIXEL_TYPE_REMOVE:
 		{
 			*imagePixel = {};
@@ -182,7 +183,34 @@ void ApplyDataPaintImageRaw(ImageRawRGBA32 *imageRaw, ImageBadpaintPixels *image
 		{
 			ColorU32 *imagePixel = (ColorU32*) (imageRaw->dataU8 + (i * 4));
 			BadpaintPixel *badpaintPixel = imageBadpaintPixels->dataBadpaintPixel + i;
-			ApplyBadpaintPixel(imagePixel, badpaintPixel, i, imageRaw->dataSize);
+			ApplyBadpaintPixelPass1(imagePixel, badpaintPixel, i, imageRaw->dataSize);
+		}
+	}
+
+	for (u32 y = 0; y < (u32) imageRaw->dim.y; y++)
+	{
+		u32 startIndex = imageRaw->dim.x * y;
+		u32 endIndex = startIndex + imageRaw->dim.x;
+		for (u32 i = startIndex; i < endIndex; i++)
+		{
+			ColorU32 *imagePixel = (ColorU32*) (imageRaw->dataU8 + (i * 4));
+			BadpaintPixel *badpaintPixel = imageBadpaintPixels->dataBadpaintPixel + i;
+			switch (badpaintPixel->badpaintPixelType)
+			{
+				case BADPAINT_PIXEL_TYPE_NONE: break;
+				case BADPAINT_PIXEL_TYPE_REMOVE: break;
+				case BADPAINT_PIXEL_TYPE_MAX: break;
+				case BADPAINT_PIXEL_TYPE_SHIFT: break;
+				case BADPAINT_PIXEL_TYPE_RANDOM: break;
+				case BADPAINT_PIXEL_TYPE_COPY_OTHER_PIXEL:
+				{
+					u32 otherIndex = (imageRaw->dim.y * badpaintPixel->r3PosY) + badpaintPixel->r2PosX;
+					otherIndex = ClampI32(0, otherIndex, imageRaw->dataSize / 4);
+					ColorU32 *otherPixel = (ColorU32*) (imageRaw->dataU8 + (otherIndex * 4));
+					*imagePixel = *otherPixel;
+				} break;
+				InvalidDefaultCase
+			}
 		}
 	}
 }
@@ -198,7 +226,35 @@ void ApplyDataPaintFiltered(ImagePNGFiltered *imagePNGFiltered, ImageBadpaintPix
 		{
 			ColorU32 *filteredPixel = (ColorU32*) (imagePNGFiltered->dataU8 + (i * 4) + filterByteOffset);
 			BadpaintPixel *badpaintPixel = imageBadpaintPixels->dataBadpaintPixel + i;
-			ApplyBadpaintPixel(filteredPixel, badpaintPixel, i, imagePNGFiltered->dataSize);
+			ApplyBadpaintPixelPass1(filteredPixel, badpaintPixel, i, imagePNGFiltered->dataSize);
+		}
+	}
+
+	for (u32 y = 0; y < (u32) imagePNGFiltered->dim.y; y++)
+	{
+		u32 filterByteOffset = y + 1;
+		u32 startIndex = imagePNGFiltered->dim.x * y;
+		u32 endIndex = startIndex + imagePNGFiltered->dim.x;
+		for (u32 i = startIndex; i < endIndex; i++)
+		{
+			ColorU32 *filteredPixel = (ColorU32*) (imagePNGFiltered->dataU8 + (i * 4) + filterByteOffset);
+			BadpaintPixel *badpaintPixel = imageBadpaintPixels->dataBadpaintPixel + i;
+			switch (badpaintPixel->badpaintPixelType)
+			{
+				case BADPAINT_PIXEL_TYPE_NONE: break;
+				case BADPAINT_PIXEL_TYPE_REMOVE: break;
+				case BADPAINT_PIXEL_TYPE_MAX: break;
+				case BADPAINT_PIXEL_TYPE_SHIFT: break;
+				case BADPAINT_PIXEL_TYPE_RANDOM: break;
+				case BADPAINT_PIXEL_TYPE_COPY_OTHER_PIXEL:
+				{
+					u32 otherIndex = (imagePNGFiltered->dim.y * badpaintPixel->r3PosY) + badpaintPixel->r2PosX + (badpaintPixel->r3PosY + 1);
+					otherIndex = ClampI32(0, otherIndex, imagePNGFiltered->dataSize / 4);
+					ColorU32 *otherPixel = (ColorU32*) (imagePNGFiltered->dataU8 + (otherIndex * 4));
+					*filteredPixel = *otherPixel;
+				} break;
+				InvalidDefaultCase
+			}
 		}
 	}
 }

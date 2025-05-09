@@ -123,7 +123,7 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 	AlignPow2U32(&conversionArenaSize, 256);
 
 	//TODO: (Ahmayk) figure out what the upper bound of this actually should be 
-	u32 canvasArneaSize = (u32) MaxU32(MegaByte * 1, (u32) (conversionArenaSize * 5));
+	u32 canvasArneaSize = (u32) MaxU32(MegaByte * 1, (u32) (conversionArenaSize * 10));
 	gameMemory->canvasArena = ArenaInit(canvasArneaSize);
 	//TODO: (Ahmayk) have a better undo plan!
 	ArenaFree(&gameMemory->canvasRollbackArena);

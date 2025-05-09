@@ -30,7 +30,8 @@ enum BADPAINT_PIXEL_TYPE : u8
 	BADPAINT_PIXEL_TYPE_REMOVE = 1,
 	BADPAINT_PIXEL_TYPE_MAX = 2,
 	BADPAINT_PIXEL_TYPE_SHIFT = 3,
-	BADPAINT_PIXEL_TYPE_RANDOM= 4,
+	BADPAINT_PIXEL_TYPE_RANDOM = 4,
+	BADPAINT_PIXEL_TYPE_COPY_OTHER_PIXEL = 5,
 };
 
 static ColorU32 BADPAINT_PIXEL_TYPE_COLORS_PRIMARY[] =
@@ -40,6 +41,7 @@ static ColorU32 BADPAINT_PIXEL_TYPE_COLORS_PRIMARY[] =
 	{ 253, 249, 0, 227 }, // YELLOW
 	{ 0, 121, 241, 227 }, //BLUE
 	{ 200, 122, 255, 227 }, //PURPLE
+	{ 100, 100, 155, 227 }, //PURPLE
 };
 static ColorU32 BADPAINT_PIXEL_TYPE_COLORS_PROCESSING[] =
 {
@@ -48,6 +50,7 @@ static ColorU32 BADPAINT_PIXEL_TYPE_COLORS_PROCESSING[] =
 	{ 253, 249, 0, 127 }, // YELLOW
 	{ 0, 121, 241, 127 }, //BLUE
 	{ 200, 122, 255, 127 }, //PURPLE
+	{ 100, 100, 155, 227 }, //PURPLE
 };
 
 struct BadpaintPixel
@@ -60,11 +63,11 @@ struct BadpaintPixel
 	};
 	union 
 	{
-		u8 r2Null;
+		u16 r2PosX;
 	};
 	union 
 	{
-		u8 r3Null;
+		u16 r3PosY;
 	};
 	u8 processBatchIndex;
 };

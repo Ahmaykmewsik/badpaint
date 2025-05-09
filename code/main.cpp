@@ -50,6 +50,7 @@ static KeyboardKey COMMAND_KEY_BINDINGS[] = {
 	KEY_A,
 	KEY_S,
 	KEY_N,
+	KEY_C,
 	KEY_B,
 	KEY_E,
 	KEY_T,
@@ -374,6 +375,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_MAX, STRING("Max"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_MAX);
 					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_SHIFT, STRING("Sft"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_SHIFT);
 					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_RANDOM, STRING("Rand"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_RANDOM);
+					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_COPY_OTHER_PIXEL, STRING("Copy"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_COPY_OTHER_PIXEL);
 
 					{
 						UiBlock *seperator = UiCreateBlock(uiState);
@@ -462,6 +464,10 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 				{
 					appState->currentBadpaintPixelType = BADPAINT_PIXEL_TYPE_RANDOM;
 				} break;
+				case COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_COPY_OTHER_PIXEL:
+				{
+					appState->currentBadpaintPixelType = BADPAINT_PIXEL_TYPE_COPY_OTHER_PIXEL;
+				} break;
 				case COMMAND_SWITCH_TOOL_TO_PENCIL:
 				{
 					appState->currentTool = BADPAINT_TOOL_PENCIL;
@@ -535,7 +541,22 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 								{
 									BadpaintPixel badpaintPixel = {};
 									badpaintPixel.badpaintPixelType = appState->currentBadpaintPixelType;
-									badpaintPixel.r1RandomValue = (u8) RandomInRangeI32(0, 255);
+
+									switch(badpaintPixel.badpaintPixelType)
+									{
+										case BADPAINT_PIXEL_TYPE_RANDOM:
+										{
+											badpaintPixel.r1RandomValue = (u8) RandomInRangeI32(0, 255);
+										} break;
+										case BADPAINT_PIXEL_TYPE_COPY_OTHER_PIXEL:
+										{
+											i32 posX = RandomInRangeI32(endPosIV2.x - appState->toolSize, endPosIV2.x + appState->toolSize);
+											i32 posY = RandomInRangeI32(endPosIV2.y - appState->toolSize, endPosIV2.y + appState->toolSize);
+											badpaintPixel.r2PosX = (u16) ClampI32(0, posX, imageBadpaintPixels->dim.x);
+											badpaintPixel.r3PosY = (u16) ClampI32(0, posY, imageBadpaintPixels->dim.y);
+										} break;
+									}
+
 									badpaintPixel.processBatchIndex = canvas->processBatchIndex;
 									drewSomething = CanvasDrawCircleStroke(imageBadpaintPixels, startPosIV2, endPosIV2, appState->toolSize, badpaintPixel);
 								} break;
@@ -547,6 +568,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 								} break;
 								case BADPAINT_TOOL_TEST:
 								{
+#if 0
 									i32 halfBrushSize = (i32) RoundF32(appState->toolSize * 0.5f);
 									i32 minX = MinI32(startPosIV2.x, endPosIV2.x) - halfBrushSize; 
 									i32 minY = MinI32(startPosIV2.y, endPosIV2.y) - halfBrushSize; 
@@ -563,6 +585,12 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 										ImageSwapPoints(&appState->rootImageRaw, randomPoint1, randomPoint2);
 										drewSomething = true;
 									}
+
+									BadpaintPixel badpaintPixel = {};
+									badpaintPixel.badpaintPixelType = appState->currentBadpaintPixelType;
+									badpaintPixel.processBatchIndex = canvas->processBatchIndex;
+									drewSomething = CanvasDrawCircleStroke(imageBadpaintPixels, startPosIV2, endPosIV2, appState->toolSize, badpaintPixel);
+#endif
 								} break;
 								InvalidDefaultCase
 							}
