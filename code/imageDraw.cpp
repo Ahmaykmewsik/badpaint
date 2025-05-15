@@ -93,10 +93,37 @@ b32 CanvasImageBadpaintDrawPixel(ImageBadpaintPixels *dst, i32 index, BadpaintPi
 	b32 result = false;
 	BadpaintPixel *badpaintPixelDest = &dst->dataBadpaintPixel[index];
 	//TODO: (Ahmayk) more complex equality check
-	if (badpaintPixelDest->badpaintPixelType != badpaintPixel->badpaintPixelType) 
+
+	switch (badpaintPixel->badpaintPixelType)
+	{
+	case BADPAINT_PIXEL_TYPE_NONE:
+	case BADPAINT_PIXEL_TYPE_REMOVE:
+	case BADPAINT_PIXEL_TYPE_MAX:
+	{
+		result = badpaintPixelDest->badpaintPixelType != badpaintPixel->badpaintPixelType;
+	} break;
+	case BADPAINT_PIXEL_TYPE_SHIFT:
+	{
+		result = badpaintPixelDest->badpaintPixelType != badpaintPixel->badpaintPixelType;
+	} break;
+	case BADPAINT_PIXEL_TYPE_RANDOM:
+	{
+		//NOTE: (Ahmayk) assume that random value is probably different! No real need to do check here for performance
+		result = true;
+	} break;
+	case BADPAINT_PIXEL_TYPE_COPY_OTHER_PIXEL:
+	{
+		b32 typedMatch = badpaintPixelDest->badpaintPixelType == badpaintPixel->badpaintPixelType &&
+			(badpaintPixelDest->r2PosX != badpaintPixel->r2PosX || 
+			badpaintPixelDest->r3PosY != badpaintPixel->r3PosY);
+		result = badpaintPixelDest->badpaintPixelType != badpaintPixel->badpaintPixelType || typedMatch;
+	} break;
+	InvalidDefaultCase
+	}
+
+	if (result) 
 	{
 		*badpaintPixelDest = *badpaintPixel;
-		result = true;
 	}
 	return result;
 }
