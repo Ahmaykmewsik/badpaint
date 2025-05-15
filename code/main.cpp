@@ -57,6 +57,7 @@ static KeyboardKey COMMAND_KEY_BINDINGS[] = {
 	KEY_T,
 	KEY_NULL,
 	KEY_NULL,
+	KEY_NULL,
 };
 
 b32 IsCommandKeyBindingDown(COMMAND command)
@@ -214,45 +215,17 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 			appState->lastPressedPos = frameState->mousePixelPos;
 		}
 
+		frameState->appCommandBuffer.size = 50;
+		frameState->appCommandBuffer.appCommands = ARENA_PUSH_ARRAY_MARKER(&gameMemory->temporaryArena, frameState->appCommandBuffer.size, AppCommand, &frameState->appCommandBuffer.arenaMarker);
+
 		if (IsFileDropped())
 		{
 			FilePathList droppedFiles = LoadDroppedFiles();
-			char *fileName = droppedFiles.paths[0];
-			ArenaMarker loadMarker = ArenaPushMarker(&gameMemory->temporaryArena);
-			unsigned int fileSize = {};
-			u8 *fileData = LoadDataFromDisk(fileName, &fileSize, &gameMemory->temporaryArena);
-			const char *getFileExtension = GetFileExtension(fileName);
-			if (fileData)
-			{
-				//NOTE: (Ahmayk) prints error internally (need to change)
-				appState->rootImageRaw = LoadDataIntoRawImage(fileData, fileSize, gameMemory);
-			}
-			else
-			{
-				String notification = STRING("Oops! I failed to read the file at all! Sorry! Guess you're out of luck pal. No badpaint for that file today.");
-				InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
-			}
+			AppCommand *appCommand = PushAppCommand(&frameState->appCommandBuffer);
+			appCommand->command = COMMAND_IMPORT_FILE;
+			appCommand->value1String = CreateString(droppedFiles.paths[0], StringArena());
 			UnloadDroppedFiles(droppedFiles);
-			ArenaPopMarker(loadMarker);
-
-			if (appState->rootImageRaw.dataSize)
-			{
-				InitializeNewImage(gameMemory, appState);
-				if (appState->rootImageRaw.dataSize > MegaByte * 500)
-				{
-					String notification = STRING("You like to play dangerously, don't you?");
-					InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
-				}
-				else if (appState->rootImageRaw.dataSize > MegaByte * 100)
-				{
-					String notification = STRING("This image is CHUNKY! Some things might be a little slow.");
-					InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
-				}
-			}
 		}
-
-		frameState->appCommandBuffer.size = 50;
-		frameState->appCommandBuffer.appCommands = ARENA_PUSH_ARRAY_MARKER(&gameMemory->temporaryArena, frameState->appCommandBuffer.size, AppCommand, &frameState->appCommandBuffer.arenaMarker);
 
 		for (u32 i = 0; i < COMMAND_COUNT; i++)
 		{
@@ -482,6 +455,40 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 				case COMMAND_SWITCH_TOOL_TO_TEST:
 				{
 					appState->currentTool = BADPAINT_TOOL_TEST;
+				} break;
+				case COMMAND_IMPORT_FILE:
+				{
+					ArenaMarker loadMarker = ArenaPushMarker(&gameMemory->temporaryArena);
+					unsigned int fileSize = {};
+					u8 *fileData = LoadDataFromDisk(appCommand->value1String, &fileSize, &gameMemory->temporaryArena);
+					if (fileData)
+					{
+						//NOTE: (Ahmayk) prints error internally (need to change)
+						appState->rootImageRaw = LoadDataIntoRawImage(fileData, fileSize, gameMemory);
+					}
+					else
+					{
+						String notification = STRING("Oops! I failed to read the file at all! Sorry! Guess you're out of luck pal. No badpaint for that file today.");
+						InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
+					}
+
+					if (appState->rootImageRaw.dataSize)
+					{
+						InitializeNewImage(gameMemory, appState);
+						if (appState->rootImageRaw.dataSize > MegaByte * 500)
+						{
+							String notification = STRING("You like to play dangerously, don't you?");
+							InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
+						}
+						else if (appState->rootImageRaw.dataSize > MegaByte * 100)
+						{
+							String notification = STRING("This image is CHUNKY! Some things might be a little slow.");
+							InitNotificationMessage(notification, &gameMemory->circularNotificationBuffer);
+						}
+					}
+					ArenaPopMarker(loadMarker);
+					//TODO: (Ahmayk) Oops, we need to redraw our UI now because there's a new texture!
+
 				} break;
 				case COMMAND_EXPORT_IMAGE:
 				{

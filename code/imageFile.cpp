@@ -6,12 +6,12 @@
 
 #include <cstring>  //memcpy
 
-u8 *LoadDataFromDisk(const char *fileName, unsigned int *bytesRead, Arena *arena)
+u8 *LoadDataFromDisk(String fileName, unsigned int *bytesRead, Arena *arena)
 {
 	unsigned char *data = NULL;
 	*bytesRead = 0;
 
-	FILE *file = fopen(fileName, "rb");
+	FILE *file = fopen(C_STRING_NULL_TERMINATED(fileName), "rb");
 
 	if (file != NULL)
 	{

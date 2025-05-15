@@ -15,6 +15,7 @@ enum COMMAND : u32
     COMMAND_SWITCH_TOOL_TO_SPAYCAN,
     COMMAND_SWITCH_TOOL_TO_TEST,
     COMMAND_EXPORT_IMAGE,
+    COMMAND_IMPORT_FILE,
     COMMAND_PAINT_ON_CANVAS_BETWEEN_POSITIONS,
     COMMAND_COUNT,
 };
@@ -22,9 +23,19 @@ enum COMMAND : u32
 struct AppCommand
 {
 	COMMAND command;
-	v2 value1V2;
-	v2 value2V2;
-	u32 value3U32;
+	union
+	{
+		v2 value1V2;
+		String value1String;
+	};
+	union
+	{
+		v2 value2V2;
+	};
+	union
+	{
+		u32 value3U32;
+	};
 };
 
 struct AppCommandBuffer

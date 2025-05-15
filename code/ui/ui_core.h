@@ -102,7 +102,6 @@ struct UiFont
 struct UiTextureView
 {
 	u32 id;
-	iv2 dim;
 	RectIV2 viewRect;
 	void *data;
 };

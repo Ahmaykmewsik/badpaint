@@ -29,10 +29,7 @@ void UiRenderBlockRaylib(UiBlock *uiBlock)
 		if (uiBlock->flags & UI_FLAG_DRAW_TEXTURE)
 		{
 			Texture *texture = (Texture *) uiBlock->uiTextureView.data;
-			if (ASSERT(texture) &&
-				ASSERT(uiBlock->uiTextureView.id == texture->id) &&
-				ASSERT(uiBlock->uiTextureView.dim.x == texture->width) &&
-				ASSERT(uiBlock->uiTextureView.dim.y == texture->height))
+			if (ASSERT(texture) && ASSERT(uiBlock->uiTextureView.id == texture->id))
 			{
 				RectIV2 *viewRect = &uiBlock->uiTextureView.viewRect;
 				Rectangle source = {(f32)viewRect->pos.x, (f32)viewRect->pos.y, (f32)viewRect->dim.x, (f32)viewRect->dim.y};
@@ -150,14 +147,14 @@ void UiRaylibProcessStrings(UiBuffer *uiBuffer)
 
 UiTextureView UiRaylibTextureToUiTextureView(Texture *texture)
 {
+	ASSERT(texture->id);
+	ASSERT(texture->width);
+	ASSERT(texture->height);
 	UiTextureView result = {};
 	result.id = texture->id;
-	result.dim.x = (i32) texture->width;
-	result.dim.y = (i32) texture->height;
-	result.viewRect.dim = result.dim;
+	result.viewRect.dim.x = texture->width;
+	result.viewRect.dim.y = texture->height;
 	result.data = texture;
-	ASSERT(result.dim.x);
-	ASSERT(result.dim.y);
 	return result;
 }
 

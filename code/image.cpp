@@ -106,6 +106,9 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 {
 	//NOTE: (Ahmayk) free and reallocate temporary arena to reduce memory size
 	//to uncommit the memory there, will reduce our memory footprint
+	//TODO: (Ahmayk) This isn't possible anymore now as the temporary arena will have things on it when we get to this point,
+	//So this needs to be its own arena just for temprary memory usage for the image
+#if 0
 	if (ASSERT(gameMemory->temporaryArena.used == 0))
 	{
 		u64 size = gameMemory->temporaryArena.size;
@@ -113,6 +116,7 @@ void InitializeCanvas(Canvas *canvas, ImageRawRGBA32 *rootImageRaw, GameMemory *
 		gameMemory->temporaryArena = ArenaInit(size);
 		gameMemory->temporaryArena.memory;
 	}
+#endif
 
 	ArenaFree(&gameMemory->canvasArena);
 
