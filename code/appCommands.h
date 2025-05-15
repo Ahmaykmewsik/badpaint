@@ -20,32 +20,5 @@ enum COMMAND : u32
     COMMAND_COUNT,
 };
 
-struct AppCommand
-{
-	COMMAND command;
-	union
-	{
-		v2 value1V2;
-		String value1String;
-	};
-	union
-	{
-		v2 value2V2;
-	};
-	union
-	{
-		u32 value3U32;
-	};
-};
-
-struct AppCommandBuffer
-{
-	AppCommand *appCommands;
-	u32 count;
-	u32 size;
-	ArenaMarker arenaMarker;
-};
-
 b32 IsCommandKeyBindingDown(COMMAND command);
 b32 IsCommandKeyBindingPressed(COMMAND command);
-AppCommand *PushAppCommand(AppCommandBuffer *appCommandBuffer);

@@ -1,26 +1,7 @@
 #pragma once
 
 #include <ui/ui_core.h>
-
-enum INTERACTION_STATE
-{
-	INTERACTION_STATE_NONACTIVE_NEUTRAL,
-	INTERACTION_STATE_NONACTIVE_HOVERED,
-	INTERACTION_STATE_DOWN,
-	INTERACTION_STATE_ACTIVE_NEUTRAL,
-	INTERACTION_STATE_ACTIVE_HOVERED,
-	INTERACTION_STATE_DISABLED,
-	INTERACTION_STATE_COUNT,
-};
-
-struct UiInteractionHashes
-{
-	u32 hashMouseHover;
-	u32 hashMouseDown;
-	u32 hashMousePressed;
-};
-
-INTERACTION_STATE GetInteractionState(u32 hash, UiInteractionHashes *uiInteractionHashes, b32 isActive, b32 isDisabled, b32 downOverride);
+#include <ui/ui_interaction.h>
 
 struct UiPanel
 {
@@ -44,3 +25,5 @@ struct UiPanelPair
 };
 
 UiPanelPair SplitPanel(UiPanel *uiPanel, Arena *arena, UI_AXIS uiAxis, f32 percentOfParent);
+
+UiBlock *WidgetMenuButton(UiState *uiState, String string, u32 hash, UiFont uiFont, u32 command);

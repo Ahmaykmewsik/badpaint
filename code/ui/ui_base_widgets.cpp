@@ -1,35 +1,5 @@
-#include <ui/ui_core.h>
+
 #include <ui/ui_base_widgets.h>
-
-INTERACTION_STATE GetInteractionState(u32 hash, UiInteractionHashes *uiInteractionHashes, b32 isActive, b32 isDisabled, b32 downOverride)
-{
-	INTERACTION_STATE result = INTERACTION_STATE_NONACTIVE_NEUTRAL;
-	if (isDisabled)
-	{
-		result = INTERACTION_STATE_DISABLED;
-	}
-	else
-	{
-		if (isActive)
-		{
-			result = INTERACTION_STATE_ACTIVE_NEUTRAL;
-		}
-
-		if (hash == uiInteractionHashes->hashMouseDown || downOverride)
-		{
-			result = INTERACTION_STATE_DOWN;
-		}
-		else if (hash == uiInteractionHashes->hashMouseHover)
-		{
-			result = INTERACTION_STATE_NONACTIVE_HOVERED;
-			if (isActive)
-			{
-				result = INTERACTION_STATE_ACTIVE_HOVERED;
-			}
-		}
-	}
-	return result;
-}
 
 UiPanel *UiPanelCreateAndParent(Arena *arena, UiPanel *parent)
 {
@@ -83,3 +53,25 @@ UiPanelPair SplitPanel(UiPanel *uiPanel, Arena *arena, UI_AXIS uiAxis, f32 perce
 	return result;
 }
 
+UiBlock *WidgetMenuButton(UiState *uiState, String string, u32 hash, UiFont uiFont, u32 command)
+{
+	UiBlock *result = UiCreateBlock(uiState);
+	result->flags = UI_FLAG_DRAW_BACKGROUND;
+	result->hash = hash;
+	result->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
+	result->uiSizes[UI_AXIS_Y] = {UI_SIZE_SUM_OF_CHILDREN};
+	result->uiBlockColors.backColor = COLORU32_WHITE;
+	UI_PARENT_SCOPE(uiState, result)
+	{
+		UiBlock *t = UiCreateBlock(uiState);
+		t->flags = UI_FLAG_DRAW_TEXT;
+		t->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXT};
+		t->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXT};
+		t->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
+		t->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
+		t->string = string;
+		t->uiFont = uiFont;
+		t->uiBlockColors.frontColor = COLORU32_BLACK;
+	}
+	return result;
+}

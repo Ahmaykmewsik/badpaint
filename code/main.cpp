@@ -27,22 +27,6 @@
 #include  "stdio.h"
 #endif
 
-AppCommand *PushAppCommand(AppCommandBuffer *appCommandBuffer)
-{
-	AppCommand *result;
-	if (ASSERT(appCommandBuffer->count < appCommandBuffer->size))
-	{
-		result = &appCommandBuffer->appCommands[appCommandBuffer->count++];
-	}
-	else
-	{
-		static AppCommand stub = {};
-		result = &stub;
-	}
-	*result = {};
-	return result;
-}
-
 //NOTE: (Ahmayk) This needs to be redesigned to include key modifiers 
 static KeyboardKey COMMAND_KEY_BINDINGS[] = {
 	KEY_NULL,
@@ -195,6 +179,49 @@ void BuildUi(UiState *uiState, AppState *appState, FrameState *frameState, GameM
 		menuBar->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
 		UI_PARENT_SCOPE(uiState, menuBar)
 		{
+			UiBlock *m = UiCreateBlock(uiState);
+			m->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 10};
+			m->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+
+			UiBlock *dropdownButton = UiCreateBlock(uiState);
+			dropdownButton->flags = UI_FLAG_DRAW_TEXT;
+			dropdownButton->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXT};
+			dropdownButton->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+			dropdownButton->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
+			dropdownButton->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
+			dropdownButton->string = STRING("File");
+			dropdownButton->uiFont = appState->defaultUiFont;
+			dropdownButton->uiBlockColors.frontColor = COLORU32_BLACK;
+			dropdownButton->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
+			UI_PARENT_SCOPE(uiState, dropdownButton)
+			{
+				UiBlock *b = UiCreateBlock(uiState);
+				b->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER;
+				b->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, 0};
+				b->uiPosition[UI_AXIS_Y] = {UI_POSITION_PERCENT_OF_PARENT, 1};
+				b->uiSizes[UI_AXIS_X] = {UI_SIZE_SUM_OF_CHILDREN};
+				b->uiSizes[UI_AXIS_Y] = {UI_SIZE_SUM_OF_CHILDREN};
+				b->uiBlockColors.backColor = COLORU32_RED;
+				b->uiBlockColors.borderColor = COLORU32_BLACK;
+				b->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
+				b->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
+				UI_PARENT_SCOPE(uiState, b)
+				{
+					String s = STRING("Import Image...");
+					u32 hash = Murmur3String("Import Image", b->hash);
+					UiBlock *menu = WidgetMenuButton(uiState, s, hash, appState->defaultUiFont, COMMAND_IMPORT_FILE);
+					menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 1;
+					menu->firstChild->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 2;
+
+					s = STRING("Export Image...");
+					hash = Murmur3String("Export Image", b->hash);
+					menu = WidgetMenuButton(uiState, s, hash, appState->defaultUiFont, COMMAND_EXPORT_IMAGE);
+					menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 3;
+					menu->firstChild->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 4;
+				}
+			}
+
+#if 0
 			String tempMenuStrings[] = {STRING("File"), STRING("Edit"), STRING("Image")};
 			for (u32 i = 0; i < ARRAY_COUNT(tempMenuStrings); i++)
 			{
@@ -212,6 +239,7 @@ void BuildUi(UiState *uiState, AppState *appState, FrameState *frameState, GameM
 				b->uiFont = appState->defaultUiFont;
 				b->uiBlockColors.frontColor = COLORU32_BLACK;
 			}
+#endif
 
 			UiBlock *menuBarLine = UiCreateBlock(uiState);
 			menuBarLine->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;

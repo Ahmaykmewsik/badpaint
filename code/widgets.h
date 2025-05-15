@@ -9,6 +9,7 @@ static float G_TOOLBOX_WIDTH_AND_HEIGHT = 35;
 
 #define UI_APP_DEPTH_LAYER_ABOVE 100
 #define UI_APP_DEPTH_LAYER_CURSOR_GUI 200
+#define UI_APP_DEPTH_HOVERING_WINDOW 300
 
 struct AppState;
 struct FrameState;
@@ -34,3 +35,4 @@ struct NotificationMessage
 };
 
 void InitNotificationMessage(String string, Arena *circularNotificationBuffer);
+
