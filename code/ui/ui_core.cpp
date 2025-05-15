@@ -164,7 +164,7 @@ void CalculateFixedSizes(UiSolveState *uiSolveState, UiBlock *uiBlock)
 					MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 				}
 				case UI_SIZE_PERCENT_OF_PARENT:
-				case UI_SIZE_SUM_OF_CHILDREN:
+				case UI_SIZE_FIT_CHILDREN:
 				case UI_SIZE_PERCENT_OF_OTHER_AXIS:
 				case UI_SIZE_FILL:
 				case UI_SIZE_FILL_FIXED:
@@ -217,7 +217,7 @@ void CalculateUiUpwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiBlo
 				}
 			} break;
 			case UI_SIZE_PERCENT_OF_OTHER_AXIS:
-			case UI_SIZE_SUM_OF_CHILDREN:
+			case UI_SIZE_FIT_CHILDREN:
 			case UI_SIZE_PIXELS:
 			case UI_SIZE_TEXTURE:
 			case UI_SIZE_TEXT:
@@ -245,44 +245,7 @@ void CalculateUiUpwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiBlo
 	}
 }
 
-f32 GetSumOrMaxOfAllAutoSiblingsAndSelf(UiBlock *uiBlock, UI_AXIS uiAxis)
-{
-	f32 result = 0;
-	if (uiBlock)
-	{
-		UiBlock *siblingBlock = uiBlock;
-
-		UI_CHILD_LAYOUT_TYPE parentLayoutType = UI_CHILD_LAYOUT_LEFT_TO_RIGHT;
-		if (uiBlock->parent)
-		{
-			parentLayoutType = uiBlock->parent->uiChildLayoutType;
-		}
-		b32 inParentLayoutType = (uiAxis == UI_AXIS_X && parentLayoutType == UI_CHILD_LAYOUT_LEFT_TO_RIGHT) ||
-								 (uiAxis == UI_AXIS_Y && parentLayoutType == UI_CHILD_LAYOUT_TOP_TO_BOTTOM);
-
-		while(siblingBlock->prev)
-		{
-			siblingBlock = siblingBlock->prev;
-		}
-		for (; siblingBlock; siblingBlock = siblingBlock->next)
-		{
-			if (siblingBlock->uiPosition[uiAxis].type == UI_POSITION_AUTO)
-			{
-				if (inParentLayoutType)
-				{
-					result += siblingBlock->rect.dim.elements[uiAxis];
-				}
-				else
-				{
-					result = MaxF32(siblingBlock->rect.dim.elements[uiAxis], result);
-				}
-			}
-		}
-	}
-	return result;
-}
-
-f32 GetSizeOfSiblingsForSumOfChildrenCalculation(UiSolveState *uiSolveState, UiBlock *firstSibling, UI_AXIS uiAxis, b32 *readyToSolve)
+f32 GetSizeOfSiblingsForFitChildrenCalculation(UiSolveState *uiSolveState, UiBlock *firstSibling, UI_AXIS uiAxis, b32 *readyToSolve)
 {
 	f32 result = 0;
 	if (firstSibling)
@@ -312,7 +275,9 @@ f32 GetSizeOfSiblingsForSumOfChildrenCalculation(UiSolveState *uiSolveState, UiB
 				}
 				else if (uiBlock->uiSizes[uiAxis].type == UI_SIZE_FILL)
 				{
-					f32 allChildrenOfBlockSize = GetSizeOfSiblingsForSumOfChildrenCalculation(uiSolveState, uiBlock->firstChild, uiAxis, readyToSolve);
+					//NOTE: (Ahmayk) If a fill type is unsolved, but all its children are solved, 
+					//Then we can assume that the size of the block is the sum or max of this block's children!
+					f32 allChildrenOfBlockSize = GetSizeOfSiblingsForFitChildrenCalculation(uiSolveState, uiBlock->firstChild, uiAxis, readyToSolve);
 					if (inParentLayoutType)
 					{
 						result += allChildrenOfBlockSize;
@@ -350,14 +315,14 @@ void CalculateUiDownwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiB
 		{
 			switch (uiBlock->uiSizes[i].type)
 			{
-				case UI_SIZE_SUM_OF_CHILDREN:
+				case UI_SIZE_FIT_CHILDREN:
 				{
 					if (!IsBlockSizeAxisSolved(uiSolveState, uiBlock, (UI_AXIS) i))
 					{
 						if (ASSERT(uiBlock->firstChild))
 						{
 							b32 readyToSolve = true;
-							f32 size = GetSizeOfSiblingsForSumOfChildrenCalculation(uiSolveState, uiBlock->firstChild, (UI_AXIS) i, &readyToSolve);
+							f32 size = GetSizeOfSiblingsForFitChildrenCalculation(uiSolveState, uiBlock->firstChild, (UI_AXIS) i, &readyToSolve);
 							if (readyToSolve)
 							{
 								uiBlock->rect.dim.elements[i] = size;
@@ -493,6 +458,44 @@ void CalculateUiDownwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiB
 			}
 		}
 	}
+}
+
+//NOTE: (Ahmayk) assumes sizes are solved
+f32 GetSumOrMaxOfAllAutoSiblingsAndSelf(UiBlock *uiBlock, UI_AXIS uiAxis)
+{
+	f32 result = 0;
+	if (uiBlock)
+	{
+		UiBlock *siblingBlock = uiBlock;
+
+		UI_CHILD_LAYOUT_TYPE parentLayoutType = UI_CHILD_LAYOUT_LEFT_TO_RIGHT;
+		if (uiBlock->parent)
+		{
+			parentLayoutType = uiBlock->parent->uiChildLayoutType;
+		}
+		b32 inParentLayoutType = (uiAxis == UI_AXIS_X && parentLayoutType == UI_CHILD_LAYOUT_LEFT_TO_RIGHT) ||
+								 (uiAxis == UI_AXIS_Y && parentLayoutType == UI_CHILD_LAYOUT_TOP_TO_BOTTOM);
+
+		while(siblingBlock->prev)
+		{
+			siblingBlock = siblingBlock->prev;
+		}
+		for (; siblingBlock; siblingBlock = siblingBlock->next)
+		{
+			if (siblingBlock->uiPosition[uiAxis].type == UI_POSITION_AUTO)
+			{
+				if (inParentLayoutType)
+				{
+					result += siblingBlock->rect.dim.elements[uiAxis];
+				}
+				else
+				{
+					result = MaxF32(siblingBlock->rect.dim.elements[uiAxis], result);
+				}
+			}
+		}
+	}
+	return result;
 }
 
 void CalculateUiPositionData(UiSolveState *uiSolveState, UiBlock *uiBlock)

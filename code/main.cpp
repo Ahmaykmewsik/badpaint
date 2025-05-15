@@ -199,8 +199,8 @@ void BuildUi(UiState *uiState, AppState *appState, FrameState *frameState, GameM
 				b->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER;
 				b->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, 0};
 				b->uiPosition[UI_AXIS_Y] = {UI_POSITION_PERCENT_OF_PARENT, 1};
-				b->uiSizes[UI_AXIS_X] = {UI_SIZE_SUM_OF_CHILDREN};
-				b->uiSizes[UI_AXIS_Y] = {UI_SIZE_SUM_OF_CHILDREN};
+				b->uiSizes[UI_AXIS_X] = {UI_SIZE_FIT_CHILDREN};
+				b->uiSizes[UI_AXIS_Y] = {UI_SIZE_FIT_CHILDREN};
 				b->uiBlockColors.backColor = COLORU32_RED;
 				b->uiBlockColors.borderColor = COLORU32_BLACK;
 				b->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;

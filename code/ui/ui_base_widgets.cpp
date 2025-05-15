@@ -59,7 +59,7 @@ UiBlock *WidgetMenuButton(UiState *uiState, String string, u32 hash, UiFont uiFo
 	result->flags = UI_FLAG_DRAW_BACKGROUND;
 	result->hash = hash;
 	result->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
-	result->uiSizes[UI_AXIS_Y] = {UI_SIZE_SUM_OF_CHILDREN};
+	result->uiSizes[UI_AXIS_Y] = {UI_SIZE_FIT_CHILDREN};
 	result->uiBlockColors.backColor = COLORU32_WHITE;
 	UI_PARENT_SCOPE(uiState, result)
 	{
