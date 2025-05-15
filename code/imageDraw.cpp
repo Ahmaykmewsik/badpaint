@@ -92,7 +92,6 @@ b32 CanvasImageBadpaintDrawPixel(ImageBadpaintPixels *dst, i32 index, BadpaintPi
 {
 	b32 result = false;
 	BadpaintPixel *badpaintPixelDest = &dst->dataBadpaintPixel[index];
-	//TODO: (Ahmayk) more complex equality check
 
 	switch (badpaintPixel->badpaintPixelType)
 	{

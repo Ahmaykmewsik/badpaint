@@ -2,10 +2,6 @@
 
 #include "ui/ui_core.h"
 
-//TODO: (Ahmayk) remove dependency
-#include "main.h"
-#include "vn_math_external.h"
-
 #include <cstring>  //memset
 
 UiState *UiInit(Arena *arena)

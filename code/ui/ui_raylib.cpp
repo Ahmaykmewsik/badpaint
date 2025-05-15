@@ -3,9 +3,6 @@
 #include "../includes/raylib/src/raylib.h"
 #include "vn_math_external.h"
 
-//TODO: (Ahmayk) REMOVE
-#include "main.h"
-
 v2 GetCeneteredPosInRectV2(RectV2 rect, v2 dim)
 {
 	dim.x = ClampF32(0, dim.x, rect.dim.x);

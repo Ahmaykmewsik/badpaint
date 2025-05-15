@@ -28,8 +28,3 @@ ProcessedImage *GetFreeProcessedImage(ProcessedImage *processedImages, unsigned 
 void ResetProcessedImage(ProcessedImage *processedImage, Canvas *canvas);
 
 PLATFORM_WORK_QUEUE_CALLBACK(ProcessImageOnThread);
-
-//TODO: (Ahmayk) Our API probably should not allow calling these functions directly, but instead
-//having only a system for them to be put onto a thread. they take time!
-ImagePNGFiltered PiratedSTB_EncodePngFilters(ImageRawRGBA32 *imageRaw, Arena *arena, PNG_FILTER_TYPE pngFilterType);
-void HashImageRects(ImageRawRGBA32 *imageRaw, iv2 rectDim, u32 **outHashes);
