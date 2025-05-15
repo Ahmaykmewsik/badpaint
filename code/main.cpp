@@ -173,6 +173,151 @@ AppState *InitApp(GameMemory *gameMemory, u32 threadCount)
 	return appState;
 }
 
+void BuildUi(UiState *uiState, AppState *appState, FrameState *frameState, GameMemory *gameMemory)
+{
+	UiResetCurrentUiBuffer(uiState);
+
+	UiBlockColors defaultBlockColors = {};
+	defaultBlockColors.backColor = ColorU32{191, 191, 191, 255};
+	defaultBlockColors.frontColor = COLORU32_BLACK;
+	defaultBlockColors.borderColor = COLORU32_DARKGRAY;
+
+	UiBlock *root= UiCreateBlock(uiState);
+	root->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) frameState->windowDim.x};
+	root->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) frameState->windowDim.y};
+	root->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
+	UI_PARENT_SCOPE(uiState, root)
+	{
+		float menuBarHeight = 20;
+		UiBlock *menuBar = UiCreateBlock(uiState);
+		menuBar->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+		menuBar->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, menuBarHeight};
+		menuBar->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
+		UI_PARENT_SCOPE(uiState, menuBar)
+		{
+			String tempMenuStrings[] = {STRING("File"), STRING("Edit"), STRING("Image")};
+			for (u32 i = 0; i < ARRAY_COUNT(tempMenuStrings); i++)
+			{
+				UiBlock *m = UiCreateBlock(uiState);
+				m->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 10};
+				m->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+
+				UiBlock *b = UiCreateBlock(uiState);
+				b->flags = UI_FLAG_DRAW_TEXT;
+				b->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXT};
+				b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+				b->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
+				b->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
+				b->string = tempMenuStrings[i];
+				b->uiFont = appState->defaultUiFont;
+				b->uiBlockColors.frontColor = COLORU32_BLACK;
+			}
+
+			UiBlock *menuBarLine = UiCreateBlock(uiState);
+			menuBarLine->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;
+			menuBarLine->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, 7};
+			menuBarLine->uiPosition[UI_AXIS_Y] = {UI_POSITION_PERCENT_OF_PARENT, 0.3f};
+			menuBarLine->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+			menuBarLine->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 0.7f};
+			menuBarLine->uiBlockColors.frontColor = COLORU32_BLACK;
+		}
+
+		UiBlock *body = UiCreateBlock(uiState);
+		body->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+		body->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL};
+		UI_PARENT_SCOPE(uiState, body)
+		{
+			UiBlock *toolbar = UiCreateBlock(uiState);
+			//toolbar->flags = UI_FLAG_DRAW_BACKGROUND;
+			toolbar->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 65};
+			toolbar->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+			toolbar->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
+			//toolbar->uiBlockColors.backColor = ColorU32{100, 100, 100, 100};
+			UI_PARENT_SCOPE(uiState, toolbar)
+			{
+				{
+					UiBlock *b = UiCreateBlock(uiState);
+					b->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+					b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 5};
+				}
+
+				WidgetToolButton(uiState, appState, frameState, STRING("P"), BADPAINT_TOOL_PENCIL, COMMAND_SWITCH_TOOL_TO_PENCIL);
+				WidgetToolButton(uiState, appState, frameState, STRING("E"), BADPAINT_TOOL_ERASER, COMMAND_SWITCH_TOOL_TO_ERASER);
+				WidgetToolButton(uiState, appState, frameState, STRING("Y"), BADPAINT_TOOL_SPRAYCAN, COMMAND_SWITCH_TOOL_TO_SPAYCAN);
+
+				{
+					UiBlock *b = UiCreateBlock(uiState);
+					b->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+					b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 50};
+				}
+
+				WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_REMOVE, STRING("Remv"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_REMOVE);
+				WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_MAX, STRING("Max"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_MAX);
+				WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_SHIFT, STRING("Sft"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_SHIFT);
+				WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_RANDOM, STRING("Rand"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_RANDOM);
+				WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_COPY_OTHER_PIXEL, STRING("Copy"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_COPY_OTHER_PIXEL);
+
+				{
+					UiBlock *seperator = UiCreateBlock(uiState);
+					seperator->uiPosition[UI_AXIS_X] = {UI_POSITION_PERCENT_OF_PARENT, 1};
+					seperator->uiPosition[UI_AXIS_Y] = {UI_POSITION_RELATIVE, 0};
+					seperator->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;
+					seperator->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 4};
+					seperator->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+					seperator->uiBlockColors.frontColor = COLORU32_BLACK;
+				}
+			}
+
+			UiBlock *panelArea = UiCreateBlock(uiState);
+			panelArea->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
+			panelArea->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL};
+			UI_PARENT_SCOPE(uiState, panelArea)
+			{
+
+#if 0
+				f32 relativeX = 0.5f;
+				u32 leftPanelHash = Murmur3String("leftPanel");
+				UiBlock *leftPanelPrev = GetUiBlockOfHashLastFrame(uiState, leftPanelHash);
+				if (leftPanelPrev->hash)
+				{
+					f32 middleOfScreenX = windowDim.x * 0.5f;
+					f32 moveRange = windowDim.x * 0.8f;
+					f32 posX = ClampF32(middleOfScreenX - (moveRange * 0.5f), mousePixelPos.x, middleOfScreenX + (moveRange * 0.5f));
+				}
+#endif
+				static b32 first = false;
+				if (!first)
+				{
+					first = true;
+#if 1
+					appState->rootUiPanel.childSplitAxis = UI_AXIS_X;
+					appState->rootUiPanel.hash = Murmur3String("mainPanels");
+					UiPanelPair panelPair1 = SplitPanel(&appState->rootUiPanel, &gameMemory->permanentArena, UI_AXIS_X, 0.85f);
+
+					UiPanelPair panelPairTopBottom = SplitPanel(panelPair1.uiPanel1, &gameMemory->permanentArena, UI_AXIS_X, 0.3333f);
+					panelPairTopBottom.uiPanel1->uiPanelType = UI_PANEL_TYPE_ROOT_IMAGE;
+					UiPanelPair panelPairDrawing = SplitPanel(panelPairTopBottom.uiPanel2, &gameMemory->permanentArena, UI_AXIS_X, 0.5);
+					panelPairDrawing.uiPanel1->uiPanelType = UI_PANEL_TYPE_PNG_FILTERED;
+					panelPairDrawing.uiPanel2->uiPanelType = UI_PANEL_TYPE_FINAL_IMAGE;
+
+					UiPanelPair panelPairRightSidebar = SplitPanel(panelPair1.uiPanel2, &gameMemory->permanentArena, UI_AXIS_Y, 0.2f);
+					panelPairRightSidebar.uiPanel1->uiPanelType = UI_PANEL_TYPE_NULL;
+					panelPairRightSidebar.uiPanel2->uiPanelType = UI_PANEL_TYPE_LAYERS;
+#else
+					appState->rootUiPanel.childSplitAxis = UI_AXIS_X;
+					appState->rootUiPanel.hash = Murmur3String("mainPanels");
+					UiPanelPair panelPair1 = SplitPanel(&appState->rootUiPanel, &gameMemory->permanentArena, UI_AXIS_X, 0.85f);
+					panelPair1.uiPanel1->uiPanelType = UI_PANEL_TYPE_NULL;
+					panelPair1.uiPanel2->uiPanelType = UI_PANEL_TYPE_LAYERS;
+#endif
+				}
+
+				BuildPanelTree(uiState, appState, frameState, &appState->rootUiPanel);
+			}
+		}
+	}
+}
+
 void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned int threadCount)
 {
 	AppState *appState = InitApp(gameMemory, threadCount);
@@ -262,157 +407,13 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 		//------------------------UI--------------------------
 		//----------------------------------------------------
 
-		UiBuffer *uiBufferCurrent = &uiState->uiBuffers[uiState->uiBufferIndex];
-		// NOTE: We start at 1 so that we always have a null uiBlock
-		uiBufferCurrent->uiBlockCount = 1;
-		uiState->parentStackCount = {};
-
-		float titleBarHeight = 20;
-
-		UiBlockColors defaultBlockColors = {};
-		defaultBlockColors.backColor = ColorU32{191, 191, 191, 255};
-		defaultBlockColors.frontColor = COLORU32_BLACK;
-		defaultBlockColors.borderColor = COLORU32_DARKGRAY;
-
-		UiBlock *root= UiCreateBlock(uiState);
-		root->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) frameState->windowDim.x};
-		root->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) frameState->windowDim.y};
-		root->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
-		UI_PARENT_SCOPE(uiState, root)
-		{
-			float menuBarHeight = 20;
-			UiBlock *menuBar = UiCreateBlock(uiState);
-			menuBar->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-			menuBar->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, menuBarHeight};
-			menuBar->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
-			UI_PARENT_SCOPE(uiState, menuBar)
-			{
-				String tempMenuStrings[] = {STRING("File"), STRING("Edit"), STRING("Image")};
-				for (u32 i = 0; i < ARRAY_COUNT(tempMenuStrings); i++)
-				{
-					UiBlock *m = UiCreateBlock(uiState);
-					m->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 10};
-					m->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-
-					UiBlock *b = UiCreateBlock(uiState);
-					b->flags = UI_FLAG_DRAW_TEXT;
-					b->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXT};
-					b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-					b->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
-					b->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
-					b->string = tempMenuStrings[i];
-					b->uiFont = appState->defaultUiFont;
-					b->uiBlockColors.frontColor = COLORU32_BLACK;
-				}
-
-				UiBlock *menuBarLine = UiCreateBlock(uiState);
-				menuBarLine->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;
-				menuBarLine->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, 7};
-				menuBarLine->uiPosition[UI_AXIS_Y] = {UI_POSITION_PERCENT_OF_PARENT, 0.3f};
-				menuBarLine->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-				menuBarLine->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 0.7f};
-				menuBarLine->uiBlockColors.frontColor = COLORU32_BLACK;
-			}
-
-			UiBlock *body = UiCreateBlock(uiState);
-			body->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-			body->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL};
-			UI_PARENT_SCOPE(uiState, body)
-			{
-				UiBlock *toolbar = UiCreateBlock(uiState);
-				//toolbar->flags = UI_FLAG_DRAW_BACKGROUND;
-				toolbar->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 65};
-				toolbar->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-				toolbar->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
-				//toolbar->uiBlockColors.backColor = ColorU32{100, 100, 100, 100};
-				UI_PARENT_SCOPE(uiState, toolbar)
-				{
-					{
-						UiBlock *b = UiCreateBlock(uiState);
-						b->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 5};
-					}
-
-					WidgetToolButton(uiState, appState, frameState, STRING("P"), BADPAINT_TOOL_PENCIL, COMMAND_SWITCH_TOOL_TO_PENCIL);
-					WidgetToolButton(uiState, appState, frameState, STRING("E"), BADPAINT_TOOL_ERASER, COMMAND_SWITCH_TOOL_TO_ERASER);
-					WidgetToolButton(uiState, appState, frameState, STRING("Y"), BADPAINT_TOOL_SPRAYCAN, COMMAND_SWITCH_TOOL_TO_SPAYCAN);
-
-					{
-						UiBlock *b = UiCreateBlock(uiState);
-						b->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-						b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 50};
-					}
-
-					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_REMOVE, STRING("Remv"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_REMOVE);
-					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_MAX, STRING("Max"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_MAX);
-					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_SHIFT, STRING("Sft"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_SHIFT);
-					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_RANDOM, STRING("Rand"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_RANDOM);
-					WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_COPY_OTHER_PIXEL, STRING("Copy"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_COPY_OTHER_PIXEL);
-
-					{
-						UiBlock *seperator = UiCreateBlock(uiState);
-						seperator->uiPosition[UI_AXIS_X] = {UI_POSITION_PERCENT_OF_PARENT, 1};
-						seperator->uiPosition[UI_AXIS_Y] = {UI_POSITION_RELATIVE, 0};
-						seperator->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;
-						seperator->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 4};
-						seperator->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-						seperator->uiBlockColors.frontColor = COLORU32_BLACK;
-					}
-				}
-
-				UiBlock *panelArea = UiCreateBlock(uiState);
-				panelArea->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
-				panelArea->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL};
-				UI_PARENT_SCOPE(uiState, panelArea)
-				{
-
-#if 0
-					f32 relativeX = 0.5f;
-					u32 leftPanelHash = Murmur3String("leftPanel");
-					UiBlock *leftPanelPrev = GetUiBlockOfHashLastFrame(uiState, leftPanelHash);
-					if (leftPanelPrev->hash)
-					{
-						f32 middleOfScreenX = windowDim.x * 0.5f;
-						f32 moveRange = windowDim.x * 0.8f;
-						f32 posX = ClampF32(middleOfScreenX - (moveRange * 0.5f), mousePixelPos.x, middleOfScreenX + (moveRange * 0.5f));
-					}
-#endif
-					static b32 first = false;
-					if (!first)
-					{
-						first = true;
-#if 1
-						appState->rootUiPanel.childSplitAxis = UI_AXIS_X;
-						appState->rootUiPanel.hash = Murmur3String("mainPanels");
-						UiPanelPair panelPair1 = SplitPanel(&appState->rootUiPanel, &gameMemory->permanentArena, UI_AXIS_X, 0.85f);
-
-						UiPanelPair panelPairTopBottom = SplitPanel(panelPair1.uiPanel1, &gameMemory->permanentArena, UI_AXIS_X, 0.3333f);
-						panelPairTopBottom.uiPanel1->uiPanelType = UI_PANEL_TYPE_ROOT_IMAGE;
-						UiPanelPair panelPairDrawing = SplitPanel(panelPairTopBottom.uiPanel2, &gameMemory->permanentArena, UI_AXIS_X, 0.5);
-						panelPairDrawing.uiPanel1->uiPanelType = UI_PANEL_TYPE_PNG_FILTERED;
-						panelPairDrawing.uiPanel2->uiPanelType = UI_PANEL_TYPE_FINAL_IMAGE;
-
-						UiPanelPair panelPairRightSidebar = SplitPanel(panelPair1.uiPanel2, &gameMemory->permanentArena, UI_AXIS_Y, 0.2f);
-						panelPairRightSidebar.uiPanel1->uiPanelType = UI_PANEL_TYPE_NULL;
-						panelPairRightSidebar.uiPanel2->uiPanelType = UI_PANEL_TYPE_LAYERS;
-#else
-						appState->rootUiPanel.childSplitAxis = UI_AXIS_X;
-						appState->rootUiPanel.hash = Murmur3String("mainPanels");
-						UiPanelPair panelPair1 = SplitPanel(&appState->rootUiPanel, &gameMemory->permanentArena, UI_AXIS_X, 0.85f);
-						panelPair1.uiPanel1->uiPanelType = UI_PANEL_TYPE_NULL;
-						panelPair1.uiPanel2->uiPanelType = UI_PANEL_TYPE_LAYERS;
-#endif
-					}
-
-					BuildPanelTree(uiState, appState, frameState, &appState->rootUiPanel);
-				}
-			}
-		}
+		BuildUi(uiState, appState, frameState, gameMemory);
 
 		//----------------------------------------------------
 		//-----------------------APP--------------------------
 		//----------------------------------------------------
 
+		b32 uiNeedsRebuild = false;
 		Canvas *canvas = &appState->canvas;
 		AppCommandBuffer *appCommandBuffer = &frameState->appCommandBuffer;
 		for (u32 commandIndex = 0; commandIndex < appCommandBuffer->count; commandIndex++)
@@ -487,8 +488,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 						}
 					}
 					ArenaPopMarker(loadMarker);
-					//TODO: (Ahmayk) Oops, we need to redraw our UI now because there's a new texture!
 
+					uiNeedsRebuild = true;
 				} break;
 				case COMMAND_EXPORT_IMAGE:
 				{
@@ -582,7 +583,13 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 			}
 		}
 
-		ArenaPopMarker(appCommandBuffer->arenaMarker);
+		if (uiNeedsRebuild)
+		{
+			BuildUi(uiState, appState, frameState, gameMemory);
+			//NOTE: (Ahmayk) appCommands may be added onto the frameState, but we ignore them since we've already built this once
+		}
+
+		ArenaPopMarker(frameState->appCommandBuffer.arenaMarker);
 
 		//TODO: (Ahmayk) Reenable undo when you have a plan to implement it properly
 #if 0
@@ -857,6 +864,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 		//----------------------------------------------------
 		//----------------------RENDER------------------------
 		//----------------------------------------------------
+
+		UiBuffer *uiBufferCurrent = &uiState->uiBuffers[uiState->uiBufferIndex];
 
 		UiRaylibSetCursor(uiState->currentUiCursorType);
 		UiRaylibProcessStrings(uiBufferCurrent);

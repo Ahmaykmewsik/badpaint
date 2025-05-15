@@ -700,6 +700,13 @@ void UiLayoutBlocks(UiBuffer *uiBuffer, iv2 windowDim, Arena *temporaryArena)
 	UiBufferRadixSort(uiBuffer, temporaryArena);
 }
 
+void UiResetCurrentUiBuffer(UiState *uiState)
+{
+	uiState->parentStackCount = {};
+	// NOTE: We start at 1 so that we always have a null uiBlock
+	uiState->uiBuffers[uiState->uiBufferIndex].uiBlockCount = 1;
+}
+
 void UiEndFrame(UiState *uiState)
 {
 	UiBuffer *uiBufferLastFrame = &uiState->uiBuffers[1 - uiState->uiBufferIndex];

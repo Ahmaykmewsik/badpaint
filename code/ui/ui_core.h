@@ -167,6 +167,7 @@ struct UiState
 };
 
 UiState *UiInit(Arena *arena);
+void UiResetCurrentUiBuffer(UiState *uiState);
 UiBlock *UiGetBlockOfHashLastFrame(UiState *uiState, u32 hash);
 UiBlock *UiCreateBlock(UiState *uiState);
 UiBlock *UiCreateRootBlock(UiState *uiState);
