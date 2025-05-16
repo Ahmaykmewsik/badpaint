@@ -98,6 +98,83 @@ void UiPopParent(UiState *uiState, UiBlock *uiBlock)
 	}
 }
 
+INTERACTION_STATE GetInteractionState(UiInteractionState *uiInteractionState, u32 hash, b32 isActive, b32 isDisabled, b32 downOverride)
+{
+	INTERACTION_STATE result = INTERACTION_STATE_NONACTIVE_NEUTRAL;
+	if (isDisabled)
+	{
+		result = INTERACTION_STATE_DISABLED;
+	}
+	else
+	{
+		if (isActive)
+		{
+			result = INTERACTION_STATE_ACTIVE_NEUTRAL;
+		}
+
+		if (hash == uiInteractionState->hashMouseDown || downOverride)
+		{
+			result = INTERACTION_STATE_DOWN;
+		}
+		else if (hash == uiInteractionState->hashMouseHover)
+		{
+			result = INTERACTION_STATE_NONACTIVE_HOVERED;
+			if (isActive)
+			{
+				result = INTERACTION_STATE_ACTIVE_HOVERED;
+			}
+		}
+	}
+	return result;
+}
+
+void UiInteractionStateUpdate(UiState *uiState, UiInteractionFrameInput *uiInteractionFrameInput)
+{
+	UiInteractionState *uiInteractionState = &uiState->uiInteractionState; 
+	UiBuffer *uiBufferLastFrame = &uiState->uiBuffers[1 - uiState->uiBufferIndex];
+	u32 highestDepthValueHit = 0;
+
+	uiInteractionState->hashMouseHover = {};
+	uiInteractionState->hashMousePressed = {};
+	uiInteractionState->hashMouseDown = {};
+	uiInteractionState->currentUiCursorType = UI_CURSOR_TYPE_DEFAULT;
+
+	if (uiInteractionFrameInput->isMouseLeftPressed || uiInteractionFrameInput->isMouseLeftReleased)
+	{
+		uiInteractionState->lastPressedUiHash = {};
+	}
+	if (uiInteractionFrameInput->isMouseLeftPressed)
+	{
+		uiInteractionState->lastPressedPos = uiInteractionFrameInput->mousePixelPos;
+	}
+	uiInteractionState->mousePixelPosPrevious = uiInteractionState->uiInteractionFrameInput.mousePixelPos;
+
+	for (u32 i = 0; i < uiBufferLastFrame->uiBlockCount; i++)
+	{
+		UiBlock *uiBlock = &uiBufferLastFrame->uiBlocks[i];
+		if (highestDepthValueHit <= uiBlock->depthLayer && IsInRectV2(uiInteractionFrameInput->mousePixelPos, uiBlock->rect))
+		{
+			highestDepthValueHit = uiBlock->depthLayer;
+			if ((uiBlock->flags & UI_FLAG_INTERACTABLE) && ASSERT(uiBlock->hash))
+			{
+				uiInteractionState->hashMouseHover = uiBlock->hash;
+				if (uiInteractionFrameInput->isMouseLeftPressed)
+				{
+					uiInteractionState->hashMousePressed = uiBlock->hash;
+					uiInteractionState->lastPressedUiHash = uiBlock->hash;
+				}
+				if (uiInteractionFrameInput->isMouseLeftDown)
+				{
+					uiInteractionState->hashMouseDown = uiBlock->hash;
+				}
+			}
+		}
+	}
+	uiInteractionState->uiInteractionFrameInput = *uiInteractionFrameInput;
+}
+
+///------ SOLVING ------
+
 struct UiSolveData
 {
 	b32 isSizeSolved[UI_AXIS_COUNT];
@@ -770,5 +847,4 @@ void UiEndFrame(UiState *uiState)
 	UiBuffer *uiBufferLastFrame = &uiState->uiBuffers[1 - uiState->uiBufferIndex];
 	ArenaReset(&uiBufferLastFrame->arena);
 	uiState->uiBufferIndex = 1 - uiState->uiBufferIndex;
-	uiState->currentUiCursorType = UI_CURSOR_TYPE_DEFAULT;
 }

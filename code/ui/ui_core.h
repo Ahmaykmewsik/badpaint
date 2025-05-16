@@ -154,6 +154,41 @@ enum UI_CURSOR_TYPE
 	UI_CURSOR_TYPE_RESIZE_LEFT_RIGHT,
 };
 
+enum INTERACTION_STATE
+{
+	INTERACTION_STATE_NONACTIVE_NEUTRAL,
+	INTERACTION_STATE_NONACTIVE_HOVERED,
+	INTERACTION_STATE_DOWN,
+	INTERACTION_STATE_ACTIVE_NEUTRAL,
+	INTERACTION_STATE_ACTIVE_HOVERED,
+	INTERACTION_STATE_DISABLED,
+	INTERACTION_STATE_COUNT,
+};
+
+struct UiInteractionFrameInput
+{
+	iv2 windowDim;
+	iv2 mousePixelPos;
+	b32 isMouseLeftDown;
+	b32 isMouseLeftPressed;
+	b32 isMouseLeftReleased;
+};
+
+struct UiInteractionState
+{
+	UiInteractionFrameInput uiInteractionFrameInput;
+	iv2 mousePixelPosPrevious;
+	u32 lastPressedUiHash;
+	iv2 lastPressedPos;
+
+	u32 hashMouseHover;
+	u32 hashMouseDown;
+	u32 hashMousePressed;
+	UI_CURSOR_TYPE currentUiCursorType;
+};
+
+INTERACTION_STATE GetInteractionState(UiInteractionState *UiInteractionState, u32 hash, b32 isActive, b32 isDisabled, b32 downOverride);
+
 struct UiState
 {
 	b32 initialized;
@@ -161,12 +196,13 @@ struct UiState
 	u32 uiBufferIndex;
 
 	UiBlock *parentStack[64];
-	int parentStackCount;
+	u32 parentStackCount;
 
-	UI_CURSOR_TYPE currentUiCursorType;
+	UiInteractionState uiInteractionState;
 };
 
 UiState *UiInit(Arena *arena);
+void UiInteractionStateUpdate(UiState *uiState, UiInteractionFrameInput *uiInteractionFrameInput);
 void UiResetCurrentUiBuffer(UiState *uiState);
 UiBlock *UiGetBlockOfHashLastFrame(UiState *uiState, u32 hash);
 UiBlock *UiCreateBlock(UiState *uiState);

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <ui/ui_core.h>
-#include <ui/ui_interaction.h>
 
 struct UiPanel
 {

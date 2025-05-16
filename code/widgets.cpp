@@ -13,7 +13,7 @@ ColorU32 AddConstantToColor(ColorU32 color, i8 constant)
 	return result;
 }
 
-UiBlock *WidgetBrushEffectButton(UiState *uiState, AppState *appState, FrameState *frameState, BADPAINT_PIXEL_TYPE brushEffect, String string, COMMAND command)
+UiBlock *WidgetBrushEffectButton(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandBuffer, BADPAINT_PIXEL_TYPE brushEffect, String string, COMMAND command)
 {
 	u32 hash = Murmur3String("brushEffect", brushEffect);
 	b32 active = appState->currentBadpaintPixelType == brushEffect;
@@ -40,18 +40,18 @@ UiBlock *WidgetBrushEffectButton(UiState *uiState, AppState *appState, FrameStat
 	colors[INTERACTION_STATE_DOWN] = AddConstantToColor(baseColor, -100);
 	colors[INTERACTION_STATE_ACTIVE_NEUTRAL] = AddConstantToColor(baseColor, 0);
 	colors[INTERACTION_STATE_ACTIVE_HOVERED] = AddConstantToColor(baseColor, 10);
-	INTERACTION_STATE interactionState = GetInteractionState(hash, &frameState->uiInteractionHashes, active, isDisabled, downOverride);
+	INTERACTION_STATE interactionState = GetInteractionState(&uiState->uiInteractionState, hash, active, isDisabled, downOverride);
 	result->uiBlockColors.backColor = colors[interactionState];
 
-	if (result->hash == frameState->uiInteractionHashes.hashMousePressed)
+	if (result->hash == uiState->uiInteractionState.hashMousePressed)
 	{
-		AppCommand *appCommand = PushAppCommand(&frameState->appCommandBuffer);
+		AppCommand *appCommand = PushAppCommand(appCommandBuffer);
 		appCommand->command = command;
 	}
 	return result;
 }
 
-UiBlock *WidgetToolButton(UiState *uiState, AppState *appState, FrameState *frameState, String label, BADPAINT_TOOL_TYPE badpaintToolType, COMMAND command)
+UiBlock *WidgetToolButton(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandBuffer, String label, BADPAINT_TOOL_TYPE badpaintToolType, COMMAND command)
 {
 	UiBlock *result = UiCreateBlock(uiState);
 	result->hash = Murmur3String("badpainttool", badpaintToolType);
@@ -61,7 +61,7 @@ UiBlock *WidgetToolButton(UiState *uiState, AppState *appState, FrameState *fram
 	b32 active = appState->currentTool == badpaintToolType;
 	b32 isDisabled = false;
 	b32 downOverride = IsCommandKeyBindingDown(command);
-	INTERACTION_STATE interactionState = GetInteractionState(result->hash, &frameState->uiInteractionHashes, active, isDisabled, downOverride);
+	INTERACTION_STATE interactionState = GetInteractionState(&uiState->uiInteractionState, result->hash, active, isDisabled, downOverride);
 	result->uiTextureView = appState->tools[BADPAINT_TOOL_TEST].uiTextureViews[interactionState];
 	result->string = label;
 	result->uiFont = appState->defaultUiFont;
@@ -69,9 +69,9 @@ UiBlock *WidgetToolButton(UiState *uiState, AppState *appState, FrameState *fram
 	result->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
 	result->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
 
-	if (result->hash == frameState->uiInteractionHashes.hashMousePressed)
+	if (result->hash == uiState->uiInteractionState.hashMousePressed)
 	{
-		AppCommand *appCommand = PushAppCommand(&frameState->appCommandBuffer);
+		AppCommand *appCommand = PushAppCommand(appCommandBuffer);
 		appCommand->command = command;
 	}
 	return result;
@@ -197,27 +197,26 @@ v2 ScreenPosToCanvasPos(iv2 mousePos, RectV2 *blockRect, iv2 canvasDim)
 	return result;
 }
 
-void ProcessActiveInputInDrawableArea(UiState *uiState, AppState *appState, FrameState *frameState, UiBlock *drawableBlock, u32 uiPanelType)
+void ProcessActiveInputInDrawableArea(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandBuffer, UiBlock *drawableBlock, u32 uiPanelType)
 {
 	UiBlock *drawableBlockPrev = UiGetBlockOfHashLastFrame(uiState, drawableBlock->hash);
 	if (drawableBlockPrev->hash)
 	{
-		v2 posInCanvas = ScreenPosToCanvasPos(frameState->mousePixelPos, &drawableBlockPrev->rect, appState->canvas.badpaintPixelsRootImage.dim);
+		v2 posInCanvas = ScreenPosToCanvasPos(uiState->uiInteractionState.uiInteractionFrameInput.mousePixelPos, &drawableBlockPrev->rect, appState->canvas.badpaintPixelsRootImage.dim);
 		DrawToolInCanvasOnPanelAndChildren(uiState, appState, posInCanvas, uiPanelType);
-		if (appState->lastPressedUiHash == drawableBlockPrev->hash)
+		if (uiState->uiInteractionState.lastPressedUiHash == drawableBlockPrev->hash)
 		{
-			v2 posInCanvasPrevious = ScreenPosToCanvasPos(frameState->mousePixelPosPrevious, &drawableBlockPrev->rect, appState->canvas.badpaintPixelsRootImage.dim);
-			AppCommand *appCommand = PushAppCommand(&frameState->appCommandBuffer);
+			v2 posInCanvasPrevious = ScreenPosToCanvasPos(uiState->uiInteractionState.mousePixelPosPrevious, &drawableBlockPrev->rect, appState->canvas.badpaintPixelsRootImage.dim);
+			AppCommand *appCommand = PushAppCommand(appCommandBuffer);
 			appCommand->command = COMMAND_PAINT_ON_CANVAS_BETWEEN_POSITIONS;
 			appCommand->value1V2 = posInCanvasPrevious;
 			appCommand->value2V2 = posInCanvas;
 			appCommand->value3U32 = uiPanelType;
 		}
 	}
-
 }
 
-void WidgetImageCanvas(UiState *uiState, AppState *appState, FrameState *frameState, UiPanel *uiPanel, u32 hash,
+void WidgetImageCanvas(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandBuffer, UiPanel *uiPanel, u32 hash,
 		TextureGPU *textureGPUImage, TextureGPU *textureGPUDrawable, f32 *badpaintImageAlpha)
 {
 	if (textureGPUImage->texture.id)
@@ -244,8 +243,8 @@ void WidgetImageCanvas(UiState *uiState, AppState *appState, FrameState *frameSt
 				canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 				//TODO: (Ahmayk) This check needs to be more sophisticated regarding drawing just outside the canvas
 
-				b32 isHoveringCanvas = (canvasBlock->hash == frameState->uiInteractionHashes.hashMouseHover &&
-					(appState->lastPressedUiHash == 0 || appState->lastPressedUiHash == canvasBlock->hash));
+				b32 isHoveringCanvas = (canvasBlock->hash == uiState->uiInteractionState.hashMouseHover &&
+					(uiState->uiInteractionState.lastPressedUiHash == 0 || uiState->uiInteractionState.lastPressedUiHash == canvasBlock->hash));
 
 				if (isHoveringCanvas)
 				{
@@ -270,14 +269,14 @@ void WidgetImageCanvas(UiState *uiState, AppState *appState, FrameState *frameSt
 
 				if (isHoveringCanvas)
 				{
-					ProcessActiveInputInDrawableArea(uiState, appState, frameState, canvasBlock, uiPanel->uiPanelType);
+					ProcessActiveInputInDrawableArea(uiState, appState, appCommandBuffer, canvasBlock, uiPanel->uiPanelType);
 				}
 			}
 		}
 	}
 }
 
-void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState, UiPanel *uiPanel)
+void BuildPanelTree(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandBuffer, UiPanel *uiPanel)
 {
 	if (uiPanel)
 	{
@@ -301,7 +300,7 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 			}
 			UI_PARENT_SCOPE(uiState, panelBlock)
 			{
-				BuildPanelTree(uiState, appState, frameState, uiPanel->firstChild);
+				BuildPanelTree(uiState, appState, appCommandBuffer, uiPanel->firstChild);
 			}
 		}
 		else
@@ -334,7 +333,7 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 						panelBlock->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
  						u32 hash = Murmur3String("root", uiPanel->hash);
 						static f32 badpaintImageAlpha = 0;
-						WidgetImageCanvas(uiState, appState, frameState, uiPanel, hash, &canvas->textureGPURoot, &canvas->badpaintPixelsRootImage.textureGPU, &badpaintImageAlpha);
+						WidgetImageCanvas(uiState, appState, appCommandBuffer, uiPanel, hash, &canvas->textureGPURoot, &canvas->badpaintPixelsRootImage.textureGPU, &badpaintImageAlpha);
 					} break;
 					case UI_PANEL_TYPE_FINAL_IMAGE:
 					{
@@ -342,7 +341,7 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 						panelBlock->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
 						u32 hash = Murmur3String("finalTexture", uiPanel->hash);
 						static f32 badpaintImageAlpha = 0;
-						WidgetImageCanvas(uiState, appState, frameState, uiPanel, hash, &canvas->textureGPUFinal, &canvas->badpaintPixelsFinalImage.textureGPU, &badpaintImageAlpha);
+						WidgetImageCanvas(uiState, appState, appCommandBuffer, uiPanel, hash, &canvas->textureGPUFinal, &canvas->badpaintPixelsFinalImage.textureGPU, &badpaintImageAlpha);
 					} break;
 					case UI_PANEL_TYPE_PNG_FILTERED:
 					{
@@ -353,7 +352,7 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 						{
 							u32 hash = Murmur3String("canvas", uiPanel->hash);
 							static f32 badpaintImageAlpha = 0;
-							WidgetImageCanvas(uiState, appState, frameState, uiPanel, hash, &canvas->textureGPUPNGFiltered, &canvas->badpaintPixelsPNGFiltered.textureGPU, &badpaintImageAlpha);
+							WidgetImageCanvas(uiState, appState, appCommandBuffer, uiPanel, hash, &canvas->textureGPUPNGFiltered, &canvas->badpaintPixelsPNGFiltered.textureGPU, &badpaintImageAlpha);
 						}
 						else
 						{
@@ -402,25 +401,25 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 				resizeBorder->uiSizes[uiPanel->parent->childSplitAxis] = {UI_SIZE_PIXELS, 1};
 				resizeBorder->uiBlockColors.backColor = COLORU32_GRAY;
 				resizeBorder->depthLayer = UI_APP_DEPTH_LAYER_ABOVE;
-				if (frameState->uiInteractionHashes.hashMouseHover == resizeHitbox->hash || appState->lastPressedUiHash == resizeHitbox->hash)
+				if (uiState->uiInteractionState.hashMouseHover == resizeHitbox->hash || uiState->uiInteractionState.lastPressedUiHash == resizeHitbox->hash)
 				{
 					resizeBorder->uiBlockColors.backColor = HexToColorU32(0xf2fa00);
 					if (uiPanel->parent->childSplitAxis == UI_AXIS_X)
 					{
-						uiState->currentUiCursorType = UI_CURSOR_TYPE_RESIZE_LEFT_RIGHT;
+						uiState->uiInteractionState.currentUiCursorType = UI_CURSOR_TYPE_RESIZE_LEFT_RIGHT;
 					}
 					if (uiPanel->parent->childSplitAxis == UI_AXIS_Y)
 					{
-						uiState->currentUiCursorType = UI_CURSOR_TYPE_RESIZE_UP_DOWN;
+						uiState->uiInteractionState.currentUiCursorType = UI_CURSOR_TYPE_RESIZE_UP_DOWN;
 					}
 				}
-				if (appState->lastPressedUiHash == resizeHitbox->hash)
+				if (uiState->uiInteractionState.lastPressedUiHash == resizeHitbox->hash)
 				{
 					resizeBorder->uiSizes[uiPanel->parent->childSplitAxis] = {UI_SIZE_PIXELS, 2};
 					UiBlock *prevParentPanelBlock = UiGetBlockOfHashLastFrame(uiState, panelBlock->parent->hash);
 					if (ASSERT(prevParentPanelBlock->hash))
 					{
-						f32 relativePosInBox = frameState->mousePixelPos.elements[uiPanel->parent->childSplitAxis] - prevParentPanelBlock->rect.pos.elements[uiPanel->parent->childSplitAxis];
+						f32 relativePosInBox = uiState->uiInteractionState.uiInteractionFrameInput.mousePixelPos.elements[uiPanel->parent->childSplitAxis] - prevParentPanelBlock->rect.pos.elements[uiPanel->parent->childSplitAxis];
 						f32 percentOfBoxSize = SafeDivideF32(relativePosInBox, prevParentPanelBlock->rect.dim.elements[uiPanel->parent->childSplitAxis]);
 						u32 minSizePixels = 32;
 						f32 minSizePercent = SafeDivideF32((f32)minSizePixels, prevParentPanelBlock->rect.dim.elements[uiPanel->parent->childSplitAxis]);
@@ -441,6 +440,6 @@ void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState
 			resizeHitbox->uiPosition[uiPanel->parent->childSplitAxis] = {UI_POSITION_PERCENT_OF_PARENT, percentPositionSum};
 		}
 
-		BuildPanelTree(uiState, appState, frameState, uiPanel->next);
+		BuildPanelTree(uiState, appState, appCommandBuffer, uiPanel->next);
 	}
 }

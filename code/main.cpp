@@ -157,7 +157,7 @@ AppState *InitApp(GameMemory *gameMemory, u32 threadCount)
 	return appState;
 }
 
-void BuildUi(UiState *uiState, AppState *appState, FrameState *frameState, GameMemory *gameMemory)
+void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandBuffer, GameMemory *gameMemory)
 {
 	UiResetCurrentUiBuffer(uiState);
 
@@ -167,8 +167,8 @@ void BuildUi(UiState *uiState, AppState *appState, FrameState *frameState, GameM
 	defaultBlockColors.borderColor = COLORU32_DARKGRAY;
 
 	UiBlock *root= UiCreateBlock(uiState);
-	root->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) frameState->windowDim.x};
-	root->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) frameState->windowDim.y};
+	root->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) uiState->uiInteractionState.uiInteractionFrameInput.windowDim.x};
+	root->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) uiState->uiInteractionState.uiInteractionFrameInput.windowDim.y};
 	root->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
 	UI_PARENT_SCOPE(uiState, root)
 	{
@@ -269,9 +269,9 @@ void BuildUi(UiState *uiState, AppState *appState, FrameState *frameState, GameM
 					b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 5};
 				}
 
-				WidgetToolButton(uiState, appState, frameState, STRING("P"), BADPAINT_TOOL_PENCIL, COMMAND_SWITCH_TOOL_TO_PENCIL);
-				WidgetToolButton(uiState, appState, frameState, STRING("E"), BADPAINT_TOOL_ERASER, COMMAND_SWITCH_TOOL_TO_ERASER);
-				WidgetToolButton(uiState, appState, frameState, STRING("Y"), BADPAINT_TOOL_SPRAYCAN, COMMAND_SWITCH_TOOL_TO_SPAYCAN);
+				WidgetToolButton(uiState, appState, appCommandBuffer, STRING("P"), BADPAINT_TOOL_PENCIL, COMMAND_SWITCH_TOOL_TO_PENCIL);
+				WidgetToolButton(uiState, appState, appCommandBuffer, STRING("E"), BADPAINT_TOOL_ERASER, COMMAND_SWITCH_TOOL_TO_ERASER);
+				WidgetToolButton(uiState, appState, appCommandBuffer, STRING("Y"), BADPAINT_TOOL_SPRAYCAN, COMMAND_SWITCH_TOOL_TO_SPAYCAN);
 
 				{
 					UiBlock *b = UiCreateBlock(uiState);
@@ -279,11 +279,11 @@ void BuildUi(UiState *uiState, AppState *appState, FrameState *frameState, GameM
 					b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 50};
 				}
 
-				WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_REMOVE, STRING("Remv"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_REMOVE);
-				WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_MAX, STRING("Max"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_MAX);
-				WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_SHIFT, STRING("Sft"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_SHIFT);
-				WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_RANDOM, STRING("Rand"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_RANDOM);
-				WidgetBrushEffectButton(uiState, appState, frameState, BADPAINT_PIXEL_TYPE_COPY_OTHER_PIXEL, STRING("Copy"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_COPY_OTHER_PIXEL);
+				WidgetBrushEffectButton(uiState, appState, appCommandBuffer, BADPAINT_PIXEL_TYPE_REMOVE, STRING("Remv"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_REMOVE);
+				WidgetBrushEffectButton(uiState, appState, appCommandBuffer, BADPAINT_PIXEL_TYPE_MAX, STRING("Max"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_MAX);
+				WidgetBrushEffectButton(uiState, appState, appCommandBuffer, BADPAINT_PIXEL_TYPE_SHIFT, STRING("Sft"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_SHIFT);
+				WidgetBrushEffectButton(uiState, appState, appCommandBuffer, BADPAINT_PIXEL_TYPE_RANDOM, STRING("Rand"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_RANDOM);
+				WidgetBrushEffectButton(uiState, appState, appCommandBuffer, BADPAINT_PIXEL_TYPE_COPY_OTHER_PIXEL, STRING("Copy"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_COPY_OTHER_PIXEL);
 
 				{
 					UiBlock *seperator = UiCreateBlock(uiState);
@@ -340,7 +340,7 @@ void BuildUi(UiState *uiState, AppState *appState, FrameState *frameState, GameM
 #endif
 				}
 
-				BuildPanelTree(uiState, appState, frameState, &appState->rootUiPanel);
+				BuildPanelTree(uiState, appState, appCommandBuffer, &appState->rootUiPanel);
 			}
 		}
 	}
@@ -369,75 +369,45 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 #endif
 		}
 
+		UiInteractionFrameInput uiInteractionFrameInput = {};
+		uiInteractionFrameInput.windowDim.x = GetScreenWidth();
+		uiInteractionFrameInput.windowDim.y = GetScreenHeight();
+		uiInteractionFrameInput.mousePixelPos = iv2{GetMouseX(), GetMouseY()};
+		uiInteractionFrameInput.isMouseLeftDown = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+		uiInteractionFrameInput.isMouseLeftPressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+		uiInteractionFrameInput.isMouseLeftReleased = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+		UiInteractionStateUpdate(uiState, &uiInteractionFrameInput);
+
 		//NOTE: (Ahmayk) this nonsense is so that we can make a pointer to a variable on the stack
-		//havving this be a pointer makes code refernecing this easier to maintain when we move code from here to elsewhere
-		FrameState _frameState = {};
-		FrameState *frameState = &_frameState;
-
-		frameState->windowDim.x = GetScreenWidth();
-		frameState->windowDim.y = GetScreenHeight();
-		frameState->mousePixelPos = iv2{GetMouseX(), GetMouseY()};
-		frameState->mousePixelPosPrevious.x = frameState->mousePixelPos.x - (i32) GetMouseDelta().x;
-		frameState->mousePixelPosPrevious.y = frameState->mousePixelPos.y - (i32) GetMouseDelta().y;
-		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
-		{
-			appState->lastPressedUiHash = {};
-		}
-		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
-		{
-			appState->lastPressedPos = frameState->mousePixelPos;
-		}
-
-		frameState->appCommandBuffer.size = 50;
-		frameState->appCommandBuffer.appCommands = ARENA_PUSH_ARRAY_MARKER(&gameMemory->temporaryArena, frameState->appCommandBuffer.size, AppCommand, &frameState->appCommandBuffer.arenaMarker);
-
-		if (IsFileDropped())
-		{
-			FilePathList droppedFiles = LoadDroppedFiles();
-			AppCommand *appCommand = PushAppCommand(&frameState->appCommandBuffer);
-			appCommand->command = COMMAND_IMPORT_FILE;
-			appCommand->value1String = CreateString(droppedFiles.paths[0], StringArena());
-			UnloadDroppedFiles(droppedFiles);
-		}
+		//having this be a pointer makes code refernecing this easier to maintain when we move code from here to elsewhere
+		AppCommandBuffer _appCommandBuffer = {};
+		AppCommandBuffer *appCommandBuffer = &_appCommandBuffer;
+		appCommandBuffer->size = 50;
+		appCommandBuffer->appCommands = ARENA_PUSH_ARRAY_MARKER(&gameMemory->temporaryArena, appCommandBuffer->size, AppCommand, {});
 
 		for (u32 i = 0; i < COMMAND_COUNT; i++)
 		{
 			if (IsCommandKeyBindingPressed((COMMAND) i))
 			{
-				AppCommand *appCommand = PushAppCommand(&frameState->appCommandBuffer);
+				AppCommand *appCommand = PushAppCommand(appCommandBuffer);
 				appCommand->command = (COMMAND) i;
 			}
 		}
 
-		UiBuffer *uiBufferLastFrame = &uiState->uiBuffers[1 - uiState->uiBufferIndex];
-		u32 highestDepthValueHit = 0;
-		for (u32 i = 0; i < uiBufferLastFrame->uiBlockCount; i++)
+		if (IsFileDropped())
 		{
-			UiBlock *uiBlock = &uiBufferLastFrame->uiBlocks[i];
-			if (highestDepthValueHit <= uiBlock->depthLayer && IsInRectV2(frameState->mousePixelPos, uiBlock->rect))
-			{
-				highestDepthValueHit = uiBlock->depthLayer;
-				if ((uiBlock->flags & UI_FLAG_INTERACTABLE) && ASSERT(uiBlock->hash))
-				{
-					frameState->uiInteractionHashes.hashMouseHover = uiBlock->hash;
-					if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
-					{
-						frameState->uiInteractionHashes.hashMousePressed = uiBlock->hash;
-						appState->lastPressedUiHash = uiBlock->hash;
-					}
-					if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
-					{
-						frameState->uiInteractionHashes.hashMouseDown = uiBlock->hash;
-					}
-				}
-			}
+			FilePathList droppedFiles = LoadDroppedFiles();
+			AppCommand *appCommand = PushAppCommand(appCommandBuffer);
+			appCommand->command = COMMAND_IMPORT_FILE;
+			appCommand->value1String = CreateString(droppedFiles.paths[0], StringArena());
+			UnloadDroppedFiles(droppedFiles);
 		}
 
 		//----------------------------------------------------
 		//------------------------UI--------------------------
 		//----------------------------------------------------
 
-		BuildUi(uiState, appState, frameState, gameMemory);
+		BuildUi(uiState, appState, appCommandBuffer, gameMemory);
 
 		//----------------------------------------------------
 		//-----------------------APP--------------------------
@@ -445,7 +415,6 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 
 		b32 uiNeedsRebuild = false;
 		Canvas *canvas = &appState->canvas;
-		AppCommandBuffer *appCommandBuffer = &frameState->appCommandBuffer;
 		for (u32 commandIndex = 0; commandIndex < appCommandBuffer->count; commandIndex++)
 		{
 			AppCommand *appCommand = &appCommandBuffer->appCommands[commandIndex];
@@ -615,11 +584,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 
 		if (uiNeedsRebuild)
 		{
-			BuildUi(uiState, appState, frameState, gameMemory);
+			BuildUi(uiState, appState, appCommandBuffer, gameMemory);
 			//NOTE: (Ahmayk) appCommands may be added onto the frameState, but we ignore them since we've already built this once
 		}
 
-		ArenaPopMarker(frameState->appCommandBuffer.arenaMarker);
+		//ArenaPopMarker(frameState->appCommandBuffer.arenaMarker);
 
 		//TODO: (Ahmayk) Reenable undo when you have a plan to implement it properly
 #if 0
@@ -897,9 +866,9 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 
 		UiBuffer *uiBufferCurrent = &uiState->uiBuffers[uiState->uiBufferIndex];
 
-		UiRaylibSetCursor(uiState->currentUiCursorType);
+		UiRaylibSetCursor(uiState->uiInteractionState.currentUiCursorType);
 		UiRaylibProcessStrings(uiBufferCurrent);
-		UiLayoutBlocks(uiBufferCurrent, frameState->windowDim, &gameMemory->temporaryArena);
+		UiLayoutBlocks(uiBufferCurrent, uiState->uiInteractionState.uiInteractionFrameInput.windowDim, &gameMemory->temporaryArena);
 
 #if DEBUG_MODE
 		if (IsKeyDown(KEY_L))

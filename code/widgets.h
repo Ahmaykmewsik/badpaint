@@ -14,8 +14,8 @@ static float G_TOOLBOX_WIDTH_AND_HEIGHT = 35;
 struct AppState;
 struct FrameState;
 
-UiBlock *WidgetBrushEffectButton(UiState *uiState, AppState *appState, FrameState *frameState, BADPAINT_PIXEL_TYPE badpaintPixelType, String string, COMMAND command);
-UiBlock *WidgetToolButton(UiState *uiState, AppState *appState, FrameState *frameState, String label, BADPAINT_TOOL_TYPE badpaintToolType, COMMAND command);
+UiBlock *WidgetBrushEffectButton(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandBuffer, BADPAINT_PIXEL_TYPE brushEffect, String string, COMMAND command);
+UiBlock *WidgetToolButton(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandBuffer, String label, BADPAINT_TOOL_TYPE badpaintToolType, COMMAND command);
 
 enum UI_PANEL_TYPE : u32
 {
@@ -25,7 +25,7 @@ enum UI_PANEL_TYPE : u32
 	UI_PANEL_TYPE_FINAL_IMAGE,
 	UI_PANEL_TYPE_LAYERS,
 };
-void BuildPanelTree(UiState *uiState, AppState *appState, FrameState *frameState, UiPanel *uiPanel);
+void BuildPanelTree(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandBuffer, UiPanel *uiPanel);
 
 //TODO: (Ahmayk) Replace this stupid shit once we have better UI
 struct NotificationMessage
