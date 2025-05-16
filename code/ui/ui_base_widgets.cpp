@@ -98,6 +98,7 @@ UiBlock *WidgetMenuButton(UiState *uiState, String string, u32 hash, AppCommandB
 		t->string = string;
 		t->uiFont = menuButtonStyleDesc->uiFont;
 		t->uiBlockColors.frontColor = COLORU32_BLACK;
+		t->padding = menuButtonStyleDesc->padding;
 	}
 
 	if (uiState->uiInteractionState.hashMousePressed == hash)

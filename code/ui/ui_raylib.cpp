@@ -33,7 +33,12 @@ void UiRenderBlockRaylib(UiBlock *uiBlock)
 			{
 				RectIV2 *viewRect = &uiBlock->uiTextureView.viewRect;
 				Rectangle source = {(f32)viewRect->pos.x, (f32)viewRect->pos.y, (f32)viewRect->dim.x, (f32)viewRect->dim.y};
-				Rectangle dest = RectToRayRectangle(uiBlock->rect);
+				RectV2 rect = uiBlock->rect;
+				rect.pos.x += uiBlock->padding.x;
+				rect.pos.y += uiBlock->padding.y;
+				rect.dim.x -= (uiBlock->padding.x * 2.0f);
+				rect.dim.y -= (uiBlock->padding.y * 2.0f);
+				Rectangle dest = RectToRayRectangle(rect);
 
 				Color color = WHITE;
 				if (uiBlock->flags & UI_FLAG_TINT_TEXTURE)

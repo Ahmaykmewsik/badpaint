@@ -225,11 +225,13 @@ void CalculateFixedSizes(UiSolveState *uiSolveState, UiBlock *uiBlock)
 				{
 					//NOTE: (Ahmayk) :(
 					uiBlock->rect.dim.elements[i] = (f32) uiBlock->uiTextureView.viewRect.dim.elements[i];
+					uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
 					MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 				} break;
 				case UI_SIZE_PIXELS:
 				{
 					uiBlock->rect.dim.elements[i] = uiSize.value;
+					uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
 					MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 				} break;
 				case UI_SIZE_TEXT:
@@ -238,6 +240,7 @@ void CalculateFixedSizes(UiSolveState *uiSolveState, UiBlock *uiBlock)
 					{
 						uiBlock->rect.dim.elements[i] = uiBlock->textDim.elements[i];
 					}
+					uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
 					MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 				}
 				case UI_SIZE_PERCENT_OF_PARENT:
@@ -270,6 +273,7 @@ void CalculateUiUpwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiBlo
 					IsBlockSizeAxisSolved(uiSolveState, uiBlock->parent, (UI_AXIS) i))
 				{
 					uiBlock->rect.dim.elements[i] = (uiBlock->parent->rect.dim.elements[i] * uiBlock->uiSizes[i].value);
+					uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
 					MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 				}
 			} break;
@@ -289,6 +293,7 @@ void CalculateUiUpwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiBlo
 						{
 							uiBlock->rect.dim.elements[i] = uiBlock->parent->rect.dim.elements[i];
 						}
+						uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
 						MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 					}
 				}
@@ -313,6 +318,7 @@ void CalculateUiUpwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiBlo
 				IsBlockSizeAxisSolved(uiSolveState, uiBlock, (UI_AXIS) (1 - i)))
 			{
 				uiBlock->rect.dim.elements[i] = uiBlock->rect.dim.elements[1 - i] * uiBlock->uiSizes[i].value;
+				uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
 				MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 			}
 		}
@@ -403,12 +409,14 @@ void CalculateUiDownwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiB
 							if (readyToSolve)
 							{
 								uiBlock->rect.dim.elements[i] = size;
+								uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
 								MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 							}
 						}
 						else
 						{
 							uiBlock->rect.dim.elements[i] = 0;
+							uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
 							MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 						}
 					}

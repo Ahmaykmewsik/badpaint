@@ -117,6 +117,7 @@ struct UiBlock
 	UI_CHILD_ALIGN_TYPE uiChildAlignTypes[UI_AXIS_COUNT];
 	UI_CHILD_LAYOUT_TYPE uiChildLayoutType;
 	UI_TEXT_ALIGN_TYPE uiTextAlignTypes[UI_AXIS_COUNT];
+	iv2 padding; //ignored on UI_SIZE_FILL and UI_SIZE_FILL_FIXED
 
 	UiBlock *firstChild;
 	UiBlock *lastChild;

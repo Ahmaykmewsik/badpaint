@@ -57,6 +57,7 @@ struct MenuButtonStyleDesc
 {
 	UiFont uiFont; 
 	ColorU32 baseColor; 
+	iv2 padding;
 };
 
 UiBlock *WidgetMenuButton(UiState *uiState, String string, u32 hash, AppCommandBuffer *appCommandBuffer, u32 command, MenuButtonStyleDesc *menuButtonStyleDesc);

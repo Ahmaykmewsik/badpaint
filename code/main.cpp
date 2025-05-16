@@ -175,15 +175,13 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 	{
 		float menuBarHeight = 20;
 		UiBlock *menuBar = UiCreateBlock(uiState);
+		menuBar->flags = UI_FLAG_DRAW_BORDER;
 		menuBar->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 		menuBar->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, menuBarHeight};
 		menuBar->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
+		menuBar->uiBlockColors.borderColor = COLORU32_BLACK;
 		UI_PARENT_SCOPE(uiState, menuBar)
 		{
-			UiBlock *m = UiCreateBlock(uiState);
-			m->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 10};
-			m->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-
 			UiBlock *dropdownButton = UiCreateBlock(uiState);
 			dropdownButton->flags = UI_FLAG_DRAW_TEXT | UI_FLAG_DRAW_BACKGROUND | UI_FLAG_INTERACTABLE;
 			dropdownButton->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXT};
@@ -193,6 +191,7 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 			dropdownButton->string = STRING("File");
 			dropdownButton->hash = Murmur3String("FileMenu");
 			dropdownButton->uiFont = appState->defaultUiFont;
+			dropdownButton->padding = iv2{8, 4};
 			dropdownButton->uiBlockColors.frontColor = COLORU32_BLACK;
 			dropdownButton->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
 
@@ -242,6 +241,7 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 						MenuButtonStyleDesc menuButtonStyleDesc = {};
 						menuButtonStyleDesc.baseColor = APP_MAIN_BACKGROUND_COLOR;
 						menuButtonStyleDesc.uiFont = appState->defaultUiFont;
+						menuButtonStyleDesc.padding = iv2{16, 4};
 						String s = STRING("Import Image...");
 						u32 hash = Murmur3String("Import Image", b->hash);
 						UiBlock *menu = WidgetMenuButton(uiState, s, hash, appCommandBuffer, COMMAND_OPEN_IMPORT_DIALOGUE, &menuButtonStyleDesc);
@@ -277,13 +277,16 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 			}
 #endif
 
+#if 0
 			UiBlock *menuBarLine = UiCreateBlock(uiState);
-			menuBarLine->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;
+			//menuBarLine->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;
+			menuBarLine->flags = UI_FLAG_DRAW_BORDER;
 			menuBarLine->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, 7};
 			menuBarLine->uiPosition[UI_AXIS_Y] = {UI_POSITION_PERCENT_OF_PARENT, 0.3f};
 			menuBarLine->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 			menuBarLine->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 0.7f};
 			menuBarLine->uiBlockColors.frontColor = COLORU32_BLACK;
+#endif
 		}
 
 		UiBlock *body = UiCreateBlock(uiState);
