@@ -410,12 +410,14 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 		}
 
 		UiBuffer *uiBufferLastFrame = &uiState->uiBuffers[1 - uiState->uiBufferIndex];
+		u32 highestDepthValueHit = 0;
 		for (u32 i = 0; i < uiBufferLastFrame->uiBlockCount; i++)
 		{
 			UiBlock *uiBlock = &uiBufferLastFrame->uiBlocks[i];
-			if ((uiBlock->flags & UI_FLAG_INTERACTABLE) && ASSERT(uiBlock->hash))
+			if (highestDepthValueHit <= uiBlock->depthLayer && IsInRectV2(frameState->mousePixelPos, uiBlock->rect))
 			{
-				if (IsInRectV2(frameState->mousePixelPos, uiBlock->rect))
+				highestDepthValueHit = uiBlock->depthLayer;
+				if ((uiBlock->flags & UI_FLAG_INTERACTABLE) && ASSERT(uiBlock->hash))
 				{
 					frameState->uiInteractionHashes.hashMouseHover = uiBlock->hash;
 					if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
