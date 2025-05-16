@@ -11,8 +11,9 @@ static float G_TOOLBOX_WIDTH_AND_HEIGHT = 35;
 #define UI_APP_DEPTH_LAYER_CURSOR_GUI 200
 #define UI_APP_DEPTH_HOVERING_WINDOW 300
 
+#define APP_MAIN_BACKGROUND_COLOR ColorU32{192, 192, 192, 255}
+
 struct AppState;
-struct FrameState;
 
 UiBlock *WidgetBrushEffectButton(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandBuffer, BADPAINT_PIXEL_TYPE brushEffect, String string, COMMAND command);
 UiBlock *WidgetToolButton(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandBuffer, String label, BADPAINT_TOOL_TYPE badpaintToolType, COMMAND command);

@@ -25,4 +25,38 @@ struct UiPanelPair
 
 UiPanelPair SplitPanel(UiPanel *uiPanel, Arena *arena, UI_AXIS uiAxis, f32 percentOfParent);
 
-UiBlock *WidgetMenuButton(UiState *uiState, String string, u32 hash, UiFont uiFont, u32 command);
+struct AppCommand
+{
+	u32 command;
+	union
+	{
+		v2 value1V2;
+		String value1String;
+	};
+	union
+	{
+		v2 value2V2;
+	};
+	union
+	{
+		u32 value3U32;
+	};
+};
+
+struct AppCommandBuffer
+{
+	AppCommand *appCommands;
+	u32 count;
+	u32 size;
+	ArenaMarker arenaMarker;
+};
+
+AppCommand *PushAppCommand(AppCommandBuffer *appCommandBuffer);
+
+struct MenuButtonStyleDesc
+{
+	UiFont uiFont; 
+	ColorU32 baseColor; 
+};
+
+UiBlock *WidgetMenuButton(UiState *uiState, String string, u32 hash, AppCommandBuffer *appCommandBuffer, u32 command, MenuButtonStyleDesc *menuButtonStyleDesc);

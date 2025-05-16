@@ -4,15 +4,6 @@
 #include "ui/ui_raylib.h"
 #include "main.h"
 
-ColorU32 AddConstantToColor(ColorU32 color, i8 constant)
-{
-	ColorU32 result = color;
-	result.r = (u8) ClampI32(0, result.r + constant, 255);
-	result.g = (u8) ClampI32(0, result.g + constant, 255);
-	result.b = (u8) ClampI32(0, result.b + constant, 255);
-	return result;
-}
-
 UiBlock *WidgetBrushEffectButton(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandBuffer, BADPAINT_PIXEL_TYPE brushEffect, String string, COMMAND command)
 {
 	u32 hash = Murmur3String("brushEffect", brushEffect);

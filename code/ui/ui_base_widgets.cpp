@@ -53,14 +53,40 @@ UiPanelPair SplitPanel(UiPanel *uiPanel, Arena *arena, UI_AXIS uiAxis, f32 perce
 	return result;
 }
 
-UiBlock *WidgetMenuButton(UiState *uiState, String string, u32 hash, UiFont uiFont, u32 command)
+AppCommand *PushAppCommand(AppCommandBuffer *appCommandBuffer)
+{
+	AppCommand *result;
+	if (ASSERT(appCommandBuffer->count < appCommandBuffer->size))
+	{
+		result = &appCommandBuffer->appCommands[appCommandBuffer->count++];
+	}
+	else
+	{
+		static AppCommand stub = {};
+		result = &stub;
+	}
+	*result = {};
+	return result;
+}
+
+UiBlock *WidgetMenuButton(UiState *uiState, String string, u32 hash, AppCommandBuffer *appCommandBuffer, u32 command, MenuButtonStyleDesc *menuButtonStyleDesc)
 {
 	UiBlock *result = UiCreateBlock(uiState);
-	result->flags = UI_FLAG_DRAW_BACKGROUND;
+	result->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_INTERACTABLE;
 	result->hash = hash;
 	result->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
 	result->uiSizes[UI_AXIS_Y] = {UI_SIZE_FIT_CHILDREN};
-	result->uiBlockColors.backColor = COLORU32_WHITE;
+
+	ColorU32 baseColor = menuButtonStyleDesc->baseColor;
+	ColorU32 colors[INTERACTION_STATE_COUNT];
+	colors[INTERACTION_STATE_NONACTIVE_NEUTRAL] = AddConstantToColor(baseColor, -50);
+	colors[INTERACTION_STATE_NONACTIVE_HOVERED] = AddConstantToColor(baseColor, -20);
+	colors[INTERACTION_STATE_DOWN] = AddConstantToColor(baseColor, -100);
+	colors[INTERACTION_STATE_ACTIVE_NEUTRAL] = AddConstantToColor(baseColor, 0);
+	colors[INTERACTION_STATE_ACTIVE_HOVERED] = AddConstantToColor(baseColor, 10);
+	INTERACTION_STATE interactionState = GetInteractionState(&uiState->uiInteractionState, hash, true, false, false);
+	result->uiBlockColors.backColor = colors[interactionState];
+
 	UI_PARENT_SCOPE(uiState, result)
 	{
 		UiBlock *t = UiCreateBlock(uiState);
@@ -70,8 +96,15 @@ UiBlock *WidgetMenuButton(UiState *uiState, String string, u32 hash, UiFont uiFo
 		t->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
 		t->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
 		t->string = string;
-		t->uiFont = uiFont;
+		t->uiFont = menuButtonStyleDesc->uiFont;
 		t->uiBlockColors.frontColor = COLORU32_BLACK;
 	}
+
+	if (uiState->uiInteractionState.hashMousePressed == hash)
+	{
+		AppCommand *appCommand = PushAppCommand(appCommandBuffer);
+		appCommand->command = command;
+	}
+
 	return result;
 }

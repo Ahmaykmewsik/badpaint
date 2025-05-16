@@ -25,4 +25,9 @@ struct AppState
 	UiPanel rootUiPanel;
 
 	b32 imageIsBroken;
+
+	u32 hashOpenUiMenu;
 };
+
+b32 IsCommandKeyBindingDown(u32 command);
+b32 IsCommandKeyBindingPressed(u32 command);

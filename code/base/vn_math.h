@@ -295,3 +295,4 @@ void ApplyAccelerationV2(v2 *pos, v2 *velocity, v2 acceleration, f64 timestep);
 v4 HSLToRGBV4(float hue, float saturation, float luminance);
 v4 HexToRGBV4(u32 hexValue);
 ColorU32 HexToColorU32(u32 hexValue);
+ColorU32 AddConstantToColor(ColorU32 color, i8 constant);

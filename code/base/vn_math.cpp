@@ -1492,3 +1492,12 @@ ColorU32 HexToColorU32(u32 hexValue)
 	result.a = 255;
 	return result;
 }
+
+ColorU32 AddConstantToColor(ColorU32 color, i8 constant)
+{
+	ColorU32 result = color;
+	result.r = (u8) ClampI32(0, result.r + constant, 255);
+	result.g = (u8) ClampI32(0, result.g + constant, 255);
+	result.b = (u8) ClampI32(0, result.b + constant, 255);
+	return result;
+}

@@ -42,9 +42,10 @@ static KeyboardKey COMMAND_KEY_BINDINGS[] = {
 	KEY_NULL,
 	KEY_NULL,
 	KEY_NULL,
+	KEY_NULL,
 };
 
-b32 IsCommandKeyBindingDown(COMMAND command)
+b32 IsCommandKeyBindingDown(u32 command)
 {
 	b32 result = false;
 	KeyboardKey key = {};
@@ -59,7 +60,7 @@ b32 IsCommandKeyBindingDown(COMMAND command)
 	return result;
 }
 
-b32 IsCommandKeyBindingPressed(COMMAND command)
+b32 IsCommandKeyBindingPressed(u32 command)
 {
 	b32 result = false;
 	KeyboardKey key = {};
@@ -184,40 +185,75 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 			m->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 
 			UiBlock *dropdownButton = UiCreateBlock(uiState);
-			dropdownButton->flags = UI_FLAG_DRAW_TEXT;
+			dropdownButton->flags = UI_FLAG_DRAW_TEXT | UI_FLAG_DRAW_BACKGROUND | UI_FLAG_INTERACTABLE;
 			dropdownButton->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXT};
 			dropdownButton->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 			dropdownButton->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
 			dropdownButton->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
 			dropdownButton->string = STRING("File");
+			dropdownButton->hash = Murmur3String("FileMenu");
 			dropdownButton->uiFont = appState->defaultUiFont;
 			dropdownButton->uiBlockColors.frontColor = COLORU32_BLACK;
 			dropdownButton->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
-			UI_PARENT_SCOPE(uiState, dropdownButton)
-			{
-				UiBlock *b = UiCreateBlock(uiState);
-				b->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER;
-				b->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, 0};
-				b->uiPosition[UI_AXIS_Y] = {UI_POSITION_PERCENT_OF_PARENT, 1};
-				b->uiSizes[UI_AXIS_X] = {UI_SIZE_FIT_CHILDREN};
-				b->uiSizes[UI_AXIS_Y] = {UI_SIZE_FIT_CHILDREN};
-				b->uiBlockColors.backColor = COLORU32_RED;
-				b->uiBlockColors.borderColor = COLORU32_BLACK;
-				b->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
-				b->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
-				UI_PARENT_SCOPE(uiState, b)
-				{
-					String s = STRING("Import Image...");
-					u32 hash = Murmur3String("Import Image", b->hash);
-					UiBlock *menu = WidgetMenuButton(uiState, s, hash, appState->defaultUiFont, COMMAND_IMPORT_FILE);
-					menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 1;
-					menu->firstChild->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 2;
 
-					s = STRING("Export Image...");
-					hash = Murmur3String("Export Image", b->hash);
-					menu = WidgetMenuButton(uiState, s, hash, appState->defaultUiFont, COMMAND_EXPORT_IMAGE);
-					menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 3;
-					menu->firstChild->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 4;
+			ColorU32 baseColor = APP_MAIN_BACKGROUND_COLOR;
+			ColorU32 colors[INTERACTION_STATE_COUNT];
+			colors[INTERACTION_STATE_NONACTIVE_NEUTRAL] = AddConstantToColor(baseColor, -50);
+			colors[INTERACTION_STATE_NONACTIVE_HOVERED] = AddConstantToColor(baseColor, -20);
+			colors[INTERACTION_STATE_DOWN] = AddConstantToColor(baseColor, -100);
+			colors[INTERACTION_STATE_ACTIVE_NEUTRAL] = AddConstantToColor(baseColor, 0);
+			colors[INTERACTION_STATE_ACTIVE_HOVERED] = AddConstantToColor(baseColor, 10);
+			INTERACTION_STATE interactionState = GetInteractionState(&uiState->uiInteractionState, dropdownButton->hash, true, false, false);
+			dropdownButton->uiBlockColors.backColor = colors[interactionState];
+
+			u32 openMenuHash = Murmur3String("openMenu", dropdownButton->hash);
+			if (uiState->uiInteractionState.hashMousePressed == dropdownButton->hash)
+			{
+				appState->hashOpenUiMenu = dropdownButton->hash;
+			}
+			else if (appState->hashOpenUiMenu == dropdownButton->hash &&
+				uiState->uiInteractionState.uiInteractionFrameInput.isMouseLeftPressed)
+			{
+				//TODO: (Ahmayk) will need to check all children once we implement nested menus 
+				UiBlock *openMenuPrev = UiGetBlockOfHashLastFrame(uiState, openMenuHash);
+				if (!IsInRectV2(uiState->uiInteractionState.uiInteractionFrameInput.mousePixelPos, openMenuPrev->rect))
+				{
+					appState->hashOpenUiMenu = {};
+				}
+			}
+
+			if (appState->hashOpenUiMenu == dropdownButton->hash)
+			{
+				UI_PARENT_SCOPE(uiState, dropdownButton)
+				{
+					UiBlock *b = UiCreateBlock(uiState);
+					b->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER;
+					b->hash = openMenuHash;
+					b->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, 0};
+					b->uiPosition[UI_AXIS_Y] = {UI_POSITION_PERCENT_OF_PARENT, 1};
+					b->uiSizes[UI_AXIS_X] = {UI_SIZE_FIT_CHILDREN};
+					b->uiSizes[UI_AXIS_Y] = {UI_SIZE_FIT_CHILDREN};
+					b->uiBlockColors.backColor = COLORU32_RED;
+					b->uiBlockColors.borderColor = COLORU32_BLACK;
+					b->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
+					b->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
+					UI_PARENT_SCOPE(uiState, b)
+					{
+						MenuButtonStyleDesc menuButtonStyleDesc = {};
+						menuButtonStyleDesc.baseColor = APP_MAIN_BACKGROUND_COLOR;
+						menuButtonStyleDesc.uiFont = appState->defaultUiFont;
+						String s = STRING("Import Image...");
+						u32 hash = Murmur3String("Import Image", b->hash);
+						UiBlock *menu = WidgetMenuButton(uiState, s, hash, appCommandBuffer, COMMAND_OPEN_IMPORT_DIALOGUE, &menuButtonStyleDesc);
+						menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 1;
+						menu->firstChild->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 2;
+
+						s = STRING("Export Image...");
+						hash = Murmur3String("Export Image", b->hash);
+						menu = WidgetMenuButton(uiState, s, hash,  appCommandBuffer, COMMAND_EXPORT_IMAGE, &menuButtonStyleDesc);
+						menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 3;
+						menu->firstChild->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 4;
+					}
 				}
 			}
 
@@ -398,7 +434,7 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 		{
 			FilePathList droppedFiles = LoadDroppedFiles();
 			AppCommand *appCommand = PushAppCommand(appCommandBuffer);
-			appCommand->command = COMMAND_IMPORT_FILE;
+			appCommand->command = COMMAND_IMPORT_FILE_PATH;
 			appCommand->value1String = CreateString(droppedFiles.paths[0], StringArena());
 			UnloadDroppedFiles(droppedFiles);
 		}
@@ -456,7 +492,11 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 				{
 					appState->currentTool = BADPAINT_TOOL_TEST;
 				} break;
-				case COMMAND_IMPORT_FILE:
+				case COMMAND_OPEN_IMPORT_DIALOGUE:
+				{
+					//TODO, use platform api
+				} break;
+				case COMMAND_IMPORT_FILE_PATH:
 				{
 					ArenaMarker loadMarker = ArenaPushMarker(&gameMemory->temporaryArena);
 					unsigned int fileSize = {};
