@@ -1343,11 +1343,10 @@ u32 Murmur3F32(f32 key, u32 seed, u32 prevHash)
 	return hash;
 }
 
-u32 Murmur3String(const char *key, u32 seed)
+u32 Murmur3StringLength(const char *key, u32 length, u32 seed)
 {
 	u32 hash = seed;
-	u32 len = (u32) strlen(key);
-	u32 nblocks = len / 4;
+	u32 nblocks = length / 4;
 	u32 *blocks = (u32 *)(key);
 
 	for (u32 i = 0; i < nblocks; i++)
@@ -1358,7 +1357,7 @@ u32 Murmur3String(const char *key, u32 seed)
 	u8 *tail = (u8 *)(key + nblocks * 4);
 	u32 k1 = 0;
 
-	switch (len & 3)
+	switch (length & 3)
 	{
 		case 3:
 			k1 ^= tail[2] << 16;
@@ -1372,7 +1371,7 @@ u32 Murmur3String(const char *key, u32 seed)
 			hash ^= k1;
 	}
 
-	hash ^= len;
+	hash ^= length;
 	hash ^= (hash >> 16);
 	hash *= 0x85ebca6b;
 	hash ^= (hash >> 13);
@@ -1380,6 +1379,13 @@ u32 Murmur3String(const char *key, u32 seed)
 	hash ^= (hash >> 16);
 
 	return hash;
+}
+
+u32 Murmur3String(const char *key, u32 seed)
+{
+	u32 length = (u32) strlen(key);
+	u32 result = Murmur3StringLength(key, length, seed);
+    return result;
 }
 
 u32 DJB33HashU32(u32 *data, u32 len, u32 seed)

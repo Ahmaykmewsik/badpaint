@@ -30,6 +30,7 @@
 //NOTE: (Ahmayk) This needs to be redesigned to include key modifiers 
 static KeyboardKey COMMAND_KEY_BINDINGS[] = {
 	KEY_NULL,
+	KEY_NULL,
 	KEY_R,
 	KEY_A,
 	KEY_S,
@@ -173,119 +174,36 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 	root->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
 	UI_PARENT_SCOPE(uiState, root)
 	{
-		UiBlock *menuBar = UiCreateBlock(uiState);
-		menuBar->flags = UI_FLAG_DRAW_BORDER;
-		menuBar->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-		menuBar->uiSizes[UI_AXIS_Y] = {UI_SIZE_FIT_CHILDREN};
-		menuBar->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
-		menuBar->uiBlockColors.borderColor = COLORU32_BLACK;
+		static MenuBarState menuBarState = {};
+		UiBlock *menuBar = WidgetMenuBar(uiState, &menuBarState, Murmur3String("TitleBarMenu"));
 		UI_PARENT_SCOPE(uiState, menuBar)
 		{
-			UiBlock *dropdownButton = UiCreateBlock(uiState);
-			dropdownButton->flags = UI_FLAG_DRAW_TEXT | UI_FLAG_DRAW_BACKGROUND | UI_FLAG_INTERACTABLE;
-			dropdownButton->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXT};
-			dropdownButton->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 16};
-			dropdownButton->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
-			dropdownButton->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
-			dropdownButton->string = STRING("File");
-			dropdownButton->hash = Murmur3String("FileMenu");
-			dropdownButton->uiFont = appState->defaultUiFont;
-			dropdownButton->padding = iv2{8, 4};
-			dropdownButton->uiBlockColors.frontColor = COLORU32_BLACK;
+			UiBlock styleBlock = {};
+			styleBlock.uiBlockColors.backColor = APP_MAIN_BACKGROUND_COLOR;
+			styleBlock.uiBlockColors.borderColor = COLORU32_BLACK;
+			styleBlock.uiBlockColors.frontColor = COLORU32_BLACK;
+			styleBlock.uiFont = appState->defaultUiFont;
+			UiBlock *dropdownButton = WidgetMenuBarButton(uiState, &menuBarState, STRING("File"), &styleBlock);
 			dropdownButton->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
-
-			ColorU32 baseColor = APP_MAIN_BACKGROUND_COLOR;
-			ColorU32 colors[INTERACTION_STATE_COUNT];
-			colors[INTERACTION_STATE_NONACTIVE_NEUTRAL] = AddConstantToColor(baseColor, -50);
-			colors[INTERACTION_STATE_NONACTIVE_HOVERED] = AddConstantToColor(baseColor, -20);
-			colors[INTERACTION_STATE_DOWN] = AddConstantToColor(baseColor, -100);
-			colors[INTERACTION_STATE_ACTIVE_NEUTRAL] = AddConstantToColor(baseColor, 0);
-			colors[INTERACTION_STATE_ACTIVE_HOVERED] = AddConstantToColor(baseColor, 10);
-			INTERACTION_STATE interactionState = GetInteractionState(&uiState->uiInteractionState, dropdownButton->hash, true, false, false);
-			dropdownButton->uiBlockColors.backColor = colors[interactionState];
-
-			u32 openMenuHash = Murmur3String("openMenu", dropdownButton->hash);
-			if (uiState->uiInteractionState.hashMousePressed == dropdownButton->hash)
-			{
-				appState->hashOpenUiMenu = dropdownButton->hash;
-			}
-			else if (appState->hashOpenUiMenu == dropdownButton->hash &&
-				uiState->uiInteractionState.uiInteractionFrameInput.isMouseLeftPressed)
-			{
-				//TODO: (Ahmayk) will need to check all children once we implement nested menus 
-				UiBlock *openMenuPrev = UiGetBlockOfHashLastFrame(uiState, openMenuHash);
-				if (!IsInRectV2(uiState->uiInteractionState.uiInteractionFrameInput.mousePixelPos, openMenuPrev->rect))
-				{
-					appState->hashOpenUiMenu = {};
-				}
-			}
-
-			if (appState->hashOpenUiMenu == dropdownButton->hash)
+			if (menuBarState.hashOpenMenuBarButton == dropdownButton->hash)
 			{
 				UI_PARENT_SCOPE(uiState, dropdownButton)
 				{
-					UiBlock *b = UiCreateBlock(uiState);
-					b->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER;
-					b->hash = openMenuHash;
-					b->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, 0};
-					b->uiPosition[UI_AXIS_Y] = {UI_POSITION_PERCENT_OF_PARENT, 1};
-					b->uiSizes[UI_AXIS_X] = {UI_SIZE_FIT_CHILDREN};
-					b->uiSizes[UI_AXIS_Y] = {UI_SIZE_FIT_CHILDREN};
-					b->uiBlockColors.backColor = COLORU32_RED;
-					b->uiBlockColors.borderColor = COLORU32_BLACK;
-					b->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
-					b->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
-					UI_PARENT_SCOPE(uiState, b)
+					UiBlock *menuPanel = WidgetMenuPanel(uiState, &styleBlock);
+					menuPanel->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
+					UI_PARENT_SCOPE(uiState, menuPanel)
 					{
-						MenuButtonStyleDesc menuButtonStyleDesc = {};
-						menuButtonStyleDesc.baseColor = APP_MAIN_BACKGROUND_COLOR;
-						menuButtonStyleDesc.uiFont = appState->defaultUiFont;
-						menuButtonStyleDesc.padding = iv2{16, 4};
-						String s = STRING("Import Image...");
-						u32 hash = Murmur3String("Import Image", b->hash);
-						UiBlock *menu = WidgetMenuButton(uiState, s, hash, appCommandBuffer, COMMAND_OPEN_IMPORT_DIALOGUE, &menuButtonStyleDesc);
+						styleBlock.padding = iv2{12, 4};
+						UiBlock *menu = WidgetMenuOptionButton(uiState, &menuBarState, STRING("Import Image..."), menuPanel->hash, appCommandBuffer, COMMAND_OPEN_IMPORT_DIALOGUE, &styleBlock);
 						menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 1;
 						menu->firstChild->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 2;
 
-						s = STRING("Export Image...");
-						hash = Murmur3String("Export Image", b->hash);
-						menu = WidgetMenuButton(uiState, s, hash,  appCommandBuffer, COMMAND_EXPORT_IMAGE, &menuButtonStyleDesc);
+						menu = WidgetMenuOptionButton(uiState, &menuBarState, STRING("Export Image..."), menuPanel->hash,  appCommandBuffer, COMMAND_EXPORT_IMAGE, &styleBlock);
 						menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 3;
 						menu->firstChild->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 4;
 					}
 				}
 			}
-
-#if 0
-			String tempMenuStrings[] = {STRING("File"), STRING("Edit"), STRING("Image")};
-			for (u32 i = 0; i < ARRAY_COUNT(tempMenuStrings); i++)
-			{
-				UiBlock *m = UiCreateBlock(uiState);
-				m->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 10};
-				m->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-
-				UiBlock *b = UiCreateBlock(uiState);
-				b->flags = UI_FLAG_DRAW_TEXT;
-				b->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXT};
-				b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-				b->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
-				b->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
-				b->string = tempMenuStrings[i];
-				b->uiFont = appState->defaultUiFont;
-				b->uiBlockColors.frontColor = COLORU32_BLACK;
-			}
-#endif
-
-#if 0
-			UiBlock *menuBarLine = UiCreateBlock(uiState);
-			//menuBarLine->flags = UI_FLAG_DRAW_LINE_BOTTOMLEFT_TOPRIGHT;
-			menuBarLine->flags = UI_FLAG_DRAW_BORDER;
-			menuBarLine->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, 7};
-			menuBarLine->uiPosition[UI_AXIS_Y] = {UI_POSITION_PERCENT_OF_PARENT, 0.3f};
-			menuBarLine->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-			menuBarLine->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 0.7f};
-			menuBarLine->uiBlockColors.frontColor = COLORU32_BLACK;
-#endif
 		}
 
 		UiBlock *body = UiCreateBlock(uiState);
@@ -461,6 +379,10 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 			AppCommand *appCommand = &appCommandBuffer->appCommands[commandIndex];
 			switch(appCommand->command)
 			{
+				case COMMAND_UNIMPLEMENTED:
+				{
+					//TODO: (Ahmayk) put something on the screen
+				} break;
 				case COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_REMOVE:
 				{
 					appState->currentBadpaintPixelType = BADPAINT_PIXEL_TYPE_REMOVE;

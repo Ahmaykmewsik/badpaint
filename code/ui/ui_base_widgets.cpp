@@ -69,22 +69,114 @@ AppCommand *PushAppCommand(AppCommandBuffer *appCommandBuffer)
 	return result;
 }
 
-UiBlock *WidgetMenuButton(UiState *uiState, String string, u32 hash, AppCommandBuffer *appCommandBuffer, u32 command, MenuButtonStyleDesc *menuButtonStyleDesc)
+UiBlock *WidgetMenuBar(UiState *uiState, MenuBarState *menuBarState, u32 hash)
 {
-	UiBlock *result = UiCreateBlock(uiState);
-	result->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_INTERACTABLE;
-	result->hash = hash;
-	result->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
-	result->uiSizes[UI_AXIS_Y] = {UI_SIZE_FIT_CHILDREN};
+	UiBlock *menuBar = UiCreateBlock(uiState);
+	menuBar->flags = UI_FLAG_DRAW_BORDER;
+	menuBar->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+	menuBar->uiSizes[UI_AXIS_Y] = {UI_SIZE_FIT_CHILDREN};
+	menuBar->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
+	menuBar->uiBlockColors.borderColor = COLORU32_BLACK;
+	menuBar->hash = hash;
+	menuBarState->hashMenuBar = hash;
+	return menuBar;
+}
 
-	ColorU32 baseColor = menuButtonStyleDesc->baseColor;
+void UiBlockCopyStyle(UiBlock *uiBlock, UiBlock *styleBlock)
+{
+	uiBlock->uiSizes[UI_AXIS_X] = styleBlock->uiSizes[UI_AXIS_X];
+	uiBlock->uiSizes[UI_AXIS_Y] = styleBlock->uiSizes[UI_AXIS_Y];
+	uiBlock->uiPosition[UI_AXIS_X] = styleBlock->uiPosition[UI_AXIS_X];
+	uiBlock->uiPosition[UI_AXIS_Y] = styleBlock->uiPosition[UI_AXIS_Y];
+	uiBlock->uiPositionOffset[UI_AXIS_X] = styleBlock->uiPositionOffset[UI_AXIS_X];
+	uiBlock->uiPositionOffset[UI_AXIS_Y] = styleBlock->uiPositionOffset[UI_AXIS_Y];
+	uiBlock->uiChildAlignTypes[UI_AXIS_X] = styleBlock->uiChildAlignTypes[UI_AXIS_X];
+	uiBlock->uiChildAlignTypes[UI_AXIS_Y] = styleBlock->uiChildAlignTypes[UI_AXIS_Y];
+	uiBlock->uiChildLayoutType = styleBlock->uiChildLayoutType;
+	uiBlock->uiTextAlignTypes[UI_AXIS_X] = styleBlock->uiTextAlignTypes[UI_AXIS_X];
+	uiBlock->uiTextAlignTypes[UI_AXIS_Y] = styleBlock->uiTextAlignTypes[UI_AXIS_Y];
+	uiBlock->padding = styleBlock->padding;
+	uiBlock->uiFont = styleBlock->uiFont;
+	uiBlock->uiBlockColors = styleBlock->uiBlockColors;
+	uiBlock->depthLayer = styleBlock->depthLayer;
+}
+
+UiBlock *WidgetMenuBarButton(UiState *uiState, MenuBarState *menuBarState, String string, UiBlock *styleBlock)
+{
+	UiBlock *dropdownButton = UiCreateBlock(uiState);
+	UiBlockCopyStyle(dropdownButton, styleBlock);
+	dropdownButton->flags = UI_FLAG_DRAW_TEXT | UI_FLAG_DRAW_BACKGROUND | UI_FLAG_INTERACTABLE;
+	dropdownButton->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXT};
+	dropdownButton->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 16};
+	dropdownButton->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
+	dropdownButton->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
+	dropdownButton->string = string;
+	dropdownButton->hash = Murmur3StringLength(string.chars, string.length, menuBarState->hashMenuBar);
+	dropdownButton->padding = iv2{8, 4};
+
+	ColorU32 baseColor = styleBlock->uiBlockColors.backColor;
 	ColorU32 colors[INTERACTION_STATE_COUNT];
 	colors[INTERACTION_STATE_NONACTIVE_NEUTRAL] = AddConstantToColor(baseColor, -50);
 	colors[INTERACTION_STATE_NONACTIVE_HOVERED] = AddConstantToColor(baseColor, -20);
 	colors[INTERACTION_STATE_DOWN] = AddConstantToColor(baseColor, -100);
 	colors[INTERACTION_STATE_ACTIVE_NEUTRAL] = AddConstantToColor(baseColor, 0);
 	colors[INTERACTION_STATE_ACTIVE_HOVERED] = AddConstantToColor(baseColor, 10);
-	INTERACTION_STATE interactionState = GetInteractionState(&uiState->uiInteractionState, hash, true, false, false);
+	INTERACTION_STATE interactionState = GetInteractionState(&uiState->uiInteractionState, dropdownButton->hash, true, false, false);
+	dropdownButton->uiBlockColors.backColor = colors[interactionState];
+
+	b32 pressedMenu = uiState->uiInteractionState.hashMousePressed == dropdownButton->hash;
+	b32 hoveredMenuWhileMenuActive = menuBarState->hashOpenMenuBarButton && uiState->uiInteractionState.hashMouseHover == dropdownButton->hash;
+	if (pressedMenu || hoveredMenuWhileMenuActive)
+	{
+		menuBarState->hashOpenMenuBarButton = dropdownButton->hash;
+	}
+	else if (menuBarState->hashOpenMenuBarButton == dropdownButton->hash && uiState->uiInteractionState.uiInteractionFrameInput.isMouseLeftPressed)
+	{
+		UiBlock *dropdownButtonPrev = UiGetBlockOfHashLastFrame(uiState, dropdownButton->hash);
+		if (dropdownButtonPrev->hash && ASSERT(dropdownButtonPrev->firstChild))
+		{
+			//NOTE: (Ahmayk) assumes that first child is menu panel and that there's only one (this will change when we do nested menus)
+			if (!IsInRectV2(uiState->uiInteractionState.uiInteractionFrameInput.mousePixelPos, dropdownButtonPrev->firstChild->rect))
+			{
+				menuBarState->hashOpenMenuBarButton = {};
+			}
+		}
+	}
+	return dropdownButton;
+}
+
+UiBlock *WidgetMenuPanel(UiState *uiState, UiBlock *styleBlock)
+{
+	UiBlock *b = UiCreateBlock(uiState);
+	UiBlockCopyStyle(b, styleBlock);
+	b->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_DRAW_BORDER;
+	b->uiPosition[UI_AXIS_X] = {UI_POSITION_RELATIVE, 0};
+	b->uiPosition[UI_AXIS_Y] = {UI_POSITION_PERCENT_OF_PARENT, 1};
+	b->uiSizes[UI_AXIS_X] = {UI_SIZE_FIT_CHILDREN};
+	b->uiSizes[UI_AXIS_Y] = {UI_SIZE_FIT_CHILDREN};
+	b->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
+	return b;
+}
+
+UiBlock *WidgetMenuOptionButton(UiState *uiState, MenuBarState *menuBarState, String string, u32 uiPanelHash, AppCommandBuffer *appCommandBuffer, u32 command, UiBlock *styleBlock)
+{
+	UiBlock *result = UiCreateBlock(uiState);
+	UiBlockCopyStyle(result, styleBlock);
+	result->flags = UI_FLAG_DRAW_BACKGROUND | UI_FLAG_INTERACTABLE;
+	result->hash = Murmur3StringLength(string.chars, string.length, uiPanelHash);
+	result->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
+	result->uiSizes[UI_AXIS_Y] = {UI_SIZE_FIT_CHILDREN};
+	result->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
+	result->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
+
+	ColorU32 baseColor = styleBlock->uiBlockColors.backColor;
+	ColorU32 colors[INTERACTION_STATE_COUNT];
+	colors[INTERACTION_STATE_NONACTIVE_NEUTRAL] = AddConstantToColor(baseColor, -50);
+	colors[INTERACTION_STATE_NONACTIVE_HOVERED] = AddConstantToColor(baseColor, -20);
+	colors[INTERACTION_STATE_DOWN] = AddConstantToColor(baseColor, -100);
+	colors[INTERACTION_STATE_ACTIVE_NEUTRAL] = AddConstantToColor(baseColor, 0);
+	colors[INTERACTION_STATE_ACTIVE_HOVERED] = AddConstantToColor(baseColor, 10);
+	INTERACTION_STATE interactionState = GetInteractionState(&uiState->uiInteractionState, result->hash, true, false, false);
 	result->uiBlockColors.backColor = colors[interactionState];
 
 	UI_PARENT_SCOPE(uiState, result)
@@ -96,12 +188,12 @@ UiBlock *WidgetMenuButton(UiState *uiState, String string, u32 hash, AppCommandB
 		t->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
 		t->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
 		t->string = string;
-		t->uiFont = menuButtonStyleDesc->uiFont;
-		t->uiBlockColors.frontColor = COLORU32_BLACK;
-		t->padding = menuButtonStyleDesc->padding;
+		t->uiFont = styleBlock->uiFont;
+		t->uiBlockColors.frontColor = styleBlock->uiBlockColors.frontColor;
+		t->padding = styleBlock->padding;
 	}
 
-	if (uiState->uiInteractionState.hashMousePressed == hash)
+	if (uiState->uiInteractionState.hashMousePressed == result->hash)
 	{
 		AppCommand *appCommand = PushAppCommand(appCommandBuffer);
 		appCommand->command = command;

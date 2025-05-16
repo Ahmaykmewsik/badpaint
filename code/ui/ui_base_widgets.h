@@ -53,11 +53,14 @@ struct AppCommandBuffer
 
 AppCommand *PushAppCommand(AppCommandBuffer *appCommandBuffer);
 
-struct MenuButtonStyleDesc
-{
-	UiFont uiFont; 
-	ColorU32 baseColor; 
-	iv2 padding;
-};
+void UiBlockCopyStyle(UiBlock *uiBlock, UiBlock *styleBlock);
 
-UiBlock *WidgetMenuButton(UiState *uiState, String string, u32 hash, AppCommandBuffer *appCommandBuffer, u32 command, MenuButtonStyleDesc *menuButtonStyleDesc);
+struct MenuBarState
+{
+	u32 hashMenuBar;
+	u32 hashOpenMenuBarButton;
+};
+UiBlock *WidgetMenuBar(UiState *uiState, MenuBarState *menuBarState, u32 hash);
+UiBlock *WidgetMenuBarButton(UiState *uiState, MenuBarState *menuBarState, String string, UiBlock *styleBlock);
+UiBlock *WidgetMenuPanel(UiState *uiState, UiBlock *styleBlock);
+UiBlock *WidgetMenuOptionButton(UiState *uiState, MenuBarState *menuBarState, String string, u32 uiPanelHash, AppCommandBuffer *appCommandBuffer, u32 command, UiBlock *styleBlock);

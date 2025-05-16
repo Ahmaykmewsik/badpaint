@@ -126,12 +126,12 @@ struct UiBlock
 	UiBlock *parent;
 
 	String string;
-	v2 textDim;
 	UiFont uiFont;
 	UiTextureView uiTextureView;
 	UiBlockColors uiBlockColors;
 	u32 depthLayer;
 
+	v2 textDim;
 	RectV2 rect;
 
 #if DEBUG_MODE

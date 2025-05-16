@@ -1014,11 +1014,13 @@ int CALLBACK WinMain(HINSTANCE instance,
 
 		CrashHandler(instance, &gameMemory);
 
+#if 0
 		//NOTE: Thanks phillip and martins :D
 		char *buffer = NULL;
 		size_t len = 0;
 		errno_t err = _dupenv_s(&buffer, &len, "_NO_DEBUG_HEAP");
 		ASSERT(err == 0 && buffer != NULL); // Ensure no error and variable exists
+#endif
 
 		unsigned int threadCount = 8;
 
