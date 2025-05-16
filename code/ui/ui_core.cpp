@@ -268,13 +268,27 @@ void CalculateUiUpwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiBlo
 			{
 			case UI_SIZE_PERCENT_OF_PARENT:
 			{
-				if (!IsBlockSizeAxisSolved(uiSolveState, uiBlock, (UI_AXIS) i) &&
-					ASSERT(uiBlock->parent) &&
-					IsBlockSizeAxisSolved(uiSolveState, uiBlock->parent, (UI_AXIS) i))
+				if (!IsBlockSizeAxisSolved(uiSolveState, uiBlock, (UI_AXIS) i))
 				{
-					uiBlock->rect.dim.elements[i] = (uiBlock->parent->rect.dim.elements[i] * uiBlock->uiSizes[i].value);
-					uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
-					MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
+					f32 parentSize = (f32) uiSolveState->windowDim.elements[i];
+					b32 readyToSolve = true;
+					if (uiBlock->parent)
+					{
+						if (IsBlockSizeAxisSolved(uiSolveState, uiBlock->parent, (UI_AXIS) i))
+						{
+							parentSize = uiBlock->parent->rect.dim.elements[i];
+						}
+						else
+						{
+							readyToSolve = false;
+						}
+					}
+					if (readyToSolve)
+					{
+						uiBlock->rect.dim.elements[i] = (parentSize * uiBlock->uiSizes[i].value);
+						uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
+						MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
+					}
 				}
 			} break;
 			case UI_SIZE_FILL_FIXED:
@@ -356,23 +370,40 @@ f32 GetSizeOfSiblingsForFitChildrenCalculation(UiSolveState *uiSolveState, UiBlo
 						result = MaxF32(uiBlock->rect.dim.elements[uiAxis], result);
 					}
 				}
-				else if (uiBlock->uiSizes[uiAxis].type == UI_SIZE_FILL)
-				{
-					//NOTE: (Ahmayk) If a fill type is unsolved, but all its children are solved, 
-					//Then we can assume that the size of the block is the sum or max of this block's children!
-					f32 allChildrenOfBlockSize = GetSizeOfSiblingsForFitChildrenCalculation(uiSolveState, uiBlock->firstChild, uiAxis, readyToSolve);
-					if (inParentLayoutType)
-					{
-						result += allChildrenOfBlockSize;
-					}
-					else
-					{
-						result = MaxF32(allChildrenOfBlockSize, result);
-					}
-				}
 				else
 				{
-					*readyToSolve = false;
+					switch (uiBlock->uiSizes[uiAxis].type)
+					{
+						case UI_SIZE_TEXTURE:
+						case UI_SIZE_PIXELS:
+						case UI_SIZE_TEXT:
+						{
+							//NOTE: (Ahmayk) these should never be unsolved
+							InvalidCodePath;
+						} break;
+						case UI_SIZE_FILL_FIXED:
+						case UI_SIZE_PERCENT_OF_OTHER_AXIS:
+						case UI_SIZE_FIT_CHILDREN:
+						{
+							*readyToSolve = false;
+						} break;
+						case UI_SIZE_PERCENT_OF_PARENT:
+						case UI_SIZE_FILL:
+						{
+							//NOTE: (Ahmayk) If a fill or percent of parent type is unsolved, but all its children are solved, 
+							//Then we can assume that the size of the block is the sum or max of this block's children!
+							f32 allChildrenOfBlockSize = GetSizeOfSiblingsForFitChildrenCalculation(uiSolveState, uiBlock->firstChild, uiAxis, readyToSolve);
+							if (inParentLayoutType)
+							{
+								result += allChildrenOfBlockSize;
+							}
+							else
+							{
+								result = MaxF32(allChildrenOfBlockSize, result);
+							}
+						} break;
+						InvalidDefaultCase
+					}
 				}
 
 				if (!(*readyToSolve))
@@ -604,10 +635,12 @@ void CalculateUiPositionData(UiSolveState *uiSolveState, UiBlock *uiBlock)
 				} break;
 				case UI_POSITION_PERCENT_OF_PARENT:
 				{
-					if (ASSERT(uiBlock->parent))
+					f32 parentSize = (f32) uiSolveState->windowDim.elements[i];
+					if (uiBlock->parent)
 					{
-						calculatedPosition->elements[i] = uiBlock->parent->rect.dim.elements[i] * uiBlock->uiPosition[i].value;
+						parentSize = uiBlock->parent->rect.dim.elements[i];
 					}
+					calculatedPosition->elements[i] = parentSize * uiBlock->uiPosition[i].value;
 				} break;
 				case UI_POSITION_AUTO:
 				{

@@ -173,11 +173,10 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 	root->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
 	UI_PARENT_SCOPE(uiState, root)
 	{
-		float menuBarHeight = 20;
 		UiBlock *menuBar = UiCreateBlock(uiState);
 		menuBar->flags = UI_FLAG_DRAW_BORDER;
 		menuBar->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
-		menuBar->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, menuBarHeight};
+		menuBar->uiSizes[UI_AXIS_Y] = {UI_SIZE_FIT_CHILDREN};
 		menuBar->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
 		menuBar->uiBlockColors.borderColor = COLORU32_BLACK;
 		UI_PARENT_SCOPE(uiState, menuBar)
@@ -185,7 +184,7 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 			UiBlock *dropdownButton = UiCreateBlock(uiState);
 			dropdownButton->flags = UI_FLAG_DRAW_TEXT | UI_FLAG_DRAW_BACKGROUND | UI_FLAG_INTERACTABLE;
 			dropdownButton->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXT};
-			dropdownButton->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
+			dropdownButton->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, 16};
 			dropdownButton->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
 			dropdownButton->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
 			dropdownButton->string = STRING("File");
@@ -295,11 +294,12 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 		UI_PARENT_SCOPE(uiState, body)
 		{
 			UiBlock *toolbar = UiCreateBlock(uiState);
-			//toolbar->flags = UI_FLAG_DRAW_BACKGROUND;
-			toolbar->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 65};
+			toolbar->flags = UI_FLAG_DRAW_BORDER;
+			toolbar->uiSizes[UI_AXIS_X] = {UI_SIZE_FIT_CHILDREN};
 			toolbar->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 			toolbar->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
-			//toolbar->uiBlockColors.backColor = ColorU32{100, 100, 100, 100};
+			toolbar->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
+			toolbar->uiBlockColors.borderColor = ColorU32{100, 100, 100, 100};
 			UI_PARENT_SCOPE(uiState, toolbar)
 			{
 				{
@@ -324,6 +324,7 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 				WidgetBrushEffectButton(uiState, appState, appCommandBuffer, BADPAINT_PIXEL_TYPE_RANDOM, STRING("Rand"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_RANDOM);
 				WidgetBrushEffectButton(uiState, appState, appCommandBuffer, BADPAINT_PIXEL_TYPE_COPY_OTHER_PIXEL, STRING("Copy"), COMMAND_SWITCH_BADPAINT_PIXEL_TYPE_TO_COPY_OTHER_PIXEL);
 
+#if 0
 				{
 					UiBlock *seperator = UiCreateBlock(uiState);
 					seperator->uiPosition[UI_AXIS_X] = {UI_POSITION_PERCENT_OF_PARENT, 1};
@@ -333,6 +334,7 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 					seperator->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 					seperator->uiBlockColors.frontColor = COLORU32_BLACK;
 				}
+#endif
 			}
 
 			UiBlock *panelArea = UiCreateBlock(uiState);
