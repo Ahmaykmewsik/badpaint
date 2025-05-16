@@ -166,7 +166,6 @@ UiBlock *WidgetMenuOptionButton(UiState *uiState, MenuBarState *menuBarState, St
 	result->hash = Murmur3StringLength(string.chars, string.length, uiPanelHash);
 	result->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
 	result->uiSizes[UI_AXIS_Y] = {UI_SIZE_FIT_CHILDREN};
-	result->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
 	result->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
 
 	ColorU32 baseColor = styleBlock->uiBlockColors.backColor;
@@ -181,11 +180,14 @@ UiBlock *WidgetMenuOptionButton(UiState *uiState, MenuBarState *menuBarState, St
 
 	UI_PARENT_SCOPE(uiState, result)
 	{
+		UiBlock *m = UiCreateBlock(uiState);
+		m->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, 8};
+		m->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 0.5};
+
 		UiBlock *t = UiCreateBlock(uiState);
 		t->flags = UI_FLAG_DRAW_TEXT;
 		t->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXT};
 		t->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXT};
-		t->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
 		t->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
 		t->string = string;
 		t->uiFont = styleBlock->uiFont;
@@ -198,6 +200,29 @@ UiBlock *WidgetMenuOptionButton(UiState *uiState, MenuBarState *menuBarState, St
 		AppCommand *appCommand = PushAppCommand(appCommandBuffer);
 		appCommand->command = command;
 	}
+	if (uiState->uiInteractionState.hashMouseReleased == result->hash)
+	{
+		menuBarState->hashOpenMenuBarButton = {};
+	}
 
 	return result;
+}
+
+UiBlock *WidgetSeperatorX(UiState *uiState, u32 thickness, ColorU32 color, u32 paddingY)
+{
+	UiBlock *b = UiCreateBlock(uiState);
+	b->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
+	b->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) (paddingY * 2) + thickness};
+	b->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
+	b->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
+	b->uiChildLayoutType = UI_CHILD_LAYOUT_TOP_TO_BOTTOM;
+	UI_PARENT_SCOPE(uiState, b)
+	{
+		UiBlock *s = UiCreateBlock(uiState);
+		s->flags = UI_FLAG_DRAW_BACKGROUND;
+		s->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL};
+		s->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) thickness};
+		s->uiBlockColors.backColor = color;
+	}
+	return b;
 }

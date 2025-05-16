@@ -183,27 +183,62 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 			styleBlock.uiBlockColors.borderColor = COLORU32_BLACK;
 			styleBlock.uiBlockColors.frontColor = COLORU32_BLACK;
 			styleBlock.uiFont = appState->defaultUiFont;
-			UiBlock *dropdownButton = WidgetMenuBarButton(uiState, &menuBarState, STRING("File"), &styleBlock);
-			dropdownButton->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
-			if (menuBarState.hashOpenMenuBarButton == dropdownButton->hash)
-			{
-				UI_PARENT_SCOPE(uiState, dropdownButton)
-				{
-					UiBlock *menuPanel = WidgetMenuPanel(uiState, &styleBlock);
-					menuPanel->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
-					UI_PARENT_SCOPE(uiState, menuPanel)
-					{
-						styleBlock.padding = iv2{12, 4};
-						UiBlock *menu = WidgetMenuOptionButton(uiState, &menuBarState, STRING("Import Image..."), menuPanel->hash, appCommandBuffer, COMMAND_OPEN_IMPORT_DIALOGUE, &styleBlock);
-						menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 1;
-						menu->firstChild->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 2;
 
-						menu = WidgetMenuOptionButton(uiState, &menuBarState, STRING("Export Image..."), menuPanel->hash,  appCommandBuffer, COMMAND_EXPORT_IMAGE, &styleBlock);
-						menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 3;
-						menu->firstChild->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 4;
+			UiBlock optionButtonStyle = styleBlock; 
+			optionButtonStyle.padding = iv2{6, 2};
+
+			{
+				UiBlock *dropdownButton = WidgetMenuBarButton(uiState, &menuBarState, STRING("File"), &styleBlock);
+				dropdownButton->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
+				if (menuBarState.hashOpenMenuBarButton == dropdownButton->hash)
+				{
+					UI_PARENT_SCOPE(uiState, dropdownButton)
+					{
+						UiBlock *menuPanel = WidgetMenuPanel(uiState, &styleBlock);
+						menuPanel->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
+						UI_PARENT_SCOPE(uiState, menuPanel)
+						{
+							UiBlock *menu = WidgetMenuOptionButton(uiState, &menuBarState, STRING("Import Image..."), menuPanel->hash, appCommandBuffer, COMMAND_OPEN_IMPORT_DIALOGUE, &optionButtonStyle);
+							menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 1;
+							menu->firstChild->next->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 2;
+
+							menu = WidgetMenuOptionButton(uiState, &menuBarState, STRING("Export Image..."), menuPanel->hash,  appCommandBuffer, COMMAND_EXPORT_IMAGE, &optionButtonStyle);
+							menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 3;
+							menu->firstChild->next->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 4;
+						}
 					}
 				}
 			}
+			{
+				UiBlock *dropdownButton = WidgetMenuBarButton(uiState, &menuBarState, STRING("Edit"), &styleBlock);
+				dropdownButton->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
+				if (menuBarState.hashOpenMenuBarButton == dropdownButton->hash)
+				{
+					UI_PARENT_SCOPE(uiState, dropdownButton)
+					{
+						UiBlock *menuPanel = WidgetMenuPanel(uiState, &styleBlock);
+						menuPanel->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
+						UI_PARENT_SCOPE(uiState, menuPanel)
+						{
+							UiBlock *menu = WidgetMenuOptionButton(uiState, &menuBarState, STRING("Undo"), menuPanel->hash, appCommandBuffer, COMMAND_UNIMPLEMENTED, &optionButtonStyle);
+							menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 1;
+							menu->firstChild->next->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 2;
+
+							menu = WidgetMenuOptionButton(uiState, &menuBarState, STRING("Redo"), menuPanel->hash,  appCommandBuffer, COMMAND_UNIMPLEMENTED, &optionButtonStyle);
+							menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 3;
+							menu->firstChild->next->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 4;
+
+							UiBlock *s = WidgetSeperatorX(uiState, 1, COLORU32_GRAY, 4);
+							s->firstChild->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 100;
+
+							menu = WidgetMenuOptionButton(uiState, &menuBarState, STRING("Commit Felony"), menuPanel->hash, appCommandBuffer, COMMAND_UNIMPLEMENTED, &optionButtonStyle);
+							menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 3;
+							menu->firstChild->next->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 4;
+						}
+					}
+				}
+			}
+
 		}
 
 		UiBlock *body = UiCreateBlock(uiState);

@@ -137,6 +137,7 @@ void UiInteractionStateUpdate(UiState *uiState, UiInteractionFrameInput *uiInter
 	uiInteractionState->hashMouseHover = {};
 	uiInteractionState->hashMousePressed = {};
 	uiInteractionState->hashMouseDown = {};
+	uiInteractionState->hashMouseReleased = {};
 	uiInteractionState->currentUiCursorType = UI_CURSOR_TYPE_DEFAULT;
 
 	if (uiInteractionFrameInput->isMouseLeftPressed || uiInteractionFrameInput->isMouseLeftReleased)
@@ -166,6 +167,10 @@ void UiInteractionStateUpdate(UiState *uiState, UiInteractionFrameInput *uiInter
 				if (uiInteractionFrameInput->isMouseLeftDown)
 				{
 					uiInteractionState->hashMouseDown = uiBlock->hash;
+				}
+				if (uiInteractionFrameInput->isMouseLeftReleased)
+				{
+					uiInteractionState->hashMouseReleased = uiBlock->hash;
 				}
 			}
 		}

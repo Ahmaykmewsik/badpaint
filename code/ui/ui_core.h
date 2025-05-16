@@ -185,6 +185,7 @@ struct UiInteractionState
 	u32 hashMouseHover;
 	u32 hashMouseDown;
 	u32 hashMousePressed;
+	u32 hashMouseReleased;
 	UI_CURSOR_TYPE currentUiCursorType;
 };
 

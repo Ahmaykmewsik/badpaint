@@ -64,3 +64,5 @@ UiBlock *WidgetMenuBar(UiState *uiState, MenuBarState *menuBarState, u32 hash);
 UiBlock *WidgetMenuBarButton(UiState *uiState, MenuBarState *menuBarState, String string, UiBlock *styleBlock);
 UiBlock *WidgetMenuPanel(UiState *uiState, UiBlock *styleBlock);
 UiBlock *WidgetMenuOptionButton(UiState *uiState, MenuBarState *menuBarState, String string, u32 uiPanelHash, AppCommandBuffer *appCommandBuffer, u32 command, UiBlock *styleBlock);
+
+UiBlock *WidgetSeperatorX(UiState *uiState, u32 thickness, ColorU32 color, u32 paddingY);
