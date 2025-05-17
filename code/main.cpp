@@ -180,7 +180,7 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 		{
 			UiBlock styleBlock = {};
 			styleBlock.uiBlockColors.backColor = APP_MAIN_BACKGROUND_COLOR;
-			styleBlock.uiBlockColors.borderColor = COLORU32_BLACK;
+			styleBlock.uiBlockColors.borderColor = COLORU32_GRAY;
 			styleBlock.uiBlockColors.frontColor = COLORU32_BLACK;
 			styleBlock.uiFont = appState->defaultUiFont;
 
@@ -195,11 +195,11 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 					UI_PARENT_SCOPE(uiState, dropdownButton)
 					{
 						UiBlock *menuPanel = WidgetMenuPanel(uiState, &styleBlock);
-						menuPanel->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
+						menuPanel->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 1;
 						UI_PARENT_SCOPE(uiState, menuPanel)
 						{
 							UiBlock *menu = WidgetMenuOptionButton(uiState, &menuBarState, STRING("Import Image..."), menuPanel->hash, appCommandBuffer, COMMAND_OPEN_IMPORT_DIALOGUE, &optionButtonStyle);
-							menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 1;
+							menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 2;
 							menu->firstChild->next->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 2;
 
 							menu = WidgetMenuOptionButton(uiState, &menuBarState, STRING("Export Image..."), menuPanel->hash,  appCommandBuffer, COMMAND_EXPORT_IMAGE, &optionButtonStyle);
@@ -217,11 +217,11 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 					UI_PARENT_SCOPE(uiState, dropdownButton)
 					{
 						UiBlock *menuPanel = WidgetMenuPanel(uiState, &styleBlock);
-						menuPanel->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
+						menuPanel->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 1;
 						UI_PARENT_SCOPE(uiState, menuPanel)
 						{
 							UiBlock *menu = WidgetMenuOptionButton(uiState, &menuBarState, STRING("Undo"), menuPanel->hash, appCommandBuffer, COMMAND_UNIMPLEMENTED, &optionButtonStyle);
-							menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 1;
+							menu->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 2;
 							menu->firstChild->next->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 2;
 
 							menu = WidgetMenuOptionButton(uiState, &menuBarState, STRING("Redo"), menuPanel->hash,  appCommandBuffer, COMMAND_UNIMPLEMENTED, &optionButtonStyle);

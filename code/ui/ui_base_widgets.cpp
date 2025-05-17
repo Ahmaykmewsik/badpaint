@@ -76,7 +76,7 @@ UiBlock *WidgetMenuBar(UiState *uiState, MenuBarState *menuBarState, u32 hash)
 	menuBar->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 	menuBar->uiSizes[UI_AXIS_Y] = {UI_SIZE_FIT_CHILDREN};
 	menuBar->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
-	menuBar->uiBlockColors.borderColor = COLORU32_BLACK;
+	menuBar->uiBlockColors.borderColor = COLORU32_GRAY;
 	menuBar->hash = hash;
 	menuBarState->hashMenuBar = hash;
 	return menuBar;
