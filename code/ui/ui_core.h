@@ -71,7 +71,7 @@ enum UI_AXIS : u32
 	UI_AXIS_COUNT = 2,
 };
 
-enum UI_FLAGS
+enum UI_FLAGS : u32
 {
 	UI_FLAG_NULL = (0 << 0),
 	UI_FLAG_DRAW_TEXT = (1 << 1),
@@ -179,6 +179,7 @@ struct UiInteractionFrameInput
 {
 	iv2 windowDim;
 	iv2 mousePixelPos;
+	v2 mouseWheelDelta;
 	b32 isMouseLeftDown;
 	b32 isMouseLeftPressed;
 	b32 isMouseLeftReleased;

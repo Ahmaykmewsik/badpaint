@@ -332,7 +332,7 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 					appState->rootUiPanel.childSplitAxis = UI_AXIS_X;
 					appState->rootUiPanel.hash = Murmur3String("mainPanels");
 					UiPanelPair panelPair1 = SplitPanel(&appState->rootUiPanel, &gameMemory->permanentArena, UI_AXIS_X, 0.85f);
-					panelPair1.uiPanel1->uiPanelType = UI_PANEL_TYPE_NULL;
+					panelPair1.uiPanel1->uiPanelType = UI_PANEL_TYPE_PNG_FILTERED;
 					panelPair1.uiPanel2->uiPanelType = UI_PANEL_TYPE_LAYERS;
 #endif
 				}
@@ -370,6 +370,8 @@ void RunApp(PlatformWorkQueue *threadWorkQueue, GameMemory *gameMemory, unsigned
 		uiInteractionFrameInput.windowDim.x = GetScreenWidth();
 		uiInteractionFrameInput.windowDim.y = GetScreenHeight();
 		uiInteractionFrameInput.mousePixelPos = iv2{GetMouseX(), GetMouseY()};
+		uiInteractionFrameInput.mouseWheelDelta.x = GetMouseWheelMoveV().x;
+		uiInteractionFrameInput.mouseWheelDelta.y = GetMouseWheelMoveV().y;
 		uiInteractionFrameInput.isMouseLeftDown = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
 		uiInteractionFrameInput.isMouseLeftPressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 		uiInteractionFrameInput.isMouseLeftReleased = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
