@@ -9,6 +9,7 @@ UiState *UiInit(Arena *arena)
 	UiState *result = ARENA_PUSH_STRUCT(arena, UiState);
 	result->uiBuffers[0].arena = ArenaInitFromArena(arena, MegaByte * 5);
 	result->uiBuffers[1].arena = ArenaInitFromArena(arena, MegaByte * 5);
+	result->uiWidgetMemoryArena = ArenaInitFromArena(arena, MegaByte * 1);
 	return result;
 }
 
@@ -176,6 +177,42 @@ void UiInteractionStateUpdate(UiState *uiState, UiInteractionFrameInput *uiInter
 		}
 	}
 	uiInteractionState->uiInteractionFrameInput = *uiInteractionFrameInput;
+}
+
+u8 *UiGetOrAllocateWidgetMemory(UiState *uiState, u32 hash, u32 size)
+{
+	u8 *result = {};
+
+	u32 indexStart = hash % ARRAY_COUNT(uiState->uiWidgetMemoryHashEntries);
+	for (u32 i = indexStart; 
+		i != ModBackU32(indexStart, ARRAY_COUNT(uiState->uiWidgetMemoryHashEntries));
+		i = ModNextU32(i, ARRAY_COUNT(uiState->uiWidgetMemoryHashEntries)))
+	{
+		UiWidgetMemoryHashEntry *entry = &uiState->uiWidgetMemoryHashEntries[i];
+		if (entry->hash == 0)
+		{
+			entry->hash = hash;
+			entry->size = size;
+			entry->data = ArenaPushSize(&uiState->uiWidgetMemoryArena, size, {});
+			result = entry->data;
+			break;
+		}
+		//NOTE: (Ahmayk) size must match previous call!
+		if (entry->hash == hash && ASSERT(entry->size == size))
+		{
+			result = entry->data;
+			break;
+		}
+	}
+
+	if (!ASSERT(result))
+	{
+		//NOTE: (Ahmayk) If we ever hit this then we need to come up with a way to how we free this memory 
+		static u8 stub[1024] = {};
+		result = &stub[0];
+	}
+
+	return result;
 }
 
 ///------ SOLVING ------

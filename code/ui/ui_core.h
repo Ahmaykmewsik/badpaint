@@ -201,6 +201,13 @@ struct UiInteractionState
 
 INTERACTION_STATE GetInteractionState(UiInteractionState *UiInteractionState, u32 hash, b32 isActive, b32 isDisabled, b32 downOverride);
 
+struct UiWidgetMemoryHashEntry
+{
+	u32 hash;
+	u32 size;
+	u8 *data;
+};
+
 struct UiState
 {
 	b32 initialized;
@@ -211,6 +218,8 @@ struct UiState
 	u32 parentStackCount;
 
 	UiInteractionState uiInteractionState;
+	Arena uiWidgetMemoryArena;
+	UiWidgetMemoryHashEntry uiWidgetMemoryHashEntries[1024];
 };
 
 UiState *UiInit(Arena *arena);
@@ -221,6 +230,7 @@ UiBlock *UiCreateBlock(UiState *uiState);
 UiBlock *UiCreateRootBlock(UiState *uiState);
 void UiPushParent(UiState *uiState, UiBlock *uiBlock);
 void UiPopParent(UiState *uiState, UiBlock *uiBlock);
+u8 *UiGetOrAllocateWidgetMemory(UiState *uiState, u32 hash, u32 size);
 void UiLayoutBlocks(UiBuffer *uiBuffer, iv2 windowDim, Arena *temporaryArena);
 void UiEndFrame(UiState *uiState);
 

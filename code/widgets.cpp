@@ -128,6 +128,11 @@ v2 ScreenPosToCanvasPos(iv2 mousePos, RectV2 *blockRect, iv2 canvasDim)
 	return result;
 }
 
+struct CanvasPanelState
+{
+	v2 scrollOffset;
+};
+
 void WidgetImageCanvas(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandBuffer, UiPanel *uiPanel, UiBlock *rootPanelBlock,
 		TextureGPU *textureGPUImage, TextureGPU *textureGPUDrawable, f32 *badpaintImageAlpha)
 {
@@ -139,18 +144,20 @@ void WidgetImageCanvas(UiState *uiState, AppState *appState, AppCommandBuffer *a
 		underWhite->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL_FIXED, SafeDivideI32(textureGPUImage->dim.y, textureGPUImage->dim.x)};
 		underWhite->uiBlockColors.backColor = COLORU32_WHITE;
 
+		CanvasPanelState *canvasPanelState = (CanvasPanelState*) UiGetOrAllocateWidgetMemory(uiState, rootPanelBlock->hash, sizeof(CanvasPanelState));
+
 		iv2 mousePos = uiState->uiInteractionState.uiInteractionFrameInput.mousePixelPos;
-		static v2 scrollOffset = {};
 		UiBlock *rootPanelBlockPrev = UiGetBlockOfHashLastFrame(uiState, rootPanelBlock->hash);
 		if (rootPanelBlockPrev->hash && IsInRectV2(mousePos, rootPanelBlockPrev->rect))
 		{
 			if (!IsZeroV2(uiState->uiInteractionState.uiInteractionFrameInput.mouseWheelDelta))
 			{
-				scrollOffset += uiState->uiInteractionState.uiInteractionFrameInput.mouseWheelDelta * 10.0f;
+				canvasPanelState->scrollOffset -= uiState->uiInteractionState.uiInteractionFrameInput.mouseWheelDelta * 10.0f;
 			}
 		}
-		underWhite->uiPositionOffset[UI_AXIS_X] = UiPositionOffset{UI_POSITION_OFFSET_PIXELS, scrollOffset.x};
-		underWhite->uiPositionOffset[UI_AXIS_Y] = UiPositionOffset{UI_POSITION_OFFSET_PIXELS, scrollOffset.y};
+
+		underWhite->uiPositionOffset[UI_AXIS_X] = UiPositionOffset{UI_POSITION_OFFSET_PIXELS, canvasPanelState->scrollOffset.x};
+		underWhite->uiPositionOffset[UI_AXIS_Y] = UiPositionOffset{UI_POSITION_OFFSET_PIXELS, canvasPanelState->scrollOffset.y};
 
 		UI_PARENT_SCOPE(uiState, underWhite)
 		{
