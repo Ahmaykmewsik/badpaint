@@ -33,11 +33,8 @@ void UiRenderBlockRaylib(UiBlock *uiBlock)
 			{
 				RectIV2 *viewRect = &uiBlock->uiTextureView.viewRect;
 				Rectangle source = {(f32)viewRect->pos.x, (f32)viewRect->pos.y, (f32)viewRect->dim.x, (f32)viewRect->dim.y};
-				RectV2 rect = uiBlock->rect;
-				rect.pos.x += uiBlock->padding.x;
-				rect.pos.y += uiBlock->padding.y;
-				rect.dim.x -= (uiBlock->padding.x * 2.0f);
-				rect.dim.y -= (uiBlock->padding.y * 2.0f);
+				//NOTE: (Ahmayk) padding does NOT increase the size of the texture
+				RectV2 rect = RectV2WithoutUiPadding(uiBlock);
 				Rectangle dest = RectToRayRectangle(rect);
 
 				Color color = WHITE;
@@ -52,23 +49,25 @@ void UiRenderBlockRaylib(UiBlock *uiBlock)
 		if (uiBlock->flags & UI_FLAG_DRAW_TEXT)
 		{
 			v2 pos = {};
+			RectV2 rectMinusPadding = RectV2WithoutUiPadding(uiBlock);
+
 			for (u32 i = 0; i < ARRAY_COUNT(uiBlock->uiTextAlignTypes); i++)
 			{
 				switch(uiBlock->uiTextAlignTypes[i])
 				{
 					case UI_TEXT_ALIGN_LEFT:
 					{
-						pos.elements[i] = uiBlock->rect.pos.elements[i];
+						pos.elements[i] = rectMinusPadding.pos.elements[i];
 					} break;
 					case UI_TEXT_ALIGN_CENTER:
 					{
-						f32 textLengthInBlock = MinF32(uiBlock->textDim.elements[i], uiBlock->rect.dim.elements[i]);
-						f32 offset = (uiBlock->rect.dim.elements[i] * 0.5f) - (textLengthInBlock * 0.5f);
-						pos.elements[i] = uiBlock->rect.pos.elements[i] + offset;
+						f32 textLengthInBlock = MinF32(uiBlock->textDim.elements[i], rectMinusPadding.dim.elements[i]);
+						f32 offset = (rectMinusPadding.dim.elements[i] * 0.5f) - (textLengthInBlock * 0.5f);
+						pos.elements[i] = rectMinusPadding.pos.elements[i] + offset;
 					} break;
 					case UI_TEXT_ALIGN_RIGHT:
 					{
-						pos.elements[i] = uiBlock->rect.pos.elements[i] + uiBlock->rect.dim.elements[i] - uiBlock->textDim.elements[i];
+						pos.elements[i] = rectMinusPadding.pos.elements[i] + rectMinusPadding.dim.elements[i] - uiBlock->textDim.elements[i];
 					} break;
 					InvalidDefaultCase;
 				}

@@ -22,7 +22,7 @@ UiBlock *WidgetBrushEffectButton(UiState *uiState, AppState *appState, AppComman
 	result->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, G_TOOLBOX_WIDTH_AND_HEIGHT};
 	result->uiTextAlignTypes[UI_AXIS_X] = UI_TEXT_ALIGN_CENTER;
 	result->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
-	result->padding = iv2{4, 4};
+	result->padding = UiPadding{4, 4, 4, 4};
 
 	ColorU32 baseColor = BADPAINT_PIXEL_TYPE_COLORS_PRIMARY[brushEffect];
 
@@ -50,7 +50,7 @@ UiBlock *WidgetToolButton(UiState *uiState, AppState *appState, AppCommandBuffer
 	result->flags = UI_FLAG_DRAW_TEXTURE | UI_FLAG_DRAW_TEXT | UI_FLAG_INTERACTABLE;
 	result->uiSizes[UI_AXIS_X] = {UI_SIZE_TEXTURE};
 	result->uiSizes[UI_AXIS_Y] = {UI_SIZE_TEXTURE};
-	result->padding = iv2{8, 8};
+	result->padding = UiPadding{8, 8, 8, 8};
 	b32 active = appState->currentTool == badpaintToolType;
 	b32 isDisabled = false;
 	b32 downOverride = IsCommandKeyBindingDown(command);

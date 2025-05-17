@@ -168,6 +168,12 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 	defaultBlockColors.frontColor = COLORU32_BLACK;
 	defaultBlockColors.borderColor = COLORU32_DARKGRAY;
 
+	UiBlock defaultStyleBlock = {};
+	defaultStyleBlock.uiBlockColors.backColor = APP_MAIN_BACKGROUND_COLOR;
+	defaultStyleBlock.uiBlockColors.borderColor = COLORU32_GRAY;
+	defaultStyleBlock.uiBlockColors.frontColor = COLORU32_BLACK;
+	defaultStyleBlock.uiFont = appState->defaultUiFont;
+
 	UiBlock *root= UiCreateBlock(uiState);
 	root->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, (f32) uiState->uiInteractionState.uiInteractionFrameInput.windowDim.x};
 	root->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, (f32) uiState->uiInteractionState.uiInteractionFrameInput.windowDim.y};
@@ -178,23 +184,20 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 		UiBlock *menuBar = WidgetMenuBar(uiState, &menuBarState, Murmur3String("TitleBarMenu"));
 		UI_PARENT_SCOPE(uiState, menuBar)
 		{
-			UiBlock styleBlock = {};
-			styleBlock.uiBlockColors.backColor = APP_MAIN_BACKGROUND_COLOR;
-			styleBlock.uiBlockColors.borderColor = COLORU32_GRAY;
-			styleBlock.uiBlockColors.frontColor = COLORU32_BLACK;
-			styleBlock.uiFont = appState->defaultUiFont;
+			UiBlock menuBarButtonStyleBlock = defaultStyleBlock; 
+			menuBarButtonStyleBlock.padding = UiPadding{6, 6, 2, 0};
 
-			UiBlock optionButtonStyle = styleBlock; 
-			optionButtonStyle.padding = iv2{6, 2};
+			UiBlock optionButtonStyle = defaultStyleBlock; 
+			optionButtonStyle.padding = UiPadding{6, 6, 3, 1};
 
 			{
-				UiBlock *dropdownButton = WidgetMenuBarButton(uiState, &menuBarState, STRING("File"), &styleBlock);
+				UiBlock *dropdownButton = WidgetMenuBarButton(uiState, &menuBarState, STRING("File"), &menuBarButtonStyleBlock);
 				dropdownButton->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
 				if (menuBarState.hashOpenMenuBarButton == dropdownButton->hash)
 				{
 					UI_PARENT_SCOPE(uiState, dropdownButton)
 					{
-						UiBlock *menuPanel = WidgetMenuPanel(uiState, &styleBlock);
+						UiBlock *menuPanel = WidgetMenuPanel(uiState, &defaultStyleBlock);
 						menuPanel->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 1;
 						UI_PARENT_SCOPE(uiState, menuPanel)
 						{
@@ -210,13 +213,13 @@ void BuildUi(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandB
 				}
 			}
 			{
-				UiBlock *dropdownButton = WidgetMenuBarButton(uiState, &menuBarState, STRING("Edit"), &styleBlock);
+				UiBlock *dropdownButton = WidgetMenuBarButton(uiState, &menuBarState, STRING("Edit"), &menuBarButtonStyleBlock);
 				dropdownButton->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW;
 				if (menuBarState.hashOpenMenuBarButton == dropdownButton->hash)
 				{
 					UI_PARENT_SCOPE(uiState, dropdownButton)
 					{
-						UiBlock *menuPanel = WidgetMenuPanel(uiState, &styleBlock);
+						UiBlock *menuPanel = WidgetMenuPanel(uiState, &defaultStyleBlock);
 						menuPanel->depthLayer = UI_APP_DEPTH_HOVERING_WINDOW + 1;
 						UI_PARENT_SCOPE(uiState, menuPanel)
 						{

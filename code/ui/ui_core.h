@@ -106,6 +106,15 @@ struct UiTextureView
 	void *data;
 };
 
+//NOTE: (Ahmayk) ignored on UI_SIZE_FILL and UI_SIZE_FILL_FIXED
+struct UiPadding
+{
+	u16 left;
+	u16 right;
+	u16 top;
+	u16 bottom;
+};
+
 struct UiBlock
 {
 	u32 flags;
@@ -117,7 +126,7 @@ struct UiBlock
 	UI_CHILD_ALIGN_TYPE uiChildAlignTypes[UI_AXIS_COUNT];
 	UI_CHILD_LAYOUT_TYPE uiChildLayoutType;
 	UI_TEXT_ALIGN_TYPE uiTextAlignTypes[UI_AXIS_COUNT];
-	iv2 padding; //ignored on UI_SIZE_FILL and UI_SIZE_FILL_FIXED
+	UiPadding padding;
 
 	UiBlock *firstChild;
 	UiBlock *lastChild;
@@ -218,3 +227,5 @@ void UiEndFrame(UiState *uiState);
 #define CONCAT(x, y) CONCAT_IMPL(x, y)
 #define DEFER_LOOP(begin, end) for (int CONCAT(_i_, __LINE__) = ((begin), 0); !CONCAT(_i_, __LINE__); CONCAT(_i_, __LINE__) += 1, (end))
 #define UI_PARENT_SCOPE(uiState, uiBlock) DEFER_LOOP(UiPushParent(uiState, uiBlock), UiPopParent(uiState, uiBlock))
+
+RectV2 RectV2WithoutUiPadding(UiBlock *uiBlock);

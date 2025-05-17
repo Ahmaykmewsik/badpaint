@@ -112,7 +112,6 @@ UiBlock *WidgetMenuBarButton(UiState *uiState, MenuBarState *menuBarState, Strin
 	dropdownButton->uiTextAlignTypes[UI_AXIS_Y] = UI_TEXT_ALIGN_CENTER;
 	dropdownButton->string = string;
 	dropdownButton->hash = Murmur3StringLength(string.chars, string.length, menuBarState->hashMenuBar);
-	dropdownButton->padding = iv2{8, 4};
 
 	ColorU32 baseColor = styleBlock->uiBlockColors.backColor;
 	ColorU32 colors[INTERACTION_STATE_COUNT];

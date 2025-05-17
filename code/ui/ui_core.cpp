@@ -217,6 +217,20 @@ void MarkBlockSizeAxisAsSolved(UiSolveState *uiSolveState, UiBlock *uiBlock, UI_
 	}
 }
 
+void ApplyPaddingToRect(UiBlock *uiBlock, UI_AXIS axis)
+{
+	if (axis == UI_AXIS_X)
+	{
+		uiBlock->rect.dim.elements[axis] += uiBlock->padding.left;
+		uiBlock->rect.dim.elements[axis] += uiBlock->padding.right;
+	}
+	if (axis == UI_AXIS_Y)
+	{
+		uiBlock->rect.dim.elements[axis] += uiBlock->padding.top;
+		uiBlock->rect.dim.elements[axis] += uiBlock->padding.bottom;
+	}
+}
+
 void CalculateFixedSizes(UiSolveState *uiSolveState, UiBlock *uiBlock)
 {
 	if (uiBlock)
@@ -230,13 +244,13 @@ void CalculateFixedSizes(UiSolveState *uiSolveState, UiBlock *uiBlock)
 				{
 					//NOTE: (Ahmayk) :(
 					uiBlock->rect.dim.elements[i] = (f32) uiBlock->uiTextureView.viewRect.dim.elements[i];
-					uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
+					ApplyPaddingToRect(uiBlock, (UI_AXIS) i);
 					MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 				} break;
 				case UI_SIZE_PIXELS:
 				{
 					uiBlock->rect.dim.elements[i] = uiSize.value;
-					uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
+					ApplyPaddingToRect(uiBlock, (UI_AXIS) i);
 					MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 				} break;
 				case UI_SIZE_TEXT:
@@ -245,7 +259,7 @@ void CalculateFixedSizes(UiSolveState *uiSolveState, UiBlock *uiBlock)
 					{
 						uiBlock->rect.dim.elements[i] = uiBlock->textDim.elements[i];
 					}
-					uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
+					ApplyPaddingToRect(uiBlock, (UI_AXIS) i);
 					MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 				}
 				case UI_SIZE_PERCENT_OF_PARENT:
@@ -291,7 +305,7 @@ void CalculateUiUpwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiBlo
 					if (readyToSolve)
 					{
 						uiBlock->rect.dim.elements[i] = (parentSize * uiBlock->uiSizes[i].value);
-						uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
+						ApplyPaddingToRect(uiBlock, (UI_AXIS) i);
 						MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 					}
 				}
@@ -312,7 +326,7 @@ void CalculateUiUpwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiBlo
 						{
 							uiBlock->rect.dim.elements[i] = uiBlock->parent->rect.dim.elements[i];
 						}
-						uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
+						ApplyPaddingToRect(uiBlock, (UI_AXIS) i);
 						MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 					}
 				}
@@ -337,7 +351,7 @@ void CalculateUiUpwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiBlo
 				IsBlockSizeAxisSolved(uiSolveState, uiBlock, (UI_AXIS) (1 - i)))
 			{
 				uiBlock->rect.dim.elements[i] = uiBlock->rect.dim.elements[1 - i] * uiBlock->uiSizes[i].value;
-				uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
+				ApplyPaddingToRect(uiBlock, (UI_AXIS) i);
 				MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 			}
 		}
@@ -445,14 +459,14 @@ void CalculateUiDownwardsDependentSizes(UiSolveState *uiSolveState, UiBlock *uiB
 							if (readyToSolve)
 							{
 								uiBlock->rect.dim.elements[i] = size;
-								uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
+								ApplyPaddingToRect(uiBlock, (UI_AXIS) i);
 								MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 							}
 						}
 						else
 						{
 							uiBlock->rect.dim.elements[i] = 0;
-							uiBlock->rect.dim.elements[i] += uiBlock->padding.elements[i] * 2;
+							ApplyPaddingToRect(uiBlock, (UI_AXIS) i);
 							MarkBlockSizeAxisAsSolved(uiSolveState, uiBlock, (UI_AXIS) i);
 						}
 					}
@@ -878,6 +892,8 @@ void UiLayoutBlocks(UiBuffer *uiBuffer, iv2 windowDim, Arena *temporaryArena)
 
 	ArenaPopMarker(positionDataMarker);
 
+	//TODO: (Ahmayk) clamp & remove rects that fall outside window
+
 	UiBufferRadixSort(uiBuffer, temporaryArena);
 }
 
@@ -893,4 +909,16 @@ void UiEndFrame(UiState *uiState)
 	UiBuffer *uiBufferLastFrame = &uiState->uiBuffers[1 - uiState->uiBufferIndex];
 	ArenaReset(&uiBufferLastFrame->arena);
 	uiState->uiBufferIndex = 1 - uiState->uiBufferIndex;
+}
+
+//---- Helpers
+
+RectV2 RectV2WithoutUiPadding(UiBlock *uiBlock)
+{
+	RectV2 result = uiBlock->rect;
+	result.pos.x += uiBlock->padding.left;
+	result.pos.y += uiBlock->padding.top;
+	result.dim.x -= (uiBlock->padding.left + uiBlock->padding.right);
+	result.dim.y -= (uiBlock->padding.top + uiBlock->padding.bottom);
+	return result;
 }
