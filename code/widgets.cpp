@@ -131,10 +131,11 @@ v2 ScreenPosToCanvasPos(iv2 mousePos, RectV2 *blockRect, iv2 canvasDim)
 struct CanvasPanelState
 {
 	v2 scrollOffset;
+	f32 badpaintImageAlpha;
 };
 
 void WidgetImageCanvas(UiState *uiState, AppState *appState, AppCommandBuffer *appCommandBuffer, UiPanel *uiPanel, UiBlock *rootPanelBlock,
-		TextureGPU *textureGPUImage, TextureGPU *textureGPUDrawable, f32 *badpaintImageAlpha)
+		TextureGPU *textureGPUImage, TextureGPU *textureGPUDrawable)
 {
 	if (textureGPUImage->texture.id)
 	{
@@ -152,7 +153,7 @@ void WidgetImageCanvas(UiState *uiState, AppState *appState, AppCommandBuffer *a
 		{
 			if (!IsZeroV2(uiState->uiInteractionState.uiInteractionFrameInput.mouseWheelDelta))
 			{
-				canvasPanelState->scrollOffset -= uiState->uiInteractionState.uiInteractionFrameInput.mouseWheelDelta * 10.0f;
+				canvasPanelState->scrollOffset -= uiState->uiInteractionState.uiInteractionFrameInput.mouseWheelDelta * 40.0f;
 			}
 		}
 
@@ -180,22 +181,22 @@ void WidgetImageCanvas(UiState *uiState, AppState *appState, AppCommandBuffer *a
 
 				if (isHoveringCanvas)
 				{
-					*badpaintImageAlpha = ClampF32(0, *badpaintImageAlpha + (GetFrameTime() * (1000 / 80)) ,1);
+					canvasPanelState->badpaintImageAlpha = ClampF32(0, canvasPanelState->badpaintImageAlpha + (GetFrameTime() * (1000 / 80)) ,1);
 				}
 				else
 				{
-					*badpaintImageAlpha = ClampF32(0, *badpaintImageAlpha - (GetFrameTime() * (1000 / 80)) ,1);
+					canvasPanelState->badpaintImageAlpha = ClampF32(0, canvasPanelState->badpaintImageAlpha - (GetFrameTime() * (1000 / 80)) ,1);
 				}
 
-				if (badpaintImageAlpha > 0)
+				if (canvasPanelState->badpaintImageAlpha > 0)
 				{
 					canvasBlock->flags |= UI_FLAG_DRAW_TEXTURE | UI_FLAG_TINT_TEXTURE;
 					canvasBlock->uiTextureView = UiRaylibTextureToUiTextureView(&textureGPUDrawable->texture);
-					canvasBlock->uiBlockColors.frontColor = ColorU32{255, 255, 255, (u8) (*badpaintImageAlpha * 255)};
+					canvasBlock->uiBlockColors.frontColor = ColorU32{255, 255, 255, (u8) (canvasPanelState->badpaintImageAlpha * 255)};
 
 					b->flags |= UI_FLAG_TINT_TEXTURE;
-					u8 value = (u8) LerpF32(225, 1 - *badpaintImageAlpha, 255);
-					u8 valueAlpha = (u8) LerpF32(245, 1 - *badpaintImageAlpha, 255);
+					u8 value = (u8) LerpF32(225, 1 - canvasPanelState->badpaintImageAlpha, 255);
+					u8 valueAlpha = (u8) LerpF32(245, 1 - canvasPanelState->badpaintImageAlpha, 255);
 					b->uiBlockColors.frontColor = ColorU32{value, value, value, valueAlpha};
 				}
 
@@ -281,16 +282,14 @@ void BuildPanelTree(UiState *uiState, AppState *appState, AppCommandBuffer *appC
 						panelBlock->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
 						panelBlock->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
 						panelBlock->hash = Murmur3String("root", uiPanel->hash);
-						static f32 badpaintImageAlpha = 0;
-						WidgetImageCanvas(uiState, appState, appCommandBuffer, uiPanel, panelBlock, &canvas->textureGPURoot, &canvas->badpaintPixelsRootImage.textureGPU, &badpaintImageAlpha);
+						WidgetImageCanvas(uiState, appState, appCommandBuffer, uiPanel, panelBlock, &canvas->textureGPURoot, &canvas->badpaintPixelsRootImage.textureGPU);
 					} break;
 					case UI_PANEL_TYPE_FINAL_IMAGE:
 					{
 						panelBlock->uiChildAlignTypes[UI_AXIS_X] = UI_CHILD_ALIGN_CENTER;
 						panelBlock->uiChildAlignTypes[UI_AXIS_Y] = UI_CHILD_ALIGN_CENTER;
 						panelBlock->hash = Murmur3String("finalTexture", uiPanel->hash);
-						static f32 badpaintImageAlpha = 0;
-						WidgetImageCanvas(uiState, appState, appCommandBuffer, uiPanel, panelBlock, &canvas->textureGPUFinal, &canvas->badpaintPixelsFinalImage.textureGPU, &badpaintImageAlpha);
+						WidgetImageCanvas(uiState, appState, appCommandBuffer, uiPanel, panelBlock, &canvas->textureGPUFinal, &canvas->badpaintPixelsFinalImage.textureGPU);
 					} break;
 					case UI_PANEL_TYPE_PNG_FILTERED:
 					{
@@ -299,8 +298,7 @@ void BuildPanelTree(UiState *uiState, AppState *appState, AppCommandBuffer *appC
 						panelBlock->hash = Murmur3String("canvas", uiPanel->hash);
 						if (!appState->imageIsBroken)
 						{
-							static f32 badpaintImageAlpha = 0;
-							WidgetImageCanvas(uiState, appState, appCommandBuffer, uiPanel, panelBlock, &canvas->textureGPUPNGFiltered, &canvas->badpaintPixelsPNGFiltered.textureGPU, &badpaintImageAlpha);
+							WidgetImageCanvas(uiState, appState, appCommandBuffer, uiPanel, panelBlock, &canvas->textureGPUPNGFiltered, &canvas->badpaintPixelsPNGFiltered.textureGPU);
 						}
 						else
 						{

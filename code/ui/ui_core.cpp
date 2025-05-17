@@ -194,6 +194,7 @@ u8 *UiGetOrAllocateWidgetMemory(UiState *uiState, u32 hash, u32 size)
 			entry->hash = hash;
 			entry->size = size;
 			entry->data = ArenaPushSize(&uiState->uiWidgetMemoryArena, size, {});
+			memset(entry->data, 0, entry->size);
 			result = entry->data;
 			break;
 		}
