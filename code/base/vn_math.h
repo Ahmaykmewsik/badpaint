@@ -249,6 +249,7 @@ u32 ModNextU32(u32 i, u32 size);
 u32 ModBackU32(u32 i, u32 size);
 f32 SquareF32(f32 a);
 f64 SquareF64(f64 a);
+f32 PowF32(f32 a, f32 x);
 f32 CosF32(f32 f);
 f32 SinF32(f32 f);
 

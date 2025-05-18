@@ -131,6 +131,7 @@ v2 ScreenPosToCanvasPos(iv2 mousePos, RectV2 *blockRect, iv2 canvasDim)
 struct CanvasPanelState
 {
 	v2 scrollOffset;
+	f32 zoomAmount;
 	f32 badpaintImageAlpha;
 };
 
@@ -141,24 +142,68 @@ void WidgetImageCanvas(UiState *uiState, AppState *appState, AppCommandBuffer *a
 	{
 		UiBlock *underWhite = UiCreateBlock(uiState);
 		underWhite->flags = UI_FLAG_DRAW_BACKGROUND;
+		underWhite->uiBlockColors.backColor = COLORU32_WHITE;
 		underWhite->uiSizes[UI_AXIS_X] = {UI_SIZE_FILL_FIXED, SafeDivideI32(textureGPUImage->dim.x, textureGPUImage->dim.y)};
 		underWhite->uiSizes[UI_AXIS_Y] = {UI_SIZE_FILL_FIXED, SafeDivideI32(textureGPUImage->dim.y, textureGPUImage->dim.x)};
-		underWhite->uiBlockColors.backColor = COLORU32_WHITE;
+
+		u32 canvasBlockHash = Murmur3String("canvasBlock", rootPanelBlock->hash);
+		UiBlock *rootPanelBlockPrev = UiGetBlockOfHashLastFrame(uiState, rootPanelBlock->hash);
+		UiBlock *canvasBlockPrev = UiGetBlockOfHashLastFrame(uiState, canvasBlockHash);
 
 		CanvasPanelState *canvasPanelState = (CanvasPanelState*) UiGetOrAllocateWidgetMemory(uiState, rootPanelBlock->hash, sizeof(CanvasPanelState));
+		if (rootPanelBlockPrev->hash && !canvasPanelState->zoomAmount)
+		{
+			if (rootPanelBlockPrev->rect.dim.x < rootPanelBlockPrev->rect.dim.y)
+			{
+				canvasPanelState->zoomAmount = SafeDivideF32(rootPanelBlockPrev->rect.dim.x, (f32) textureGPUImage->dim.x);
+			}
+			else
+			{
+				canvasPanelState->zoomAmount = SafeDivideF32(rootPanelBlockPrev->rect.dim.y, (f32) textureGPUImage->dim.y);
+			}
+		}
 
 		iv2 mousePos = uiState->uiInteractionState.uiInteractionFrameInput.mousePixelPos;
-		UiBlock *rootPanelBlockPrev = UiGetBlockOfHashLastFrame(uiState, rootPanelBlock->hash);
 		if (rootPanelBlockPrev->hash && IsInRectV2(mousePos, rootPanelBlockPrev->rect))
 		{
 			if (!IsZeroV2(uiState->uiInteractionState.uiInteractionFrameInput.mouseWheelDelta))
 			{
-				canvasPanelState->scrollOffset -= uiState->uiInteractionState.uiInteractionFrameInput.mouseWheelDelta * 40.0f;
+				f32 oldZoom = canvasPanelState->zoomAmount;
+				v2 delta = uiState->uiInteractionState.uiInteractionFrameInput.mouseWheelDelta;
+				canvasPanelState->zoomAmount *= PowF32(1.2f, delta.x + delta.y);
+
+				f32 minPixelSize = 50;
+				f32 dimX = textureGPUImage->dim.x * canvasPanelState->zoomAmount;
+				if (minPixelSize > dimX)
+				{
+					canvasPanelState->zoomAmount *= minPixelSize / dimX;
+				}
+				f32 dimY = textureGPUImage->dim.y * canvasPanelState->zoomAmount;
+				if (minPixelSize > dimY)
+				{
+					canvasPanelState->zoomAmount *= minPixelSize / dimY;
+				}
+
+				canvasPanelState->zoomAmount = MinF32(canvasPanelState->zoomAmount, 200.0f);
+
+				//NOTE: (Ahmayk) Assumes that canvas block and underWhite have same pos
+				if (canvasBlockPrev->hash)
+				{
+					v2 relativeMousePos = mousePos - canvasBlockPrev->rect.pos;
+					v2 mousePosDelta = relativeMousePos - (relativeMousePos * (canvasPanelState->zoomAmount / oldZoom));
+					canvasPanelState->scrollOffset += mousePosDelta;
+				}
 			}
 		}
+		underWhite->uiPosition[UI_AXIS_X] = UiPosition{UI_POSITION_RELATIVE, canvasPanelState->scrollOffset.x};
+		underWhite->uiPosition[UI_AXIS_Y] = UiPosition{UI_POSITION_RELATIVE, canvasPanelState->scrollOffset.y};
 
-		underWhite->uiPositionOffset[UI_AXIS_X] = UiPositionOffset{UI_POSITION_OFFSET_PIXELS, canvasPanelState->scrollOffset.x};
-		underWhite->uiPositionOffset[UI_AXIS_Y] = UiPositionOffset{UI_POSITION_OFFSET_PIXELS, canvasPanelState->scrollOffset.y};
+		if (canvasPanelState->zoomAmount)
+		{
+			v2 textureSize = textureGPUImage->dim * canvasPanelState->zoomAmount;
+			underWhite->uiSizes[UI_AXIS_X] = {UI_SIZE_PIXELS, textureSize.x};
+			underWhite->uiSizes[UI_AXIS_Y] = {UI_SIZE_PIXELS, textureSize.y};
+		}
 
 		UI_PARENT_SCOPE(uiState, underWhite)
 		{
@@ -171,7 +216,7 @@ void WidgetImageCanvas(UiState *uiState, AppState *appState, AppCommandBuffer *a
 			{
 				UiBlock *canvasBlock = UiCreateBlock(uiState);
 				canvasBlock->flags = UI_FLAG_INTERACTABLE;
-				canvasBlock->hash = Murmur3String("canvasBlock", rootPanelBlock->hash);
+				canvasBlock->hash = canvasBlockHash;
 				canvasBlock->uiSizes[UI_AXIS_X] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 				canvasBlock->uiSizes[UI_AXIS_Y] = {UI_SIZE_PERCENT_OF_PARENT, 1};
 				//TODO: (Ahmayk) This check needs to be more sophisticated regarding drawing just outside the canvas
@@ -202,7 +247,6 @@ void WidgetImageCanvas(UiState *uiState, AppState *appState, AppCommandBuffer *a
 
 				if (isHoveringCanvas)
 				{
-					UiBlock *canvasBlockPrev = UiGetBlockOfHashLastFrame(uiState, canvasBlock->hash);
 					if (canvasBlockPrev->hash)
 					{
 						v2 posInCanvas = ScreenPosToCanvasPos(mousePos, &canvasBlockPrev->rect, appState->canvas.badpaintPixelsRootImage.dim);

@@ -1252,6 +1252,12 @@ f64 SquareF64(f64 a)
 	return (Result);
 }
 
+f32 PowF32(f32 a, f32 x)
+{
+	f32 result = (f32) pow(a, x);
+	return (result);
+}
+
 f32 CosF32(f32 f)
 {
 	f32 result = (f32) cos(f);
